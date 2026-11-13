@@ -54,7 +54,7 @@ export default async function RootLayout({
           <Layout
             banner={
               <Banner storageKey="tederash-docs-banner" key="banner">
-                ♿ Tederash Adaptive Accessibility Framework — runtime-adaptive
+                ♿ Tederash Adaptive Accessibility Framework: runtime-adaptive
                 accessibility for React
               </Banner>
             }
@@ -67,7 +67,7 @@ export default async function RootLayout({
                     <span className="tederash-brand-sub">Adaptive Accessibility</span>
                   </div>
                 }
-                projectLink="https://github.com/adrianhajdin/saas-template"
+                projectLink="https://github.com/tederash/tederash-ui-library"
               >
                 <div className="flex items-center gap-4 text-xs font-semibold mr-2">
                   <a href="/docs" className="hover:opacity-80 transition-opacity">

@@ -40,7 +40,7 @@ export function Footer() {
 
             <div className="flex items-center gap-3 pt-1">
               <a
-                href="https://github.com/adrianhajdin/saas-template"
+                href="https://github.com/tederash/tederash-ui-library"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Tederash repository on GitHub"
@@ -55,15 +55,6 @@ export function Footer() {
               >
                 <BookOpen className="w-4 h-4" aria-hidden="true" />
               </Link>
-              <a
-                href="https://github.com/sponsors"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Sponsor open-source accessibility"
-                className="p-2 rounded-lg border border-border bg-background hover:bg-muted text-rose-500 hover:text-rose-600 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-              >
-                <Heart className="w-4 h-4" aria-hidden="true" />
-              </a>
             </div>
           </div>
 

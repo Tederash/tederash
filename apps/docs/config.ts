@@ -5,7 +5,7 @@ const config = {
       template: "%s | Tederash Docs",
     },
     description:
-      "Documentation for the Tederash Adaptive Accessibility Framework — runtime-adaptive accessibility preferences for React and TypeScript.",
+      "Documentation for the Tederash Adaptive Accessibility Framework: runtime-adaptive accessibility preferences for React and TypeScript.",
     applicationName: "Tederash",
   },
   nextraLayout: {
