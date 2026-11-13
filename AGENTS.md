@@ -1031,14 +1031,15 @@ When working on this repository, follow these rules.
 
 ## Execution Plan & Status (Updated post Phase 0 Inspection)
 
-### Architecture Decision: Monorepo & SaaS Template Integration
-- **Monorepo setup**: `pnpm` workspaces (`packages/core`, `packages/react`, `packages/components`, `apps/playground`).
-- **SaaS Template Integration**: The `apps/playground` application adopts and builds upon the full-stack foundations from `saas-template`:
-  - **Auth**: Clerk authentication & middleware (`@clerk/nextjs`).
-  - **Database**: Supabase client (`@supabase/supabase-js`) with `supabase_schema.sql` and Server Actions.
-  - **Payments & Subscriptions**: Clerk Pricing & Billing in `app/subscription`.
-  - **Forms & Primitives**: Radix UI primitives (`@radix-ui/react-slot`, `@radix-ui/react-dialog`, etc.) with React Hook Form + Zod.
-  - **Offline / Local Fallback**: When external credentials (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `SUPABASE_URL`) are omitted, the playground gracefully falls back to local/demo mode so that all accessibility features remain 100% testable without registration or network calls.
+### Architecture Decision: Monorepo & Unified Application
+- **Monorepo setup**: `pnpm` workspaces (`packages/core`, `packages/react`, `packages/components`, `packages/assistance`, `apps/docs`).
+- **Unified Single-Port Application (`apps/docs`)**:
+  - The documentation and interactive demonstration have been consolidated into **one flagship application** running on a single port (`3000`).
+  - **Landing Page (`/`)**: High-impact hero inspired by `Welcome.tsx`, interactive multi-step registration demo with Web Speech TTS/dictation, live profile switcher (7 presets), real-time runtime inspector, 6 modular architecture cards, architectural comparison table, and community sponsors section.
+  - **Documentation (`/docs`)**: Complete Nextra MDX documentation site covering Quick Start, Profile Schemas, Precedence Resolution, Component APIs, Hook APIs, Speech APIs, Ethiopian & Ge'ez Localization, and 6 Architecture Decision Records (ADRs).
+  - **Unified Runtime Theme**: Uses the warm paper palette, ink typography, and teal accent (`--tederash-accent`) across both the landing page and the docs.
+  - **Universal Accessibility Shell**: `AccessibilityProvider`, floating `AccessibilityControlPanel` (with embedded `axe-core` live auditing), and `LiveRegion` are mounted globally so that every route adapts dynamically at runtime.
+  - **Offline First**: Zero cloud dependencies required for core functionality; runs 100% locally.
 
 ### Execution Sequence & Current Status
 
@@ -1047,7 +1048,7 @@ When working on this repository, follow these rules.
 | Step | Task | Status | Result & Coverage |
 |---|---|---|---|
 | **1** | **Inspect repository & finalize plan** | **Completed** | Technical plan recorded; SaaS template integration strategy defined |
-| **2** | **Initialize monorepo & workspace config** | **Completed** | `pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`, `apps/playground` configured |
+| **2** | **Initialize monorepo & workspace config** | **Completed** | `pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`, `apps/docs` configured |
 | **3** | **Finalize profile schema & types** | **Completed** | Strongly-typed `AccessibilityProfile` in `@tederash/core` (`visual`, `motor`, `cognitive`, `auditory`, `speech`, `interaction`) |
 | **4** | **Implement profile utilities & validation** | **Completed** | `validateProfile`, `sanitizeProfile`, 4-tier `resolveProfile` merge precedence |
 | **5** | **Implement accessibility runtime** | **Completed** | Framework-independent runtime, `useSyncExternalStore` safe immutable snapshots, persistence adapters |
@@ -1058,10 +1059,10 @@ When working on this repository, follow these rules.
 | **10** | **Implement live announcements system** | **Completed** | `LiveRegion` with polite/assertive containers and visual notification banner |
 | **11** | **Implement intelligent form assistance** | **Completed** | `@tederash/assistance` with `AssistanceProvider`, `HeuristicAssistanceProvider`, `AssistanceManager` (40 tests passing) |
 | **12** | **Add full E2E test suite (Tiers 1–4)** | **Completed** | 81 E2E integration tests passing in `packages/components/tests/e2e/` (**282/282 workspace tests passing**) |
-| **13** | **Multimodal speech & voice interaction** | **Completed** | `packages/core/src/speech/` (capability detection, synthesis & recognition controllers) + `useSpeechSynthesis` / `useSpeechRecognition` hooks; 27 new tests (17 core + 10 React) |
-| **14** | **Localization & Ethiopian Context** | **Completed** | Bilingual en/am dictionaries, Ge'ez typography engine (line-height 1.6–1.8), `AMHARIC_PRESET`, `useLocale` hook; 25 new tests (18 core + 7 React); typography tokens injected via adaptation engine; all 6 string-bearing components localize via `useLocalization` (7 component localization tests) |
-| **15** | **Build playground demo & axe-core audits** | **Completed** | Interactive registration demo, preset selector, live runtime inspector, and axe-core drawer; localized form labels/errors; voice read-aloud + per-field voice dictation (`useSpeechRecognition`); guided 3-step wizard engaging on `cognitive.guidedInteraction` — same form logic, adapted UX |
-| **16** | **Documentation & package release prep (Phase 9)** | **Completed** | Root `README.md`, `docs/` set (quick-start, profiles, runtime API, hooks API, components) and 6 ADRs in `docs/decisions/` covering runtime independence, merge precedence, adaptation engine, locale/typography, Web Speech capability handling, and package boundaries |
+| **13** | **Multimodal speech & voice interaction** | **Completed** | `packages/core/src/speech/` (capability detection, synthesis & recognition controllers) + `useSpeechSynthesis` / `useSpeechRecognition` hooks; 27 tests (17 core + 10 React) |
+| **14** | **Localization & Ethiopian Context** | **Completed** | Bilingual en/am dictionaries, Ge'ez typography engine (line-height 1.6–1.8), `AMHARIC_PRESET`, `useLocale` hook; 25 tests (18 core + 7 React); typography tokens injected via adaptation engine; all string-bearing components localized |
+| **15** | **Interactive Showcase & axe-core audits** | **Completed** | Interactive registration demo, preset selector, live runtime inspector, and axe-core drawer; voice dictation and speech readout; guided 3-step wizard engaging on `cognitive.guidedInteraction` |
+| **16** | **Unified Single-Port Nextra Application** | **Completed** | Landing page at `/`, Nextra documentation at `/docs`, adaptive subscription at `/subscription`, unified theme, running on port 3000 |
 
 ## First task for the coding agent
 
