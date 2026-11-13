@@ -1,0 +1,47 @@
+---
+title: "ADR-0006: pnpm monorepo with `@tederash/*` package boundaries"
+---
+
+## Status
+Accepted
+
+## Date
+2026-11-13
+
+## Context
+The framework comprises a runtime, React bindings, a component library, an assistance engine, and a demo application — plus a planned browser extension. They evolve at different rates and will be consumed independently ("Prepare packages for independent consumption", Phase 9). The repository also had to keep the core runtime free of React (ADR-0001) and the demo application free of SDK internals.
+
+## Decision
+A pnpm-workspace monorepo with these boundaries:
+
+| Package | Depends on |
+|---|---|
+| `@tederash/core` | (nothing runtime-facing) |
+| `@tederash/react` | `@tederash/core` |
+| `@tederash/components` | `@tederash/core`, `@tederash/react`, Radix primitives |
+| `@tederash/assistance` | `@tederash/core` |
+| `apps/playground` | all packages |
+
+Dependencies flow strictly downward; circular dependencies are prohibited. Source-level `exports` map `types`/`import` to `./src/index.ts` during development, with `tsc` builds producing `dist/` for release.
+
+## Alternatives Considered
+
+### Single package
+- Pros: One install, one version.
+- Cons: React apps would bundle non-React runtime internals; the extension could not reuse the core without shipping the component library; adoption friction for tree-shaking-unfriendly consumers.
+- Rejected.
+
+### Nx/Turbo monorepo tooling
+- Pros: Task graph caching, generators.
+- Cons: Setup overhead out of proportion to five packages; pnpm workspace scripts (`pnpm -r`, `--filter`) cover current needs.
+- Rejected for now; can be introduced without changing boundaries.
+
+### Separate repositories
+- Pros: Isolation.
+- Cons: Cross-package atomic changes (e.g. adding a preference touches schema → validation → adaptation → components in one PR) become multi-PR coordination.
+- Rejected for the hackathon-scale team.
+
+## Consequences
+- Adding the assistance package (M3) and speech/localization modules (M4/M5) required no boundary changes — the structure absorbed them.
+- Consumers install only what they need: `core` + `react` is sufficient; `components` is optional.
+- Release prep must define per-package versions and entry-point matrices before publishing (no incomplete packages will be published).

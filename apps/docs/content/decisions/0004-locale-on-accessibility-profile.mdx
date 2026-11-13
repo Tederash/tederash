@@ -1,0 +1,45 @@
+---
+title: "ADR-0004: Locale on the accessibility profile with Ge'ez typography compensation"
+---
+
+## Status
+Accepted
+
+## Date
+2026-11-13
+
+## Context
+Phase 8 requires prioritizing English and Amharic without coupling the framework to any language, and without depending on remote services. Two problems had to be solved:
+
+1. **Where does language live?** Localization state must participate in the same precedence and persistence machinery as accessibility preferences so that a user switching language gets the same instant, persisted experience as switching any preference.
+2. **Ethiopic script rendering.** Ge'ez (ግዕዝ) script renders visually smaller at equal point sizes and carries tall stacked diacritics; at default line-heights, glyphs clip. Fonts must fall back across platforms (`Noto Sans Ethiopic`, `Abyssinica SIL`, `Nyala`).
+
+## Decision
+
+1. Add a top-level optional `locale?: string` field to `AccessibilityProfile`. It flows through `updatePreferences`, `resolveProfile` precedence, `sanitizeProfile`, and localStorage persistence like any other preference.
+2. Bilingual dictionaries (`en`, `am`) with four sections (`labels`, `errors`, `announcements`, `presets`) live in `@tederash/core`. Lookup falls back to English for unknown locales and to the raw key for missing entries.
+3. The adaptation engine injects `--a11y-font-family` and `--a11y-line-height` (1.8 vs Latin 1.5) **only** when the locale is Ethiopic — token injection is part of the adaptation rules, not a separate styling layer.
+4. The Amharic preset (`AMHARIC_PRESET`) bundles `locale: "am"`, `speech.language: "am-ET"`, and slightly increased font scale.
+5. Amharic speech synthesis/recognition is **not promised**: capability is detected at runtime and unsupported browsers receive graceful fallbacks.
+
+## Alternatives Considered
+
+### Separate i18n context (e.g. react-i18next alongside the profile)
+- Pros: Industry-standard translation tooling.
+- Cons: Localization would bypass the profile's precedence/persistence; language and accessibility adaptations (typography!) would be coordinated manually by every app — precisely the integration this framework exists to provide.
+- Rejected: Locale is an accessibility concern here (typography, speech, announcements), not just a UI-string concern.
+
+### Hardcoding line-height/font tweaks inside components
+- Pros: Local and simple.
+- Cons: Violates ADR-0003 (no scattered adaptation logic); every component would re-implement Ethiopic handling.
+- Rejected.
+
+### Remote translation service
+- Pros: More languages cheaply.
+- Cons: Violates the low-bandwidth/offline requirement and the "basic functionality must not depend on remote services" rule; privacy surface.
+- Rejected for the core; dictionaries remain static data.
+
+## Consequences
+- Dictionary key parity between `en` and `am` is enforced by tests, so a missing translation fails CI rather than rendering English silently in an Amharic UI.
+- Unknown locales degrade to English + Latin typography — never a broken UI.
+- Adding a third language means adding one dictionary file and (if a different script) a typography profile.

@@ -1,0 +1,101 @@
+---
+title: "Quick Start"
+description: "Install, wrap your application, and see runtime adaptations in minutes."
+---
+
+Get an adaptive, accessible React application running in a few minutes.
+
+## 1. Install
+
+```bash
+pnpm add @tederash/react @tederash/components
+# core is a transitive dependency, but import types/presets from it directly:
+pnpm add @tederash/core
+```
+
+## 2. Wrap your application
+
+```tsx
+// app/providers.tsx
+import { AccessibilityProvider } from "@tederash/react";
+import { DEFAULT_PROFILE } from "@tederash/core";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AccessibilityProvider defaultProfile={DEFAULT_PROFILE}>
+      {children}
+    </AccessibilityProvider>
+  );
+}
+```
+
+The provider:
+
+- Instantiates the accessibility runtime (or accepts an existing one via `runtime`).
+- Subscribes the tree with `useSyncExternalStore` — no unnecessary re-renders.
+- Applies resolved CSS variables and data attributes to `document.documentElement`.
+- Persists user preferences to `localStorage` automatically (pass `persistence="none"` to disable).
+
+## 3. Use adaptive components
+
+```tsx
+import { AccessibleButton, AccessibleForm, AccessibleInput } from "@tederash/components";
+
+export function SignupForm() {
+  return (
+    <AccessibleForm onSubmit={submit} successAnnouncement="Account created.">
+      <AccessibleInput
+        label="Email address"
+        type="email"
+        description="Enter the email address associated with your account."
+        required
+      />
+      <AccessibleButton type="submit" variant="primary">
+        Submit application
+      </AccessibleButton>
+    </AccessibleForm>
+  );
+}
+```
+
+## 4. Switch profiles at runtime
+
+```tsx
+"use client";
+import { useAccessibility, LOW_VISION_PRESET } from "@tederash/react";
+import { useLocale } from "@tederash/react";
+
+function ProfileControls() {
+  const { setProfile } = useAccessibility();
+  const { locale, setLocale, t } = useLocale();
+
+  return (
+    <>
+      <button onClick={() => setProfile(LOW_VISION_PRESET)}>
+        Low vision preferences
+      </button>
+      <button onClick={() => setLocale("am")}>
+        {locale === "am" ? t("labels.help") : "አማርኛ"}
+      </button>
+    </>
+  );
+}
+```
+
+No page reload is required. Every subscribed component updates immediately.
+
+## 5. Verify the adaptation
+
+Switching to `LOW_VISION_PRESET` produces, without any application code changes:
+
+- `--a11y-font-scale: 1.35` and larger target heights on the root element
+- `data-a11y-high-contrast="true"` and a high-visibility focus ring
+- Adaptive component sizing, contrast, and instructions
+
+Inspect the live state in the playground (`pnpm dev`) via the runtime inspector and the axe-core audit drawer.
+
+## Next steps
+
+- [profiles.md](profiles.md) — compose custom profiles or use built-in presets
+- [components.md](components.md) — component-level props and overrides
+- [hooks.md](hooks.md) — read/observe preferences from your own components
