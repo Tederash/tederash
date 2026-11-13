@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   XCircle,
   BookOpen,
+  Volume2,
 } from "lucide-react";
 
 export default function Home() {
@@ -151,7 +152,7 @@ export default function Home() {
         total: totalSteps,
       }),
       priority: "polite",
-      category: "navigation",
+      category: "status",
     });
   };
 
@@ -165,7 +166,7 @@ export default function Home() {
         total: totalSteps,
       }),
       priority: "polite",
-      category: "navigation",
+      category: "status",
     });
   };
 
