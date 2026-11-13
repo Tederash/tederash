@@ -61,11 +61,11 @@ export default async function RootLayout({
             navbar={
               <Navbar
                 logo={
-                  <a href="/" className="tederash-navbar" aria-label="Tederash Home">
+                  <div className="tederash-navbar" aria-label="Tederash Home">
                     <span className="tederash-logo" aria-hidden="true" />
                     <span className="tederash-brand">Tederash</span>
                     <span className="tederash-brand-sub">Adaptive Accessibility</span>
-                  </a>
+                  </div>
                 }
                 projectLink="https://github.com/adrianhajdin/saas-template"
               >

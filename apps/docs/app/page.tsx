@@ -337,15 +337,16 @@ export default function Home() {
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </AccessibleButton>
 
-          <Link href="/docs" className="w-full sm:w-auto">
-            <AccessibleButton
-              variant="outline"
-              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold flex items-center justify-center gap-2"
-            >
+          <AccessibleButton
+            asChild
+            variant="outline"
+            className="w-full sm:w-auto px-6 py-3 text-sm font-semibold flex items-center justify-center gap-2"
+          >
+            <Link href="/docs">
               <BookOpen className="w-4 h-4" aria-hidden="true" />
               <span>Read Documentation</span>
-            </AccessibleButton>
-          </Link>
+            </Link>
+          </AccessibleButton>
         </div>
 
         {/* Quick Install Snippet Box (like Welcome.tsx Paper box) */}
