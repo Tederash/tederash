@@ -1,0 +1,54 @@
+---
+title: "LiveRegion"
+description: "Accessible polite and assertive live region announcer for assistive technologies."
+---
+
+import { LiveRegionDemo } from "../../components/demos/LiveRegionDemo";
+
+# LiveRegion
+
+`LiveRegion` maintains screen-reader-compatible ARIA live regions that announce asynchronous state changes, form completion events, and urgent validation alerts.
+
+## Component Preview
+
+Below is the live component output. Trigger polite status announcements or assertive alerts to test how messages are handled.
+
+<LiveRegionDemo />
+
+## Usage
+
+```tsx
+import { LiveRegion } from "@tederash/components";
+import { useAccessibility } from "@tederash/react";
+
+export function NotificationManager() {
+  const { announce } = useAccessibility();
+
+  const handleComplete = () => {
+    announce({
+      message: "Data export finished successfully.",
+      priority: "polite",
+    });
+  };
+
+  return (
+    <>
+      <button onClick={handleComplete}>Trigger Complete</button>
+      {/* LiveRegion is normally mounted once at root provider level */}
+      <LiveRegion showVisualBanner />
+    </>
+  );
+}
+```
+
+## Props Reference
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `showVisualBanner` | `boolean` | `false` | When true, renders a temporary visual notification banner alongside the invisible screen reader announcement. Useful for users who prefer visual notifications. |
+| `className` | `string` | `""` | Additional CSS class names applied to the visual banner container. |
+
+## Announcement Priority Semantics
+
+- **Polite (`aria-live="polite"`)**: Used for background updates, form submission confirmations, and non-blocking notifications. Assistive technologies wait until the user has finished their current action before speaking.
+- **Assertive (`aria-live="assertive"`)**: Used exclusively for critical errors, system disconnections, or urgent confirmation requirements. Immediately interrupts any ongoing speech to notify the user.

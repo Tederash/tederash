@@ -1,0 +1,61 @@
+---
+title: "AccessibleInput"
+description: "Accessible form input with automatic label association, cognitive plain-language descriptions, and validation linking."
+---
+
+import { InputDemo } from "../../components/demos/InputDemo";
+
+# AccessibleInput
+
+`AccessibleInput` provides an accessible form text input. It manages accessible names (`label`), descriptive helper texts (`aria-describedby`), simplified cognitive instructions (`simplifiedDescription`), and accessible error states (`aria-invalid`).
+
+## Component Preview
+
+Below is the live component output. Toggle profiles or test validation error states to see how the input adapts its geometry and instructions.
+
+<InputDemo />
+
+## Usage
+
+```tsx
+import { AccessibleInput } from "@tederash/components";
+
+export function InputExample() {
+  const [email, setEmail] = React.useState("");
+
+  return (
+    <AccessibleInput
+      label="Corporate Email"
+      type="email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      description="Enter your company email for identity verification."
+      simplifiedDescription="Type your email address."
+      error={!email.includes("@") ? "Email address must include an @ symbol." : undefined}
+      required
+    />
+  );
+}
+```
+
+## Props Reference
+
+`AccessibleInput` extends `React.InputHTMLAttributes<HTMLInputElement>` (omitting native `size`).
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `label` | `string` | `undefined` | Visible label associated with the input through `htmlFor` and `id`. Essential for accessible names and screen reader comprehension. |
+| `description` | `string` | `undefined` | Explanatory helper text associated with the input through `aria-describedby`. |
+| `simplifiedDescription` | `string` | `undefined` | Alternative plain-language instruction shown automatically when the active profile has `cognitive.simplifiedLanguage` enabled. |
+| `error` | `string` | `undefined` | Error message displayed below the input. When present, automatically links via `aria-describedby`, sets `aria-invalid="true"`, and applies high-visibility destructive borders. |
+| `visuallyHideLabel` | `boolean` | `false` | When true, visually hides the label using `sr-only` while maintaining programmatic accessibility for screen readers. |
+| `required` | `boolean` | `false` | Marks the input as required, adds a visible required asterisk `*`, and sets `aria-required="true"`. |
+| `disabled` | `boolean` | `false` | Disables user interaction and applies accessible muted styling. |
+| `className` | `string` | `undefined` | Additional CSS class names merged with default styles. |
+| `id` | `string` | `useId()` | Explicit HTML id. If omitted, a unique deterministic React id is generated automatically. |
+
+## Runtime Adaptations
+
+- **Touch Target Sizing**: Automatically adjusts input height to `44px`, `48px`, or `56px` to ensure effortless targeting for motor-impaired users.
+- **Cognitive Guidance**: Replaces dense corporate explanations with plain-language `simplifiedDescription` when cognitive support is activated.
+- **High-Contrast Indicators**: Highlights borders and active focus rings with enhanced contrast ratios under low-vision profiles.

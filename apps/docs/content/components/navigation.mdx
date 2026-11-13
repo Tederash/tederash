@@ -1,0 +1,60 @@
+---
+title: "AccessibleNavigation"
+description: "Accessible navigation bar with skip-to-content affordances and current page signalling."
+---
+
+import { NavigationDemo } from "../../components/demos/NavigationDemo";
+
+# AccessibleNavigation
+
+`AccessibleNavigation` renders an accessible `<header>` and `<nav>` landmark navigation bar. It includes built-in keyboard skip links, `aria-current="page"` marking on active routes, and responsive mobile navigation.
+
+## Component Preview
+
+Below is the live component output. You can change active links or tab through the navigation items.
+
+<NavigationDemo />
+
+## Usage
+
+```tsx
+import { AccessibleNavigation } from "@tederash/components";
+
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/docs", label: "Documentation" },
+  { href: "/pricing", label: "Pricing" },
+];
+
+export function HeaderExample() {
+  return (
+    <AccessibleNavigation
+      links={links}
+      activeRoute="/docs"
+      brandName="My Application"
+      skipToContentTarget="#main-content"
+    />
+  );
+}
+```
+
+## Props Reference
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `links` | `AccessibleNavigationLink[]` | **Required** | Array of link objects: `{ href, label, icon?, badge?, external?, onClick? }`. |
+| `activeRoute` | `string` | `"/"` | The currently active URL path. Matching link receives `aria-current="page"`. |
+| `brandName` | `string \| React.ReactNode` | `"Tederash"` | Brand logo or application title displayed on the left. |
+| `brandHref` | `string` | `"/"` | Destination link for the brand logo. |
+| `ariaLabel` | `string` | `"Main Navigation"` | Accessible name for the `<nav>` landmark. |
+| `skipToContentTarget` | `string` | `"#main-content"` | Target element ID for the Skip to Content link. |
+| `skipToContentLabel` | `string` | `"Skip to main content"` | Visible text for the skip link. |
+| `showSkipLink` | `boolean` | `true` | When true, renders a keyboard-accessible skip link that becomes visible on focus. |
+| `actions` | `React.ReactNode` | `undefined` | Right-side controls slot for theme toggles, search, or user profiles. |
+| `className` | `string` | `undefined` | Additional header container class names. |
+
+## Accessibility Guarantees
+
+- **Skip to Content Link**: Allows keyboard users to bypass repetitive navigation directly to the primary page content, satisfying WCAG 2.4.1 (Bypass Blocks).
+- **Current Page Indication**: Active links are programmatically marked with `aria-current="page"` and styled with distinct high-contrast active indicators.
+- **Landmark Semantics**: Renders `<header role="banner">` and `<nav role="navigation">` landmarks for screen reader landmark navigation.

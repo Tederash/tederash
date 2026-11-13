@@ -1,0 +1,65 @@
+---
+title: "AccessibleTextarea"
+description: "Accessible multi-line text input with live character counter announcements."
+---
+
+import { TextareaDemo } from "../../components/demos/TextareaDemo";
+
+# AccessibleTextarea
+
+`AccessibleTextarea` provides an accessible multi-line text area supporting label associations, simplified cognitive descriptions, error messaging, and live character limit counters linked to assistive technologies.
+
+## Component Preview
+
+Below is the live component output. Type inside the character-limited textarea to observe how character count announcements and descriptions work.
+
+<TextareaDemo />
+
+## Usage
+
+```tsx
+import { AccessibleTextarea } from "@tederash/components";
+
+export function FeedbackExample() {
+  const [feedback, setFeedback] = React.useState("");
+
+  return (
+    <AccessibleTextarea
+      label="Your Feedback"
+      value={feedback}
+      onChange={(e) => setFeedback(e.target.value)}
+      maxLength={200}
+      showCharacterCount
+      description="Tell us about your experience using the accessibility framework."
+      simplifiedDescription="Write your message here."
+      rows={4}
+      required
+    />
+  );
+}
+```
+
+## Props Reference
+
+`AccessibleTextarea` extends all standard HTML textarea attributes (`React.TextareaHTMLAttributes<HTMLTextAreaElement>`).
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `label` | `string` | `undefined` | Visible accessible label linked via `htmlFor`. |
+| `description` | `string` | `undefined` | Explanatory helper text linked via `aria-describedby`. |
+| `simplifiedDescription` | `string` | `undefined` | Plain-language instruction used when cognitive profile is active. |
+| `error` | `string` | `undefined` | Error message displayed and linked via `aria-describedby`. Sets `aria-invalid="true"`. |
+| `maxLength` | `number` | `undefined` | Maximum allowed character length. Automatically triggers the character counter when set. |
+| `showCharacterCount` | `boolean` | `true if maxLength set` | Toggles the character counter display beneath the textarea. |
+| `visuallyHideLabel` | `boolean` | `false` | Visually hides label with `sr-only` while keeping accessible name. |
+| `rows` | `number` | `3` | Initial visible text rows. |
+| `required` | `boolean` | `false` | Marks field as required and sets `aria-required="true"`. |
+| `disabled` | `boolean` | `false` | Disables interaction and applies accessible muted styling. |
+| `id` | `string` | `useId()` | Explicit HTML id for input and label linkage. |
+| `className` | `string` | `""` | Additional CSS class names. |
+
+## Runtime Adaptations
+
+- **Character Count Accessibility**: The live character counter is linked via `aria-describedby` so assistive technology users are aware of the remaining quota.
+- **Cognitive Mode**: Swaps verbose technical text for plain language instructions when `profile.cognitive.simplifiedLanguage` is active.
+- **Target & Focus**: Focus ring contrast expands under keyboard navigation and low-vision profiles.

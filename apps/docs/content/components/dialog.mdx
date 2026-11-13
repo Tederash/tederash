@@ -1,0 +1,74 @@
+---
+title: "AccessibleDialog"
+description: "Accessible modal dialog and alertdialog with focus trapping, scroll locking, and focus restoration."
+---
+
+import { DialogDemo } from "../../components/demos/DialogDemo";
+
+# AccessibleDialog
+
+`AccessibleDialog` provides an accessible modal window adhering to WAI-ARIA 1.2 Dialog and Alertdialog authoring patterns. It enforces focus containment, background body scroll locking, Escape key dismissal, and automatic focus restoration upon closing.
+
+## Component Preview
+
+Below is the live component output. Click either button to test focus trapping and keyboard dismissal.
+
+<DialogDemo />
+
+## Usage
+
+```tsx
+import { AccessibleDialog, AccessibleButton } from "@tederash/components";
+
+export function DialogExample() {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <>
+      <AccessibleButton onClick={() => setOpen(true)}>
+        Open Settings
+      </AccessibleButton>
+
+      <AccessibleDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Account Preferences"
+        description="Update your workspace settings below."
+      >
+        <div className="flex flex-col gap-4">
+          <p>Dialog body content...</p>
+          <div className="flex justify-end gap-2">
+            <AccessibleButton variant="outline" onClick={() => setOpen(false)}>
+              Close
+            </AccessibleButton>
+          </div>
+        </div>
+      </AccessibleDialog>
+    </>
+  );
+}
+```
+
+## Props Reference
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `open` | `boolean` | **Required** | Whether the dialog is currently visible. |
+| `onOpenChange` | `(open: boolean) => void` | **Required** | Callback fired when the dialog should close (e.g. Escape key, backdrop click, or close button). |
+| `title` | `string` | **Required** | Dialog header title used as accessible name via `aria-labelledby`. |
+| `description` | `string` | `undefined` | Dialog description linked via `aria-describedby`. |
+| `children` | `React.ReactNode` | **Required** | Body content of the dialog. |
+| `role` | `"dialog" \| "alertdialog"` | `"dialog"` | ARIA role. Set to `"alertdialog"` for urgent or destructive prompts where user confirmation is mandatory. |
+| `destructive` | `boolean` | `false` | When true, renders with destructive warning styling and sets `role="alertdialog"`. |
+| `closeOnEscape` | `boolean` | `true` | Close the dialog when user presses the <kbd>Escape</kbd> key. |
+| `closeOnBackdropClick` | `boolean` | `true` | Close the dialog when clicking outside on the backdrop overlay. |
+| `showCloseButton` | `boolean` | `true` | Renders accessible close icon button in the top right corner. |
+| `initialFocusRef` | `React.RefObject<HTMLElement>` | `undefined` | Element to focus when the dialog opens (defaults to first interactive element). |
+| `restoreFocusRef` | `React.RefObject<HTMLElement>` | `undefined` | Element to return focus to when the dialog closes (defaults to trigger button). |
+| `className` | `string` | `""` | Additional CSS class names. |
+
+## Accessibility Guarantees
+
+- **Focus Trap**: Keyboard navigation with <kbd>Tab</kbd> and <kbd>Shift + Tab</kbd> remains strictly trapped within the active dialog container.
+- **Scroll Lock**: The background `<body>` scroll is locked to prevent background disorientation while modal is open.
+- **Accessible Labelling**: Automatically connects `title` and `description` to the dialog root via generated `aria-labelledby` and `aria-describedby` IDs.

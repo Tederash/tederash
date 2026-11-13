@@ -11,8 +11,6 @@ const meta: MetaRecord = {
   runtime: "Runtime",
   hooks: "Hooks",
   components: "Components",
-  separator2: { type: "separator", title: "Architecture" },
-  decisions: "Architecture Decisions",
 };
 
 export default meta;

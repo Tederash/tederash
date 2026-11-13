@@ -1,0 +1,70 @@
+---
+title: "AccessibleSelect"
+description: "Accessible custom combobox and listbox select component with full keyboard navigation."
+---
+
+import { SelectDemo } from "../../components/demos/SelectDemo";
+
+# AccessibleSelect
+
+`AccessibleSelect` provides an accessible dropdown selection component implementing the WAI-ARIA 1.2 Combobox with Listbox Popup pattern. It supports keyboard navigation (Arrow keys, Home, End, Enter, Escape), typeahead searching, and profile-aware sizing.
+
+## Component Preview
+
+Below is the live component output. Try opening the dropdown with <kbd>Enter</kbd> or <kbd>↓</kbd>, navigating with Arrow keys, and selecting with <kbd>Enter</kbd>.
+
+<SelectDemo />
+
+## Usage
+
+```tsx
+import { AccessibleSelect } from "@tederash/components";
+
+const roleOptions = [
+  { value: "developer", label: "Software Engineer" },
+  { value: "designer", label: "Product Designer" },
+  { value: "pm", label: "Product Manager" },
+];
+
+export function SelectExample() {
+  const [role, setRole] = React.useState("developer");
+
+  return (
+    <AccessibleSelect
+      id="role-select"
+      label="Your Role"
+      options={roleOptions}
+      value={role}
+      onChange={setRole}
+      description="Select your primary job function."
+      required
+    />
+  );
+}
+```
+
+## Props Reference
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `label` | `string` | **Required** | Visible label associated with the trigger button. |
+| `options` | `AccessibleSelectOption[]` | **Required** | Array of selectable options: `{ value, label, disabled?, description? }`. |
+| `value` | `string` | `undefined` | Controlled selected value string. |
+| `defaultValue` | `string` | `undefined` | Default value for uncontrolled usage. |
+| `onChange` | `(value: string) => void` | `undefined` | Callback fired when user selects an option. |
+| `placeholder` | `string` | `"Select an option..."` | Placeholder text shown when no value is selected. |
+| `description` | `string` | `undefined` | Helper text linked via `aria-describedby`. |
+| `simplifiedDescription` | `string` | `undefined` | Plain-language description shown under cognitive profiles. |
+| `error` | `string` | `undefined` | Error message linked via `aria-describedby` that sets `aria-invalid="true"`. |
+| `disabled` | `boolean` | `false` | Disables user interaction. |
+| `required` | `boolean` | `false` | Marks field as required with `aria-required="true"`. |
+| `visuallyHideLabel` | `boolean` | `false` | Visually hides label while preserving accessible name for screen readers. |
+| `id` | `string` | `useId()` | Unique HTML id for element linkage. |
+| `className` | `string` | `undefined` | Additional container CSS class names. |
+
+## Keyboard Interaction
+
+- <kbd>Enter</kbd> or <kbd>Space</kbd> or <kbd>↓</kbd>: Opens the listbox popup and highlights the selected or first option.
+- <kbd>↑</kbd> and <kbd>↓</kbd>: Moves active selection through enabled options.
+- <kbd>Home</kbd> and <kbd>End</kbd>: Jumps to the first or last enabled option.
+- <kbd>Escape</kbd>: Closes the listbox and returns focus cleanly to the trigger button.

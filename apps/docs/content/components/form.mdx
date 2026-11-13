@@ -1,0 +1,62 @@
+---
+title: "AccessibleForm"
+description: "Accessible form wrapper with centralized error alerts, live announcements, and guided wizard mode."
+---
+
+import { FormDemo } from "../../components/demos/FormDemo";
+
+# AccessibleForm
+
+`AccessibleForm` wraps form controls with centralized accessibility features. It renders an accessible error summary alert at the top of the form, announces validation feedback to assistive technologies, and supports guided multi-step wizard interaction modes.
+
+## Component Preview
+
+Below is the live component output. Try submitting without filling required fields to observe the accessible error summary box and live screen-reader announcements.
+
+<FormDemo />
+
+## Usage
+
+```tsx
+import { AccessibleForm, AccessibleInput, AccessibleButton } from "@tederash/components";
+
+export function FormExample() {
+  const [errors, setErrors] = React.useState<string[]>([]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const newErrors: string[] = [];
+    // validation logic...
+    setErrors(newErrors);
+  };
+
+  return (
+    <AccessibleForm
+      errors={errors}
+      onSubmit={handleSubmit}
+      successAnnouncement="Registration completed successfully."
+    >
+      <AccessibleInput label="Account Name" required />
+      <AccessibleButton type="submit">Submit</AccessibleButton>
+    </AccessibleForm>
+  );
+}
+```
+
+## Props Reference
+
+`AccessibleForm` extends all standard HTML form attributes (`React.FormHTMLAttributes<HTMLFormElement>`).
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `errors` | `string[]` | `[]` | Array of active form error messages. When non-empty, renders an accessible summary box with `role="alert"` and automatically triggers an assertive screen reader announcement. |
+| `successAnnouncement` | `string` | `undefined` | Announcement message dispatched to the polite live region when the form submits without errors. |
+| `onSubmit` | `(e: React.FormEvent) => void` | `undefined` | Form submission handler callback. |
+| `children` | `React.ReactNode` | `undefined` | Form controls and content. |
+| `className` | `string` | `undefined` | Additional CSS class names. |
+
+## Runtime Adaptations
+
+- **Guided Step Mode**: Sets `data-guided="true"` when `profile.cognitive.guidedInteraction` is active, signaling multi-step wizard formatting.
+- **Announcement Priority**: Form submission errors automatically trigger assertive announcements so screen-reader users are immediately notified.
+- **Error Summary**: Focuses and summarizes all field errors in one cohesive alert region to satisfy WCAG 3.3.1 (Error Identification).

@@ -1,0 +1,61 @@
+---
+title: "AccessibleButton"
+description: "Adaptive, high-contrast, target-scalable button component with destructive confirmation."
+---
+
+import { ButtonDemo } from "../../components/demos/ButtonDemo";
+
+# AccessibleButton
+
+`AccessibleButton` is an accessible interactive button element that dynamically adapts its touch target dimensions, focus indicators, and destructive confirmation behavior based on the active accessibility profile.
+
+## Component Preview
+
+Below is the live component output. You can interact with different button variants, test tab focus, and change the active accessibility profile to observe target size and focus indicator adaptations in real time.
+
+<ButtonDemo />
+
+## Usage
+
+```tsx
+import { AccessibleButton } from "@tederash/components";
+
+export function ActionExample() {
+  return (
+    <div className="flex gap-3">
+      <AccessibleButton variant="primary" onClick={() => console.log("Saved")}>
+        Save Changes
+      </AccessibleButton>
+
+      <AccessibleButton
+        variant="destructive"
+        confirmDestructivePrompt="Are you sure you want to delete this resource?"
+        onClick={() => console.log("Deleted")}
+      >
+        Delete Project
+      </AccessibleButton>
+    </div>
+  );
+}
+```
+
+## Props Reference
+
+`AccessibleButton` extends all standard HTML button attributes (`React.ButtonHTMLAttributes<HTMLButtonElement>`).
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `variant` | `"primary" \| "secondary" \| "destructive" \| "outline" \| "ghost" \| "link"` | `"primary"` | Visual styling variant of the button. Adapts colors and contrast automatically under high-contrast profiles. |
+| `asChild` | `boolean` | `false` | When true, renders child element directly via Radix UI Slot while preserving all button accessibility attributes and event handlers. Useful for Next.js `<Link>` integration. |
+| `confirmDestructivePrompt` | `string` | `undefined` | Prompt message required when `variant="destructive"` or when the user profile enables `confirmationBeforeDestructiveActions`. Triggers a double-click confirmation step before executing `onClick`. |
+| `disabled` | `boolean` | `false` | When true, marks the button as disabled with accessible styling, sets `aria-disabled="true"`, and prevents click events. |
+| `className` | `string` | `undefined` | Additional CSS class names merged via `tailwind-merge`. Preserves runtime adaptation styles. |
+| `onClick` | `(e: React.MouseEvent) => void` | `undefined` | Standard click event handler callback. |
+| `children` | `React.ReactNode` | `undefined` | The content rendered inside the button element. |
+
+## Runtime Adaptations
+
+- **Touch Target Scaling**: Automatically adapts minimum height to `44px` (normal), `48px` (large), or `56px` (extra-large) based on `profile.motor.targetSize`.
+- **Focus Rings**: Applies prominent 3px focus ring with high-contrast offsets when `profile.motor.keyboardNavigation` is active.
+- **Destructive Confirmation**: When `profile.interaction.confirmationBeforeDestructiveActions` is active, clicking destructive buttons requires a confirmation step.
+- **Motion Suppression**: Disables active transform animations when `profile.visual.reduceMotion` is enabled.

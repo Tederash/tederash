@@ -1,0 +1,64 @@
+---
+title: "AccessibleCheckbox"
+description: "Accessible checkbox component supporting checked, unchecked, and indeterminate tri-state behavior."
+---
+
+import { CheckboxDemo } from "../../components/demos/CheckboxDemo";
+
+# AccessibleCheckbox
+
+`AccessibleCheckbox` provides an accessible checkbox control conforming to WAI-ARIA 1.2 checkbox authoring practices. It supports controlled and uncontrolled modes, indeterminate states, and dynamic touch target scaling.
+
+## Component Preview
+
+Below is the live component output. Test Space key activation, indeterminate states, and target scaling across profiles.
+
+<CheckboxDemo />
+
+## Usage
+
+```tsx
+import { AccessibleCheckbox } from "@tederash/components";
+
+export function CheckboxExample() {
+  const [accepted, setAccepted] = React.useState(false);
+
+  return (
+    <AccessibleCheckbox
+      id="terms-checkbox"
+      label="I agree to the privacy policy"
+      description="Required to process your data according to GDPR."
+      simplifiedDescription="Check this box to agree to the privacy rules."
+      checked={accepted}
+      onCheckedChange={setAccepted}
+      required
+    />
+  );
+}
+```
+
+## Props Reference
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `label` | `string` | **Required** | Visible label associated with the checkbox button. |
+| `id` | `string` | `useId()` | Unique HTML id for element and label linkage. |
+| `checked` | `boolean` | `undefined` | Controlled checked state. |
+| `defaultChecked` | `boolean` | `false` | Initial checked state for uncontrolled usage. |
+| `onCheckedChange` | `(checked: boolean) => void` | `undefined` | Callback fired when user toggles the checkbox state. |
+| `indeterminate` | `boolean` | `false` | When true, renders with `aria-checked="mixed"` and displays a horizontal dash icon. |
+| `disabled` | `boolean` | `false` | Disables interaction and renders with accessible disabled styling. |
+| `required` | `boolean` | `false` | Marks checkbox as required with `aria-required="true"`. |
+| `description` | `string` | `undefined` | Helper text linked via `aria-describedby`. |
+| `simplifiedDescription` | `string` | `undefined` | Plain-language description shown when cognitive profile is active. |
+| `error` | `string` | `undefined` | Error message linked via `aria-describedby` that sets `aria-invalid="true"`. |
+| `visuallyHideLabel` | `boolean` | `false` | Visually hides the label text while keeping it accessible to screen readers. |
+| `name` | `string` | `undefined` | Form input name. |
+| `value` | `string` | `undefined` | Form input value. |
+| `className` | `string` | `undefined` | Additional CSS class names. |
+
+## Runtime Adaptations
+
+- **Target Dimensions**: Scales the outer clickable region to meet minimum touch target guidelines (`44px`, `48px`, `56px`) without disrupting visual alignment.
+- **High Contrast**: Enhances borders and focus outlines with high-contrast tokens under low-vision profiles.
+- **Keyboard Affordance**: Supports standard <kbd>Space</kbd> key toggling and highlights focus with prominent contrast rings.

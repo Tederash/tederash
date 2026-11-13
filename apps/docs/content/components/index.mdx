@@ -1,0 +1,34 @@
+---
+title: "Components Overview"
+description: "Overview of the Tederash adaptive component library."
+---
+
+# Adaptive Component Library
+
+The `@tederash/components` package provides 9 production-ready accessible React components built on established accessible primitives (including Radix UI).
+
+Unlike traditional component libraries whose styles are fixed at build time, Tederash components consume the active **Accessibility Runtime** and dynamically adjust their geometry, contrast tokens, focus rings, instructions, and audio feedback.
+
+## Available Components
+
+| Component | Description |
+| :--- | :--- |
+| [AccessibleButton](/docs/components/button) | Adaptive touch-target button with destructive double-confirmation |
+| [AccessibleInput](/docs/components/input) | Accessible input with cognitive plain-language description and error linking |
+| [AccessibleForm](/docs/components/form) | Accessible form with summary alert box and guided mode support |
+| [AccessibleCheckbox](/docs/components/checkbox) | Checkbox with tri-state support and target scaling |
+| [AccessibleSelect](/docs/components/select) | Combobox / listbox with keyboard navigation |
+| [AccessibleDialog](/docs/components/dialog) | Accessible modal dialog with focus trapping and alertdialog semantics |
+| [AccessibleNavigation](/docs/components/navigation) | Navigation landmark with skip-to-content and aria-current |
+| [AccessibleTextarea](/docs/components/textarea) | Multi-line text field with live character counter announcements |
+| [LiveRegion](/docs/components/live-region) | Dual polite and assertive live region for assistive technologies |
+
+## Runtime Adaptation Principles
+
+Every component in this library satisfies the following requirements:
+
+1. **Semantic HTML**: Built using proper HTML5 elements (`<button>`, `<input>`, `<form>`, `<textarea>`, `<nav>`) and ARIA 1.2 roles.
+2. **Dynamic Geometry**: Touch targets scale automatically between 44px, 48px, and 56px when a motor assistance profile is activated.
+3. **High Contrast**: Borders, outlines, and text colors enhance their contrast ratios automatically when high-contrast preferences are enabled.
+4. **Cognitive Fallbacks**: Components switch to plain-language descriptions (`simplifiedDescription`) when cognitive guidance is enabled.
+5. **Screen Reader Integration**: All labels, helper texts, and validation errors are programmatically associated through `htmlFor` and `aria-describedby`.

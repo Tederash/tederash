@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "Tederash is an adaptive accessibility framework — applications understand a user's accessibility preferences and adapt at runtime."
+description: "Tederash is an adaptive accessibility framework: applications understand a user's accessibility preferences and adapt at runtime."
 ---
 
 import { Callout } from "nextra/components";
@@ -10,37 +10,36 @@ import { Callout } from "nextra/components";
 Tederash is a React and TypeScript SDK where accessibility is **not a toolbar or a
 collection of isolated settings**. Applications wrapped in
 `AccessibilityProvider` understand a user's accessibility preferences and adapt
-components, interaction patterns, feedback, and assistance at runtime — without
+components, interaction patterns, feedback, and assistance at runtime without
 rewriting application code.
 
 <Callout type="default" emoji="♿">
   The central demonstration: switch a profile to larger text, high contrast,
-  bigger targets, reduced motion, simplified instructions — and watch the same
+  bigger targets, reduced motion, simplified instructions, and watch the same
   application adapt without a single line of application logic changing.
 </Callout>
 
 ## Packages
 
-| Package                                                     | Purpose                                                                                           |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `@tederash/core`                                            | Framework-independent runtime, profiles, adaptation engine, speech services, localization          |
-| `@tederash/react`                                           | `AccessibilityProvider`, context, and hooks                                                       |
-| `@tederash/components`                                      | Adaptive accessible components built on Radix UI primitives                                       |
-| `@tederash/assistance`                                      | Contextual form assistance with a pluggable provider abstraction                                  |
-| `apps/playground`                                           | Interactive demo: profile switching, runtime inspector, axe-core audits, guided flow, dictation    |
+| Package | Purpose |
+| :--- | :--- |
+| `@tederash/core` | Framework-independent runtime, profiles, adaptation engine, speech services, localization |
+| `@tederash/react` | `AccessibilityProvider`, context, and hooks |
+| `@tederash/components` | Adaptive accessible components built on Radix UI primitives |
+| `@tederash/assistance` | Contextual form assistance with a pluggable provider abstraction |
 
 ## Six layers
 
-1. **Developer API** — provider + hooks
-2. **Adaptive Component Library** — 9 accessible components
-3. **Accessibility Runtime** — profile state, persistence, announcements
-4. **Interaction Engine** — keyboard/AT foundation + Web Speech
-5. **Assistance Engine** — optional, provider-agnostic
-6. **Developer Experience** — playground, inspector, audits
+1. **Developer API**: provider and hooks
+2. **Adaptive Component Library**: 9 accessible components
+3. **Accessibility Runtime**: profile state, persistence, announcements
+4. **Interaction Engine**: keyboard/AT foundation and Web Speech
+5. **Assistance Engine**: optional, provider-agnostic
+6. **Developer Experience**: live profile switching, inspector, audits
 
 ## Where to go next
 
-- [Quick Start](/docs/quick-start) — be running in five minutes
-- [Profiles](/docs/profiles) — the preference schema and presets
-- [Hooks](/docs/hooks) — read and observe accessibility state in React
-- [Architecture Decisions](/docs/decisions/0001-framework-independent-core-runtime) — the *why* behind the design
+- [Quick Start](/docs/quick-start): get running in five minutes
+- [Profiles](/docs/profiles): the preference schema and presets
+- [Hooks](/docs/hooks): read and observe accessibility state in React
+- [Components](/docs/components): explore the adaptive accessible UI library
