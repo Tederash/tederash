@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { ClientProviders } from "@/components/ClientProviders";
 import "./globals.css";
 
@@ -16,11 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className="font-sans antialiased bg-background text-foreground min-h-screen"
+        className="font-sans antialiased bg-background text-foreground min-h-screen flex flex-col justify-between"
       >
         <ClientProviders>
           <Navbar />
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
         </ClientProviders>
       </body>
     </html>

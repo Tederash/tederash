@@ -6,6 +6,9 @@
  * spring-like hover transitions on both sidebars.
  */
 
+/* Nextra's own design-system CSS must come first, in its own layer. */
+@import "nextra-theme-docs/style.css" layer(nextra);
+
 :root {
   --tederash-accent: oklch(0.55 0.12 172);
   --tederash-accent-soft: oklch(0.94 0.04 172);

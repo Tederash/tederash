@@ -25,7 +25,12 @@ export default async function RootLayout({
   const pageMap = await getPageMap();
 
   return (
-    <html lang="en" dir="ltr" className={inter.variable}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={inter.variable}
+      suppressHydrationWarning
+    >
       <Head
         backgroundColor={{
           light: "#fefdfb",
@@ -45,13 +50,13 @@ export default async function RootLayout({
       <body>
         <Layout
           banner={
-            <Banner storageKey="tederash-docs-banner">
+            <Banner storageKey="tederash-docs-banner" key="banner">
               ♿ Tederash Adaptive Accessibility Framework — runtime-adaptive
               accessibility for React
             </Banner>
           }
           navbar={
-            <div className="tederash-navbar" aria-label="Site header">
+            <div className="tederash-navbar" aria-label="Site header" key="navbar">
               <span className="tederash-logo" aria-hidden="true" />
               <span className="tederash-brand">Tederash</span>
               <span className="tederash-brand-sub">Adaptive Accessibility</span>
@@ -61,7 +66,7 @@ export default async function RootLayout({
           docsRepositoryBase={config.nextraLayout.docsRepositoryBase}
           sidebar={{ toggleButton: true }}
           footer={
-            <div className="tederash-footer">
+            <div className="tederash-footer" key="footer">
               © {new Date().getFullYear()} Tederash Adaptive Accessibility
               Framework · Built with Nextra
             </div>
