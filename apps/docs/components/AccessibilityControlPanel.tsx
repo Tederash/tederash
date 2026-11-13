@@ -60,15 +60,15 @@ export function AccessibilityControlPanel() {
   return (
     <>
       {/* Floating Accessibility Trigger Pill */}
-      <div className="fixed top-3.5 right-16 sm:right-20 z-40">
+      <div className="fixed bottom-6 right-6 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="accessibility-drawer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold text-xs tracking-wide shadow-md transition-all border border-primary/20 bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
+          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs tracking-wide shadow-xl transition-all border border-primary/30 bg-primary text-primary-foreground hover:scale-105 hover:shadow-2xl focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         >
-          <span aria-hidden="true" className="text-sm">♿</span>
-          <span className="hidden sm:inline">A11y: <strong>{profile.name}</strong></span>
+          <span aria-hidden="true" className="text-base">♿</span>
+          <span>A11y: <strong>{profile.name}</strong></span>
         </button>
       </div>
 

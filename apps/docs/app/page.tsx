@@ -14,6 +14,7 @@ import {
   AccessibleForm,
   AccessibleInput,
 } from "@tederash/components";
+import { HeroIsometricShowcase } from "../components/HeroIsometricShowcase";
 import {
   Sparkles,
   Check,
@@ -291,108 +292,11 @@ export default function Home() {
   const encodedTextWithUrl = encodeURIComponent(`${shareText} ${shareUrl}`);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-24">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-24">
       {/* =========================================================================
-          HERO SECTION (inspired by Welcome.tsx)
+          HERO SECTION — 3D ISOMETRIC LAYERED SHOWCASE (DESIGNCODE STYLE)
           ========================================================================= */}
-      <section
-        aria-labelledby="hero-title"
-        className="flex flex-col items-center text-center pt-6 pb-10 sm:pt-12 sm:pb-16 gap-6 max-w-4xl mx-auto"
-      >
-        {/* Announcement Pill Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs sm:text-sm font-semibold shadow-xs">
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" aria-hidden="true" />
-          <span>Introducing Tederash SDK • Runtime-Adaptive Accessibility</span>
-        </div>
-
-        {/* Hero Title */}
-        <h1
-          id="hero-title"
-          className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-foreground leading-[1.1]"
-        >
-          Make Every Web App Adapt to{" "}
-          <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent">
-            Every Human Need
-          </span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-base sm:text-xl text-muted-foreground leading-relaxed max-w-2xl font-normal">
-          Accessibility shouldn&apos;t be a generic overlay or an isolated toolbar that only alters colors.
-          Tederash introduces a centralized runtime engine that dynamically adapts component geometry,
-          typography, cognitive instructions, focus rings, voice dictation, and Ge&apos;ez localization on the fly.
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto pt-2">
-          <AccessibleButton
-            variant="primary"
-            onClick={() => {
-              const demoElement = document.getElementById("demo");
-              demoElement?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="w-full sm:w-auto px-6 py-3 text-sm font-semibold shadow-md flex items-center justify-center gap-2"
-          >
-            <span>Try Interactive Demo</span>
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </AccessibleButton>
-
-          <AccessibleButton
-            asChild
-            variant="outline"
-            className="w-full sm:w-auto px-6 py-3 text-sm font-semibold flex items-center justify-center gap-2"
-          >
-            <Link href="/docs">
-              <BookOpen className="w-4 h-4" aria-hidden="true" />
-              <span>Read Documentation</span>
-            </Link>
-          </AccessibleButton>
-        </div>
-
-        {/* Quick Install Snippet Box (like Welcome.tsx Paper box) */}
-        <div className="w-full max-w-xl mt-4 rounded-xl border border-border bg-card/90 dark:bg-card/50 p-3 shadow-md backdrop-blur-xs flex items-center justify-between gap-3 text-left">
-          <div className="flex items-center gap-2.5 pl-2 overflow-x-auto font-mono text-xs text-foreground">
-            <Terminal className="w-4 h-4 text-emerald-500 shrink-0" aria-hidden="true" />
-            <span className="select-all">{installCommand}</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleCopyCommand}
-            aria-label="Copy installation command to clipboard"
-            className="p-2 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          >
-            {copiedCommand ? (
-              <Check className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-            ) : (
-              <Copy className="w-4 h-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
-
-        {/* Standards & Trust Ribbon */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-4 text-xs font-medium text-muted-foreground">
-          <span className="px-3 py-1 rounded-full bg-muted border border-border flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-            WCAG 2.2 AA Target
-          </span>
-          <span className="px-3 py-1 rounded-full bg-muted border border-border flex items-center gap-1.5">
-            <Keyboard className="w-3.5 h-3.5 text-indigo-500" aria-hidden="true" />
-            WAI-ARIA 1.2 Compliant
-          </span>
-          <span className="px-3 py-1 rounded-full bg-muted border border-border flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-teal-500" aria-hidden="true" />
-            Ge&apos;ez / Amharic Native
-          </span>
-          <span className="px-3 py-1 rounded-full bg-muted border border-border flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-            282 Automated Tests Passing
-          </span>
-          <span className="px-3 py-1 rounded-full bg-muted border border-border flex items-center gap-1.5">
-            <Sliders className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
-            Zero-Cloud Lock-In
-          </span>
-        </div>
-      </section>
+      <HeroIsometricShowcase />
 
       {/* =========================================================================
           INTERACTIVE DEMO SECTION (#demo)
