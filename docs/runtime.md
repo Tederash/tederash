@@ -1,0 +1,122 @@
+# Runtime API (`@tederash/core`)
+
+The core package is **framework-independent**: no React, no direct DOM manipulation (except behind capability guards in the speech/localization helpers). Everything here can run in Node, workers, or tests without a UI.
+
+## createAccessibilityRuntime
+
+```ts
+import { createAccessibilityRuntime } from "@tederash/core";
+
+const runtime = createAccessibilityRuntime({
+  defaultProfile: DEFAULT_PROFILE,   // initial profile (default: standard)
+  appDefaults: { visual: { fontScale: 1.1 } },
+  persistence: "local",              // "local" | "memory" | "none" | PersistenceAdapter
+  storageKey: "my-app:a11y",         // custom localStorage key
+});
+```
+
+### State access
+
+```ts
+runtime.getProfile();      // resolved AccessibilityProfile (immutable snapshot)
+runtime.getAdaptations();  // resolved ComponentAdaptations (see below)
+runtime.getState();        // { profile, adaptations } — stable reference between changes
+```
+
+### Mutations
+
+```ts
+runtime.setProfile(LOW_VISION_PRESET);          // switch profile
+runtime.updatePreferences({ visual: { fontScale: 1.6 } }); // deep partial merge
+runtime.resetProfile();                          // back to defaultProfile
+```
+
+Profile switching is synchronous; incoming updates are validated and sanitized.
+
+### Subscriptions
+
+```ts
+const unsubscribe = runtime.subscribe(listener);
+// listener receives no arguments; read getState() for the new snapshot.
+```
+
+Snapshots are immutable, so React's `useSyncExternalStore` can consume them directly (this is what `AccessibilityProvider` does).
+
+## Announcements
+
+```ts
+runtime.announce({
+  message: "Your application was submitted successfully.",
+  priority: "polite",          // "polite" | "assertive"
+  category: "success",         // "success" | "error" | "info" | …
+  deduplicate: true,           // suppress identical message within the dedup window
+});
+
+const off = runtime.onAnnounce((announcement) => { ... });
+```
+
+Announcements are plain events — the framework does not speak them. `@tederash/components`' `LiveRegion` renders them into `aria-live` containers and a visual banner.
+
+## Persistence
+
+| Adapter | Behavior |
+|---|---|
+| `LocalStorageAdapter` | SSR-safe, validates stored JSON, recovers from storage errors |
+| `MemoryStorageAdapter` | In-memory, useful for tests |
+
+Custom adapters implement the `PersistenceAdapter` interface (`load`, `save`, `clear`).
+
+## Adaptation engine
+
+```ts
+import { resolveAdaptations } from "@tederash/core";
+
+const adaptations = resolveAdaptations(profile);
+```
+
+`resolveAdaptations` is a **deterministic, pure function** mapping profile preferences to:
+
+- Typed adaptations (`fontScale`, `targetSize`, `focusIndicator`, `simplifiedLanguage`, …)
+- `cssVariables` — `--a11y-font-scale`, `--a11y-min-target-height`, `--a11y-target-padding`, `--a11y-transition-duration`, plus `--a11y-font-family` / `--a11y-line-height` for Ethiopic locales
+- `dataAttributes` — `data-a11y-target-size`, `data-a11y-high-contrast`, `data-a11y-locale`, …
+
+Component-level conditional accessibility logic is prohibited; components read these tokens instead of re-deriving rules.
+
+## Speech services (Layer 4)
+
+Capability-aware wrappers around the Web Speech API. Always degrade gracefully — check support before use.
+
+```ts
+import {
+  getSpeechCapabilities,             // { synthesis: boolean, recognition: boolean }
+  createSpeechSynthesisController,   // speak(text, opts), cancel, pause, resume, getVoices
+  createSpeechRecognitionController, // start(opts), stop, abort, isListening
+} from "@tederash/core";
+
+const synth = createSpeechSynthesisController({
+  defaultOptions: { lang: "en-US", rate: 1.0 },
+});
+synth.speak("Read me", { onEnd: () => {} });
+
+const rec = createSpeechRecognitionController({
+  onResult: ({ transcript, isFinal }) => { ... },
+  onError: (message) => { ... },
+  onEnd: () => { ... },
+});
+rec.start({ lang: "am-ET", interimResults: true });
+```
+
+Controllers return friendly error strings (e.g. microphone denied) and no-op safely with `onError` when the API is missing.
+
+## Localization
+
+```ts
+import { getDictionary, translate, getTypographyForLocale } from "@tederash/core";
+
+const dict = getDictionary("am-ET");      // falls back to English for unknown locales
+translate(dict, "errors.required", { field: "ኢሜይል" });
+
+getTypographyForLocale("am");             // Ethiopic font stack + 1.8 line-height
+```
+
+Dictionaries cover four sections: `labels`, `errors`, `announcements`, `presets`. Missing keys resolve to the raw key; unknown locales fall back to English.

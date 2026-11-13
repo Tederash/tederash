@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+coverage/
+
+# TypeScript incremental builds
+*.tsbuildinfo
+
+# Generated
+next-env.d.ts
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.pem
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Hosting
+.vercel
+.clerk/

@@ -1,0 +1,41 @@
+# ADR-0001: Framework-independent core runtime
+
+## Status
+Accepted
+
+## Date
+2026-11-13
+
+## Context
+The framework's central accessibility state (active profile, adaptations, announcements, persistence) must serve multiple consumers:
+
+- React applications (the primary SDK target)
+- Future non-React integrations (the planned browser extension reuses the same profile schema and adaptation concepts)
+- Unit tests that must run deterministically without a DOM or UI library
+
+If the runtime lived inside React context, every future consumer would need React, and testing would require rendering components to observe state changes.
+
+## Decision
+`@tederash/core` implements the runtime in plain TypeScript with no React dependency and no direct DOM access:
+
+- `createAccessibilityRuntime()` holds an immutable state snapshot (`{ profile, adaptations }`) with a `subscribe(listener)` mechanism.
+- React integration is a thin layer: `AccessibilityProvider` wires the runtime into `useSyncExternalStore`; hooks read snapshots.
+- The only permitted browser API usage in core is behind explicit capability guards (speech services, localStorage persistence).
+
+## Alternatives Considered
+
+### React Context as the source of truth
+- Pros: One mental model for React developers.
+- Cons: Context re-render semantics make selective subscription awkward; the browser extension and any future non-React consumer would need React or a duplicate implementation.
+- Rejected: Violates the long-term ecosystem goal and complicates deterministic testing.
+
+### Zustand/Redux state library
+- Pros: Battle-tested subscriptions.
+- Cons: An extra runtime dependency for state the framework fully controls; the subscription contract is simple (`subscribe` + `getState`).
+- Rejected: Unnecessary dependency for a ~100-line subscription mechanism.
+
+## Consequences
+- Core tests run in a bare Node environment.
+- `AccessibilityProvider` is replaceable; an adapter for another framework (or the extension) can consume the same runtime.
+- The browser extension (Phase 10) can import the profile schema and adaptation engine directly without React.
+- Snapshots must be immutable — mutations create new objects (documented gotcha for contributors).

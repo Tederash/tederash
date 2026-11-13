@@ -1,0 +1,106 @@
+# Profiles
+
+A profile describes **individual preferences, not a person**. Profiles never assign a disability label; they are composable preference sets that the runtime resolves into adaptations.
+
+## Schema
+
+All preference fields are optional. Unknown sections are preserved under `custom`.
+
+```ts
+interface AccessibilityProfile {
+  id: string;
+  name: string;
+  description?: string;
+  version?: number;
+
+  /** UI language / locale tag, e.g. 'en', 'am', 'am-ET' */
+  locale?: string;
+
+  visual?: {
+    fontScale?: number;            // 0.5 - 3.0
+    highContrast?: boolean;
+    colorScheme?: "light" | "dark" | "system";
+    reduceVisualClutter?: boolean;
+    underlineLinks?: boolean;
+    reduceMotion?: boolean;
+  };
+
+  motor?: {
+    targetSize?: "normal" | "large" | "extra-large"; // 40px / 48px / 56px+
+    keyboardNavigation?: boolean;
+    reducePrecisionRequired?: boolean;
+    extendedHoverDelay?: boolean;
+  };
+
+  cognitive?: {
+    simplifiedLanguage?: boolean;
+    guidedInteraction?: boolean;
+    reduceDistractions?: boolean;
+    showInstructions?: boolean;
+    readingFocusGuide?: boolean;
+  };
+
+  auditory?: {
+    captionsEnabled?: boolean;
+    visualNotifications?: boolean;
+  };
+
+  speech?: {
+    speechOutput?: boolean;        // text-to-speech readouts
+    speechInput?: boolean;         // voice dictation
+    language?: string;             // BCP-47, e.g. 'en-US', 'am-ET'
+    speechRate?: number;           // 0.25 - 3.0
+  };
+
+  interaction?: {
+    preferredInput?: "pointer" | "keyboard" | "voice";
+    confirmationBeforeDestructiveActions?: boolean;
+    formAssistance?: boolean;
+  };
+
+  custom?: Record<string, unknown>;
+}
+```
+
+## Built-in presets
+
+| Preset | Emphasis |
+|---|---|
+| `DEFAULT_PROFILE` (`standard`) | Baseline accessible behavior |
+| `LOW_VISION_PRESET` | 1.35x text, high contrast, underlined links, larger targets |
+| `MOTOR_ASSIST_PRESET` | Extra-large targets, relaxed precision, keyboard focus |
+| `COGNITIVE_ASSIST_PRESET` | Plain language, guided interaction, inline hints |
+| `REDUCED_MOTION_PRESET` | No animations, minimal distraction |
+| `KEYBOARD_FIRST_PRESET` | Keyboard flow, strong focus indicators |
+| `AMHARIC_PRESET` | `locale: "am"`, `am-ET` speech, Ge'ez typography compensation |
+
+All presets are exported from `@tederash/core` and collected in `PRESET_PROFILES`.
+
+## Validation and sanitization
+
+```ts
+import { validateProfile, sanitizeProfile } from "@tederash/core";
+
+const result = validateProfile(myProfile); // { valid: boolean, errors: string[] }
+const safe = sanitizeProfile(myProfile);   // clamps ranges, fills defaults
+```
+
+`sanitizeProfile` clamps `fontScale` to 0.5–3.0 and `speechRate` to 0.25–3.0. Persisted data should always pass through `validateProfile`/`sanitizeProfile` before being applied.
+
+## Merge precedence
+
+`resolveProfile(frameworkDefault, appDefaults, activeProfile, componentOverride)` merges deep partials in a fixed order (highest wins):
+
+1. **Component-level override** (via `<AccessibilityOverride>` or component props)
+2. **Active user profile** (switched at runtime)
+3. **Application-level defaults** (`appDefaults` on the provider)
+4. **Framework defaults** (`DEFAULT_PROFILE`)
+
+Section values merge key-by-key; only explicitly set keys win, so a preset can be fine-tuned (e.g. `updatePreferences({ visual: { fontScale: 1.6 } })`) without losing its other preferences.
+
+## Locale and typography
+
+The `locale` field drives two behaviors:
+
+- **Localization**: dictionaries (`en`, `am`), translations, and speech language tags — see `getDictionary`, `translate`, `useLocale`.
+- **Typography**: Ethiopic locales receive a Ge'ez font stack (`Noto Sans Ethiopic`, `Abyssinica SIL`) and line-height compensation (1.8 vs Latin 1.5) injected as `--a11y-font-family` and `--a11y-line-height` by the adaptation engine. Unknown locales fall back to the English dictionary and Latin typography.

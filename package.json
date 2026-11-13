@@ -1,0 +1,23 @@
+{
+  "name": "tederash-accessibility-framework",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adaptive Accessibility Framework & React Component SDK",
+  "scripts": {
+    "build": "pnpm --filter \"./packages/*\" run build",
+    "dev": "pnpm --filter playground run dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.10.2",
+    "jsdom": "^31.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@11.3.0"
+}

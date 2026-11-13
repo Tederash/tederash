@@ -1,0 +1,121 @@
+# React Hooks API (`@tederash/react`)
+
+All hooks require an ancestor `<AccessibilityProvider>`. Calling them outside a provider throws a descriptive error (by design — silent no-ops hide accessibility bugs).
+
+## useAccessibility
+
+```ts
+const {
+  profile,        // active AccessibilityProfile
+  adaptations,    // resolved ComponentAdaptations for the whole tree
+  runtime,        // the underlying runtime (escape hatch)
+  setProfile,     // (profile: AccessibilityProfile) => void
+  updatePreferences, // (DeepPartial<Profile>) => void
+  resetProfile,   // () => void
+  announce,       // (options: AnnouncementOptions) => Announcement
+  effectiveProfile, // profile with any active <AccessibilityOverride> merged
+} = useAccessibility();
+```
+
+## useAccessibilityPreference
+
+Dot-notated selector hook. Only re-renders when the selected value changes.
+
+```ts
+const fontScale = useAccessibilityPreference("visual.fontScale"); // number | undefined
+```
+
+## useAdaptations
+
+```ts
+const adaptations = useAdaptations();
+adaptations.minTargetHeight; // "48px"
+adaptations.cssVariables;    // Record<string, string>
+```
+
+## useAnnounce / useLiveAnnouncements
+
+```ts
+const announce = useAnnounce();
+announce({
+  message: "Saved successfully.",
+  priority: "polite",
+  category: "success",
+});
+
+// Subscribe to all announcements (e.g. to mirror them elsewhere):
+useLiveAnnouncements((announcement) => {
+  console.log(announcement.message);
+});
+```
+
+## useLocale
+
+Locale, translations, typography, and directionality from the active profile.
+
+```ts
+const { locale, direction, dictionary, typography, t, setLocale } = useLocale();
+
+t("errors.required", { field: t("labels.email") });
+// 'en' → "Email is required."
+// 'am' → "የኢሜይል አድራሻ ያስፈልጋል።"
+
+setLocale("am"); // also switches speech.language to the dictionary's speechTag ("am-ET")
+```
+
+Missing keys return the raw key, so UI always renders something meaningful.
+
+## useSpeechSynthesis
+
+```ts
+const { speak, cancel, pause, resume, isSpeaking, isPaused, isSupported, voices } =
+  useSpeechSynthesis({ lang: "en-US", rate: 1.0 });
+
+speak("Your application was submitted.", { onEnd: () => {} });
+```
+
+- `isSupported` is `false` in browsers without `window.speechSynthesis`; all actions no-op safely.
+- Ongoing speech is cancelled automatically on unmount.
+- `voices` stays in sync with the `voiceschanged` event.
+
+## useSpeechRecognition
+
+```ts
+const {
+  startListening,    // (options?: SpeechRecognitionOptions) => void
+  stopListening,     // graceful stop; final results still delivered
+  abortListening,    // immediate discard
+  transcript,        // accumulated final transcript
+  interimTranscript, // unconfirmed in-progress text
+  isListening,
+  isSupported,
+  error,             // friendly message or null
+  resetTranscript,
+} = useSpeechRecognition({ lang: "en-US", continuous: false });
+
+startListening({ lang: "am-ET" });
+```
+
+- Sessions are aborted automatically on unmount.
+- Errors (microphone denied, no speech, network) map to friendly strings and set `isListening` to `false`.
+
+## AccessibilityOverride
+
+Scope preferences to a sub-tree (highest precedence tier):
+
+```tsx
+<AccessibilityOverride override={{ visual: { fontScale: 1.5 } }}>
+  <DataGrid />
+</AccessibilityOverride>
+```
+
+## Provider props
+
+| Prop | Default | Notes |
+|---|---|---|
+| `runtime` | — | Reuse an existing runtime (SSR/testing) |
+| `defaultProfile` | `DEFAULT_PROFILE` | Initial profile |
+| `appDefaults` | — | Application-level preference floor |
+| `persistence` | `"local"` | `"local" \| "memory" \| "none" \| PersistenceAdapter` |
+| `storageKey` | built-in key | Custom localStorage key |
+| `applyStylesToRoot` | `true` | Sync CSS variables/data attributes to `document.documentElement` |

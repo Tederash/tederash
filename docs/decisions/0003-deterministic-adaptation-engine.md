@@ -1,0 +1,41 @@
+# ADR-0003: Deterministic adaptation engine emitting CSS variables and data attributes
+
+## Status
+Accepted
+
+## Date
+2026-11-13
+
+## Context
+The AGENTS.md specification prohibits scattering conditional accessibility logic across individual components ("Avoid scattering conditional accessibility rules across components"). Adaptations must be centralized, explicit, and testable. Components also need a presentation-agnostic contract — some adaptations are CSS values (font scale, target height), others are behavioral flags (require destructive confirmation) or attribute-based (data attributes for styling hooks).
+
+## Decision
+`resolveAdaptations(profile)` is a pure, deterministic function returning a `ComponentAdaptations` object containing:
+
+- Typed flags/values (`fontScale`, `targetSize`, `focusIndicator`, `simplifiedLanguage`, `speechOutputEnabled`, `typography`, `locale`, …)
+- `cssVariables` — e.g. `--a11y-font-scale`, `--a11y-min-target-height`, `--a11y-focus-ring-width`, `--a11y-transition-duration`, plus Ge'ez typography tokens for Ethiopic locales
+- `dataAttributes` — e.g. `data-a11y-high-contrast`, `data-a11y-guided`, `data-a11y-locale`
+
+`AccessibilityProvider` applies these tokens to `document.documentElement`; components read the resolved adaptations (not the raw profile) for behavior, and CSS consumes the variables for styling.
+
+## Alternatives Considered
+
+### Each component interprets the profile itself
+- Pros: No indirection; each component sees exactly what it needs.
+- Cons: Rules duplicated per component; inconsistent interpretation of the same preference; untestable in aggregate; exactly what the specification forbids.
+- Rejected.
+
+### Runtime CSS-in-JS per component
+- Pros: Fine-grained scoping.
+- Cons: Re-renders or runtime style computation per component; expensive during rendering (violates the performance standard); tokens would still need a canonical definition somewhere.
+- Rejected: Global tokens on the root, consumed by static CSS/classes, are cheaper and testable.
+
+### Emitting full CSS files / utility classes
+- Pros: Familiar theming model.
+- Cons: Coupling the core to a styling pipeline; harder to represent behavioral flags.
+- Rejected: Variables + attributes are the lowest common denominator.
+
+## Consequences
+- Adaptation output is snapshot-testable; adding a new adaptation rule touches one file (`adaptation/rules.ts`).
+- Components must never read `profile` for adaptation decisions — they read `adaptations`. This keeps the engine the single source of adaptation truth.
+- New preferences require: schema field → validation → adaptation rule → (optional) component consumption. The chain is explicit and reviewable.

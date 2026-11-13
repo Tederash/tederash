@@ -1,0 +1,98 @@
+/**
+ * Speech & Voice Interaction Types (Layer 4: Interaction Engine)
+ * Web Speech API abstractions with feature detection and graceful fallbacks.
+ */
+
+export interface SpeechCapabilities {
+  /** Text-to-speech (`window.speechSynthesis`) is available */
+  synthesis: boolean;
+  /** Speech recognition / dictation (`SpeechRecognition` or `webkitSpeechRecognition`) is available */
+  recognition: boolean;
+}
+
+export interface SpeechSynthesisOptions {
+  /** Speech rate multiplier (0.1 - 10, default 1.0) */
+  rate?: number;
+  /** Speech pitch (0 - 2, default 1.0) */
+  pitch?: number;
+  /** Speech volume (0 - 1, default 1.0) */
+  volume?: number;
+  /** BCP-47 language tag, e.g. 'en-US', 'am-ET' */
+  lang?: string;
+  /** Preferred voice name (matched against available voices) */
+  voiceName?: string;
+  /** Called when the utterance finishes speaking successfully */
+  onEnd?: () => void;
+  /** Called when synthesis fails or is unavailable */
+  onError?: (message: string) => void;
+}
+
+export interface SpeechRecognitionOptions {
+  /** BCP-47 language tag for recognition (e.g. 'en-US') */
+  lang?: string;
+  /** Keep listening until explicitly stopped (default false) */
+  continuous?: boolean;
+  /** Deliver partial/unconfirmed results while speaking (default true) */
+  interimResults?: boolean;
+}
+
+export interface VoiceInfo {
+  name: string;
+  lang: string;
+  default: boolean;
+  localService: boolean;
+}
+
+export interface SpeechRecognitionResultInfo {
+  /** Accumulated transcript for this result batch */
+  transcript: string;
+  /** True when the transcript is final and confirmed */
+  isFinal: boolean;
+}
+
+export type SpeechRecognitionResultHandler = (result: SpeechRecognitionResultInfo) => void;
+export type SpeechErrorHandler = (message: string) => void;
+
+export interface SpeechSynthesisControllerOptions {
+  /** Defaults applied to every speak() call unless explicitly overridden */
+  defaultOptions?: SpeechSynthesisOptions;
+}
+
+export interface SpeechSynthesisController {
+  /** Queue text for spoken output */
+  speak(text: string, options?: SpeechSynthesisOptions): void;
+  /** Stop all queued speech */
+  cancel(): void;
+  /** Pause ongoing speech */
+  pause(): void;
+  /** Resume paused speech */
+  resume(): void;
+  /** Whether any utterance is currently being spoken */
+  isSpeaking(): boolean;
+  /** Whether ongoing speech is currently paused */
+  isPaused(): boolean;
+  /** Available synthesis voices */
+  getVoices(): VoiceInfo[];
+}
+
+export interface SpeechRecognitionControllerOptions {
+  /** Defaults applied to every start() call unless explicitly overridden */
+  defaultOptions?: SpeechRecognitionOptions;
+  /** Called for interim and final transcript batches */
+  onResult?: SpeechRecognitionResultHandler;
+  /** Called when recognition fails or is unsupported */
+  onError?: SpeechErrorHandler;
+  /** Called when a recognition session ends for any reason */
+  onEnd?: () => void;
+}
+
+export interface SpeechRecognitionController {
+  /** Begin a recognition (dictation) session */
+  start(options?: SpeechRecognitionOptions): void;
+  /** Gracefully stop the active session, keeping recognized text */
+  stop(): void;
+  /** Immediately discard the active session */
+  abort(): void;
+  /** Whether a recognition session is active */
+  isListening(): boolean;
+}
