@@ -1,12 +1,14 @@
 import "../theme/global.css";
 
-import { Layout } from "nextra-theme-docs";
+import { Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import config from "../config";
+import { ClientProviders } from "../components/ClientProviders";
+import { Footer } from "../components/Footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,32 +50,49 @@ export default async function RootLayout({
         />
       </Head>
       <body>
-        <Layout
-          banner={
-            <Banner storageKey="tederash-docs-banner" key="banner">
-              ♿ Tederash Adaptive Accessibility Framework — runtime-adaptive
-              accessibility for React
-            </Banner>
-          }
-          navbar={
-            <div className="tederash-navbar" aria-label="Site header" key="navbar">
-              <span className="tederash-logo" aria-hidden="true" />
-              <span className="tederash-brand">Tederash</span>
-              <span className="tederash-brand-sub">Adaptive Accessibility</span>
-            </div>
-          }
-          pageMap={pageMap}
-          docsRepositoryBase={config.nextraLayout.docsRepositoryBase}
-          sidebar={{ toggleButton: true }}
-          footer={
-            <div className="tederash-footer" key="footer">
-              © {new Date().getFullYear()} Tederash Adaptive Accessibility
-              Framework · Built with Nextra
-            </div>
-          }
-        >
-          {children}
-        </Layout>
+        <ClientProviders>
+          <Layout
+            banner={
+              <Banner storageKey="tederash-docs-banner" key="banner">
+                ♿ Tederash Adaptive Accessibility Framework — runtime-adaptive
+                accessibility for React
+              </Banner>
+            }
+            navbar={
+              <Navbar
+                logo={
+                  <a href="/" className="tederash-navbar" aria-label="Tederash Home">
+                    <span className="tederash-logo" aria-hidden="true" />
+                    <span className="tederash-brand">Tederash</span>
+                    <span className="tederash-brand-sub">Adaptive Accessibility</span>
+                  </a>
+                }
+                projectLink="https://github.com/adrianhajdin/saas-template"
+              >
+                <div className="flex items-center gap-4 text-xs font-semibold mr-2">
+                  <a href="/docs" className="hover:opacity-80 transition-opacity">
+                    Documentation
+                  </a>
+                  <a href="/#demo" className="hover:opacity-80 transition-opacity">
+                    Live Demo
+                  </a>
+                  <a href="/#features" className="hover:opacity-80 transition-opacity">
+                    Architecture
+                  </a>
+                  <a href="/subscription" className="hover:opacity-80 transition-opacity">
+                    Pricing
+                  </a>
+                </div>
+              </Navbar>
+            }
+            pageMap={pageMap}
+            docsRepositoryBase={config.nextraLayout.docsRepositoryBase}
+            sidebar={{ toggleButton: true }}
+            footer={<Footer key="footer" />}
+          >
+            {children}
+          </Layout>
+        </ClientProviders>
       </body>
     </html>
   );

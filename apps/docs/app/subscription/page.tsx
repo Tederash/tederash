@@ -1,21 +1,11 @@
 "use client";
 
 import React from "react";
-import { PricingTable } from "@clerk/nextjs";
 import { AccessibleButton } from "@tederash/components";
 import { useAccessibility } from "@tederash/react";
 
-const SubscriptionPage = () => {
-  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+export default function SubscriptionPage() {
   const { announce, adaptations } = useAccessibility();
-
-  if (hasClerk) {
-    return (
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <PricingTable />
-      </main>
-    );
-  }
 
   const tiers = [
     {
@@ -66,7 +56,7 @@ const SubscriptionPage = () => {
   ];
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-12 flex flex-col gap-8">
+    <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col gap-8">
       <div className="text-center max-w-2xl mx-auto flex flex-col gap-3">
         <h1 className="text-3xl font-extrabold tracking-tight">Adaptive Subscription Plans</h1>
         <p className="text-sm text-muted-foreground">
@@ -125,8 +115,6 @@ const SubscriptionPage = () => {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
-};
-
-export default SubscriptionPage;
+}

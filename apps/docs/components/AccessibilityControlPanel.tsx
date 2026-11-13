@@ -60,15 +60,15 @@ export function AccessibilityControlPanel() {
   return (
     <>
       {/* Floating Accessibility Trigger Pill */}
-      <div className="fixed top-4 right-4 z-40">
+      <div className="fixed top-3.5 right-16 sm:right-20 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="accessibility-drawer"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full font-semibold text-xs tracking-wide shadow-md transition-all border border-primary/20 bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold text-xs tracking-wide shadow-md transition-all border border-primary/20 bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         >
-          <span aria-hidden="true" className="text-base">♿</span>
-          <span>A11y Profile: <strong>{profile.name}</strong></span>
+          <span aria-hidden="true" className="text-sm">♿</span>
+          <span className="hidden sm:inline">A11y: <strong>{profile.name}</strong></span>
         </button>
       </div>
 
@@ -108,7 +108,7 @@ export function AccessibilityControlPanel() {
                   className={`p-2.5 rounded-lg text-left text-xs font-medium border transition-all ${
                     profile.id === p.id
                       ? "border-primary bg-primary/10 text-primary font-bold ring-2 ring-primary"
-                      : "border-border bg-card hover:bg-accent text-foreground"
+                      : "border-border bg-card hover:bg-muted text-foreground"
                   }`}
                 >
                   <div className="font-semibold">{p.name}</div>
@@ -158,7 +158,7 @@ export function AccessibilityControlPanel() {
                     className={`py-1.5 text-xs rounded border capitalize ${
                       (profile.motor?.targetSize ?? "normal") === size
                         ? "border-primary bg-primary text-primary-foreground font-semibold"
-                        : "border-input bg-background"
+                        : "border-border bg-background"
                     }`}
                   >
                     {size}

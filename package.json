@@ -4,8 +4,8 @@
   "private": true,
   "description": "Adaptive Accessibility Framework & React Component SDK",
   "scripts": {
-    "build": "pnpm --filter \"./packages/*\" run build",
-    "dev": "pnpm --filter playground run dev",
+    "build": "pnpm --filter \"./packages/*\" run build && pnpm --filter docs run build",
+    "dev": "pnpm --filter docs run dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "pnpm -r run lint",

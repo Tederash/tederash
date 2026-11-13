@@ -8,12 +8,26 @@
 
 /* Nextra's own design-system CSS must come first, in its own layer. */
 @import "nextra-theme-docs/style.css" layer(nextra);
+@import "tailwindcss";
 
 :root {
   --tederash-accent: oklch(0.55 0.12 172);
   --tederash-accent-soft: oklch(0.94 0.04 172);
   --tederash-paper: #fefdfb;
   --tederash-ink: #1c1f26;
+
+  --background: var(--tederash-paper);
+  --foreground: var(--tederash-ink);
+  --card: #ffffff;
+  --card-foreground: var(--tederash-ink);
+  --primary: var(--tederash-accent);
+  --primary-foreground: #ffffff;
+  --muted: color-mix(in oklch, var(--tederash-ink) 6%, var(--tederash-paper));
+  --muted-foreground: color-mix(in oklch, var(--tederash-ink) 62%, transparent);
+  --border: color-mix(in oklch, var(--tederash-ink) 12%, transparent);
+  --input: color-mix(in oklch, var(--tederash-ink) 14%, transparent);
+  --destructive: oklch(0.577 0.245 27.325);
+  --ring: var(--tederash-accent);
 }
 
 .dark {
@@ -21,6 +35,34 @@
   --tederash-accent-soft: oklch(0.28 0.05 172);
   --tederash-paper: #0d0f14;
   --tederash-ink: #e8e9ec;
+
+  --background: var(--tederash-paper);
+  --foreground: var(--tederash-ink);
+  --card: #131720;
+  --card-foreground: var(--tederash-ink);
+  --primary: var(--tederash-accent);
+  --primary-foreground: #0d0f14;
+  --muted: color-mix(in oklch, var(--tederash-ink) 8%, var(--tederash-paper));
+  --muted-foreground: color-mix(in oklch, var(--tederash-ink) 62%, transparent);
+  --border: color-mix(in oklch, var(--tederash-ink) 16%, transparent);
+  --input: color-mix(in oklch, var(--tederash-ink) 18%, transparent);
+  --destructive: oklch(0.704 0.191 22.216);
+  --ring: var(--tederash-accent);
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
 }
 
 body {

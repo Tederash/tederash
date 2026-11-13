@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
-import { Sparkles, Github, BookOpen, ExternalLink, Heart, Globe, ShieldCheck } from "lucide-react";
+import { Sparkles, Github, BookOpen, Heart, Globe, ShieldCheck } from "lucide-react";
 import { useAccessibility } from "@tederash/react";
 
 export function Footer() {
@@ -16,7 +16,7 @@ export function Footer() {
     <footer
       role="contentinfo"
       aria-label="Site Footer"
-      className="mt-20 border-t border-border bg-card/60 backdrop-blur-sm"
+      className="w-full mt-20 border-t border-border bg-card/60 backdrop-blur-sm"
     >
       <div className="max-w-7xl mx-auto px-6 py-14">
         {/* Top Tier: Brand description and multi-column navigation */}
@@ -27,15 +27,9 @@ export function Footer() {
               href="/"
               className="flex items-center gap-2.5 text-lg font-bold tracking-tight w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded"
             >
-              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                <Sparkles className="w-4 h-4" aria-hidden="true" />
-              </span>
-              <span className="bg-gradient-to-r from-primary to-emerald-600 dark:to-emerald-400 bg-clip-text text-transparent font-extrabold">
-                Tederash
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-2 py-0.5 rounded-full bg-muted border border-border">
-                Adaptive Framework
-              </span>
+              <span className="tederash-logo" aria-hidden="true" />
+              <span className="tederash-brand">Tederash</span>
+              <span className="tederash-brand-sub">Adaptive Framework</span>
             </Link>
 
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
@@ -54,15 +48,13 @@ export function Footer() {
               >
                 <Github className="w-4 h-4" aria-hidden="true" />
               </a>
-              <a
-                href="http://localhost:3001/docs"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/docs"
                 aria-label="Tederash documentation"
                 className="p-2 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 <BookOpen className="w-4 h-4" aria-hidden="true" />
-              </a>
+              </Link>
               <a
                 href="https://github.com/sponsors"
                 target="_blank"
@@ -82,48 +74,24 @@ export function Footer() {
             </h3>
             <ul className="flex flex-col gap-2" role="list">
               <li>
-                <a
-                  href="http://localhost:3001/docs/runtime"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>@tederash/core</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/runtime" className={linkClass}>
+                  @tederash/core
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/hooks"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>@tederash/react</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/hooks" className={linkClass}>
+                  @tederash/react
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/components"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>@tederash/components</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/components" className={linkClass}>
+                  @tederash/components
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/assistance"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>@tederash/assistance</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/components" className={linkClass}>
+                  @tederash/assistance
+                </Link>
               </li>
             </ul>
           </div>
@@ -135,59 +103,24 @@ export function Footer() {
             </h3>
             <ul className="flex flex-col gap-2" role="list">
               <li>
-                <a
-                  href="http://localhost:3001/docs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>Quick Start Guide</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/quick-start" className={linkClass}>
+                  Quick Start Guide
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/profiles"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>Profile Schema</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/profiles" className={linkClass}>
+                  Profile Schema
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/runtime"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>Precedence Resolution</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/runtime" className={linkClass}>
+                  Precedence Resolution
+                </Link>
               </li>
               <li>
-                <a
-                  href="http://localhost:3001/docs/localization"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>Ge&apos;ez / Amharic Support</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="http://localhost:3001/docs/adrs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <span>Architecture Decisions (ADRs)</span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                </a>
+                <Link href="/docs/decisions/0001-framework-independent-core-runtime" className={linkClass}>
+                  ADRs &amp; Decisions
+                </Link>
               </li>
             </ul>
           </div>
@@ -214,11 +147,6 @@ export function Footer() {
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
                 <span>282 Automated Tests Passing</span>
               </li>
-              <li className="pt-1">
-                <Link href="/subscription" className={linkClass}>
-                  Developer Pricing &amp; Plans →
-                </Link>
-              </li>
             </ul>
           </div>
         </div>
@@ -237,7 +165,7 @@ export function Footer() {
             <span aria-hidden="true">•</span>
             <span>Next.js 15</span>
             <span aria-hidden="true">•</span>
-            <span>Tailwind CSS v4</span>
+            <span>Nextra</span>
             <span aria-hidden="true">•</span>
             <span>axe-core</span>
           </div>
