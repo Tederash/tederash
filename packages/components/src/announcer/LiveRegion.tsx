@@ -2,17 +2,19 @@ import * as React from "react";
 import { Announcement } from "@tederash/core";
 import { useAccessibility } from "@tederash/react";
 
-export interface LiveRegionProps {
+export interface TederashLiveRegionProps {
   /** Include visual toast/banner display alongside screen reader live region */
   showVisualBanner?: boolean;
   className?: string;
 }
 
+export type LiveRegionProps = TederashLiveRegionProps;
+
 /**
  * Screen-reader-compatible live region component.
  * Maintains dedicated polite and assertive live regions to announce interface state changes.
  */
-export function LiveRegion({ showVisualBanner = false, className = "" }: LiveRegionProps) {
+export function TederashLiveRegion({ showVisualBanner = false, className = "" }: TederashLiveRegionProps) {
   const { runtime, adaptations } = useAccessibility();
   const [politeMessage, setPoliteMessage] = React.useState<string>("");
   const [assertiveMessage, setAssertiveMessage] = React.useState<string>("");
@@ -85,3 +87,6 @@ export function LiveRegion({ showVisualBanner = false, className = "" }: LiveReg
     </>
   );
 }
+
+export const LiveRegion = TederashLiveRegion;
+export const AccessibleLiveRegion = TederashLiveRegion;

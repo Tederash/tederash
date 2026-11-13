@@ -5,25 +5,25 @@ description: "Framework-independent runtime, persistence, announcements, speech,
 
 The core package is **framework-independent**: no React, no direct DOM manipulation (except behind capability guards in the speech/localization helpers). Everything here can run in Node, workers, or tests without a UI.
 
-## createAccessibilityRuntime
+## createTederashRuntime
 
 ```ts
-import { createAccessibilityRuntime } from "@tederash/core";
+import { createTederashRuntime, DEFAULT_TEDERASH_PROFILE } from "@tederash/core";
 
-const runtime = createAccessibilityRuntime({
-  defaultProfile: DEFAULT_PROFILE,   // initial profile (default: standard)
+const runtime = createTederashRuntime({
+  defaultProfile: DEFAULT_TEDERASH_PROFILE,   // initial profile (default: standard)
   appDefaults: { visual: { fontScale: 1.1 } },
   persistence: "local",              // "local" | "memory" | "none" | PersistenceAdapter
-  storageKey: "my-app:a11y",         // custom localStorage key
+  storageKey: "my-app:profile",      // custom localStorage key
 });
 ```
 
 ### State access
 
 ```ts
-runtime.getProfile();      // resolved AccessibilityProfile (immutable snapshot)
+runtime.getProfile();      // resolved TederashProfile (immutable snapshot)
 runtime.getAdaptations();  // resolved ComponentAdaptations (see below)
-runtime.getState();        // { profile, adaptations } — stable reference between changes
+runtime.getState();        // { profile, adaptations } (stable reference between changes)
 ```
 
 ### Mutations
@@ -43,7 +43,7 @@ const unsubscribe = runtime.subscribe(listener);
 // listener receives no arguments; read getState() for the new snapshot.
 ```
 
-Snapshots are immutable, so React's `useSyncExternalStore` can consume them directly (this is what `AccessibilityProvider` does).
+Snapshots are immutable, so React's `useSyncExternalStore` can consume them directly (this is what `TederashProvider` does).
 
 ## Announcements
 

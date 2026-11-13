@@ -1,13 +1,13 @@
 ---
-title: "AccessibleSelect"
+title: "TederashSelect"
 description: "Accessible custom combobox and listbox select component with full keyboard navigation."
 ---
 
 import { SelectDemo } from "../../components/demos/SelectDemo";
 
-# AccessibleSelect
+# TederashSelect
 
-`AccessibleSelect` provides an accessible dropdown selection component implementing the WAI-ARIA 1.2 Combobox with Listbox Popup pattern. It supports keyboard navigation (Arrow keys, Home, End, Enter, Escape), typeahead searching, and profile-aware sizing.
+`TederashSelect` (also exported as `AccessibleSelect`) provides an accessible dropdown selection component implementing the WAI-ARIA 1.2 Combobox with Listbox Popup pattern. It supports keyboard navigation (Arrow keys, Home, End, Enter, Escape), typeahead searching, and profile-aware sizing.
 
 ## Component Preview
 
@@ -18,7 +18,7 @@ Below is the live component output. Try opening the dropdown with <kbd>Enter</kb
 ## Usage
 
 ```tsx
-import { AccessibleSelect } from "@tederash/components";
+import { TederashSelect } from "@tederash/components";
 
 const roleOptions = [
   { value: "developer", label: "Software Engineer" },
@@ -30,7 +30,7 @@ export function SelectExample() {
   const [role, setRole] = React.useState("developer");
 
   return (
-    <AccessibleSelect
+    <TederashSelect
       id="role-select"
       label="Your Role"
       options={roleOptions}
@@ -48,7 +48,7 @@ export function SelectExample() {
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `label` | `string` | **Required** | Visible label associated with the trigger button. |
-| `options` | `AccessibleSelectOption[]` | **Required** | Array of selectable options: `{ value, label, disabled?, description? }`. |
+| `options` | `TederashSelectOption[]` | **Required** | Array of selectable options: `{ value, label, disabled?, description? }`. |
 | `value` | `string` | `undefined` | Controlled selected value string. |
 | `defaultValue` | `string` | `undefined` | Default value for uncontrolled usage. |
 | `onChange` | `(value: string) => void` | `undefined` | Callback fired when user selects an option. |

@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleButton } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashButton } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function ButtonDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [clickedMsg, setClickedMsg] = React.useState<string | null>(null);
 
   const handleClick = (variant: string) => {
@@ -45,31 +45,31 @@ export function ButtonDemo() {
 
       {/* Button Variants Grid */}
       <div className="flex flex-wrap items-center gap-3">
-        <AccessibleButton variant="primary" onClick={() => handleClick("primary")}>
+        <TederashButton variant="primary" onClick={() => handleClick("primary")}>
           Primary Action
-        </AccessibleButton>
-        <AccessibleButton variant="secondary" onClick={() => handleClick("secondary")}>
+        </TederashButton>
+        <TederashButton variant="secondary" onClick={() => handleClick("secondary")}>
           Secondary
-        </AccessibleButton>
-        <AccessibleButton variant="outline" onClick={() => handleClick("outline")}>
+        </TederashButton>
+        <TederashButton variant="outline" onClick={() => handleClick("outline")}>
           Outline
-        </AccessibleButton>
-        <AccessibleButton variant="ghost" onClick={() => handleClick("ghost")}>
+        </TederashButton>
+        <TederashButton variant="ghost" onClick={() => handleClick("ghost")}>
           Ghost
-        </AccessibleButton>
-        <AccessibleButton variant="link" onClick={() => handleClick("link")}>
+        </TederashButton>
+        <TederashButton variant="link" onClick={() => handleClick("link")}>
           Link Style
-        </AccessibleButton>
-        <AccessibleButton
+        </TederashButton>
+        <TederashButton
           variant="destructive"
           confirmDestructivePrompt="Are you sure you want to delete this resource?"
           onClick={() => handleClick("destructive (confirmed)")}
         >
           Destructive Action
-        </AccessibleButton>
-        <AccessibleButton variant="primary" disabled>
+        </TederashButton>
+        <TederashButton variant="primary" disabled>
           Disabled
-        </AccessibleButton>
+        </TederashButton>
       </div>
 
       {/* Status Output */}

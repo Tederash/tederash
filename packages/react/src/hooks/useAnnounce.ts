@@ -1,18 +1,23 @@
 import * as React from "react";
 import { Announcement, AnnouncementOptions } from "@tederash/core";
-import { useAccessibility } from "./useAccessibility";
+import { useTederash } from "./useAccessibility";
 
-export function useAnnounce() {
-  const { announce } = useAccessibility();
+export function useTederashAnnounce() {
+  const { announce } = useTederash();
   return announce;
 }
 
-export function useLiveAnnouncements(
+export const useAnnounce = useTederashAnnounce;
+export const useAccessibilityAnnounce = useTederashAnnounce;
+
+export function useTederashLiveAnnouncements(
   onAnnouncement: (announcement: Announcement) => void
 ) {
-  const { runtime } = useAccessibility();
+  const { runtime } = useTederash();
 
   React.useEffect(() => {
     return runtime.onAnnounce(onAnnouncement);
   }, [runtime, onAnnouncement]);
 }
+
+export const useLiveAnnouncements = useTederashLiveAnnouncements;

@@ -4,9 +4,9 @@ import * as React from "react";
 import {
   PRESET_PROFILES,
   TargetSize,
-  useAccessibility,
+  useTederash,
 } from "@tederash/react";
-import { AccessibleButton } from "@tederash/components";
+import { TederashButton } from "@tederash/components";
 
 interface AuditViolation {
   id: string;
@@ -17,7 +17,7 @@ interface AuditViolation {
 
 export function AccessibilityControlPanel() {
   const { profile, adaptations, setProfile, updatePreferences, resetProfile, announce } =
-    useAccessibility();
+    useTederash();
   const [isOpen, setIsOpen] = React.useState(false);
   const [auditResults, setAuditResults] = React.useState<AuditViolation[] | null>(null);
   const [isAuditing, setIsAuditing] = React.useState(false);
@@ -273,14 +273,14 @@ export function AccessibilityControlPanel() {
           <section className="border-t pt-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Automated A11y Audit</h3>
-              <AccessibleButton
+              <TederashButton
                 variant="outline"
                 onClick={runAxeAudit}
                 disabled={isAuditing}
                 className="text-xs py-1 px-3 min-h-[32px]"
               >
                 {isAuditing ? "Auditing..." : "Run axe-core"}
-              </AccessibleButton>
+              </TederashButton>
             </div>
 
             {auditResults !== null && (
@@ -307,7 +307,7 @@ export function AccessibilityControlPanel() {
 
           {/* Reset Action */}
           <div className="border-t pt-4 mt-auto">
-            <AccessibleButton
+            <TederashButton
               variant="outline"
               onClick={() => {
                 resetProfile();
@@ -319,7 +319,7 @@ export function AccessibilityControlPanel() {
               className="w-full text-xs"
             >
               Reset to Standard Defaults
-            </AccessibleButton>
+            </TederashButton>
           </div>
         </div>
       )}

@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleTextarea } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashTextarea } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function TextareaDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [msg1, setMsg1] = React.useState("Tederash enables seamless accessibility adaptation.");
   const [msg2, setMsg2] = React.useState("");
 
@@ -40,7 +40,7 @@ export function TextareaDemo() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AccessibleTextarea
+        <TederashTextarea
           id="ta-feedback"
           label="Accessibility Feedback & Suggestions"
           value={msg1}
@@ -53,7 +53,7 @@ export function TextareaDemo() {
           required
         />
 
-        <AccessibleTextarea
+        <TederashTextarea
           id="ta-issue"
           label="Validation Report"
           value={msg2}

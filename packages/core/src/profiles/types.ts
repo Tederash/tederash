@@ -73,7 +73,7 @@ export interface InteractionPreferences {
   formAssistance?: boolean;
 }
 
-export interface AccessibilityProfile {
+export interface TederashProfile {
   id: string;
   name: string;
   description?: string;
@@ -90,10 +90,16 @@ export interface AccessibilityProfile {
   custom?: Record<string, unknown>;
 }
 
+/** Backward-compatible alias for TederashProfile */
+export type AccessibilityProfile = TederashProfile;
+
 export type DeepPartial<T> = T extends object
   ? { [P in keyof T]?: DeepPartial<T[P]> }
   : T;
 
-export type AccessibilityPreferencesUpdate = DeepPartial<
-  Omit<AccessibilityProfile, "id" | "name">
+export type TederashPreferencesUpdate = DeepPartial<
+  Omit<TederashProfile, "id" | "name">
 >;
+
+/** Backward-compatible alias for TederashPreferencesUpdate */
+export type AccessibilityPreferencesUpdate = TederashPreferencesUpdate;

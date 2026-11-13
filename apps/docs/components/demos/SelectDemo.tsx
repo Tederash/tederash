@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleSelect } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashSelect } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function SelectDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [val1, setVal1] = React.useState("am");
   const [val2, setVal2] = React.useState("");
 
@@ -54,7 +54,7 @@ export function SelectDemo() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AccessibleSelect
+        <TederashSelect
           id="select-lang"
           label="Interface Language"
           options={languageOptions}
@@ -65,7 +65,7 @@ export function SelectDemo() {
           required
         />
 
-        <AccessibleSelect
+        <TederashSelect
           id="select-role"
           label="Professional Role"
           options={roleOptions}

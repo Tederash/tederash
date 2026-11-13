@@ -1,13 +1,13 @@
 ---
-title: "AccessibleDialog"
+title: "TederashDialog"
 description: "Accessible modal dialog and alertdialog with focus trapping, scroll locking, and focus restoration."
 ---
 
 import { DialogDemo } from "../../components/demos/DialogDemo";
 
-# AccessibleDialog
+# TederashDialog
 
-`AccessibleDialog` provides an accessible modal window adhering to WAI-ARIA 1.2 Dialog and Alertdialog authoring patterns. It enforces focus containment, background body scroll locking, Escape key dismissal, and automatic focus restoration upon closing.
+`TederashDialog` (also exported as `AccessibleDialog`) provides an accessible modal window adhering to WAI-ARIA 1.2 Dialog and Alertdialog authoring patterns. It enforces focus containment, background body scroll locking, Escape key dismissal, and automatic focus restoration upon closing.
 
 ## Component Preview
 
@@ -18,18 +18,18 @@ Below is the live component output. Click either button to test focus trapping a
 ## Usage
 
 ```tsx
-import { AccessibleDialog, AccessibleButton } from "@tederash/components";
+import { TederashDialog, TederashButton } from "@tederash/components";
 
 export function DialogExample() {
   const [open, setOpen] = React.useState(false);
 
   return (
     <>
-      <AccessibleButton onClick={() => setOpen(true)}>
+      <TederashButton onClick={() => setOpen(true)}>
         Open Settings
-      </AccessibleButton>
+      </TederashButton>
 
-      <AccessibleDialog
+      <TederashDialog
         open={open}
         onOpenChange={setOpen}
         title="Account Preferences"
@@ -38,12 +38,12 @@ export function DialogExample() {
         <div className="flex flex-col gap-4">
           <p>Dialog body content...</p>
           <div className="flex justify-end gap-2">
-            <AccessibleButton variant="outline" onClick={() => setOpen(false)}>
+            <TederashButton variant="outline" onClick={() => setOpen(false)}>
               Close
-            </AccessibleButton>
+            </TederashButton>
           </div>
         </div>
-      </AccessibleDialog>
+      </TederashDialog>
     </>
   );
 }

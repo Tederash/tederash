@@ -1,4 +1,4 @@
-import { useAccessibility } from "./useAccessibility";
+import { useTederash } from "./useAccessibility";
 
 type NestedKeyOf<ObjectType extends object> = {
   [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
@@ -6,8 +6,8 @@ type NestedKeyOf<ObjectType extends object> = {
     : `${Key}`;
 }[keyof ObjectType & (string | number)];
 
-export function useAccessibilityPreference<T = unknown>(path: string): T | undefined {
-  const { effectiveProfile } = useAccessibility();
+export function useTederashPreference<T = unknown>(path: string): T | undefined {
+  const { effectiveProfile } = useTederash();
 
   const keys = path.split(".");
   let current: unknown = effectiveProfile;
@@ -22,3 +22,5 @@ export function useAccessibilityPreference<T = unknown>(path: string): T | undef
 
   return current as T;
 }
+
+export const useAccessibilityPreference = useTederashPreference;

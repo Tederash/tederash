@@ -1,6 +1,6 @@
-import { AccessibilityProfile } from "./types";
+import { AccessibilityProfile, TederashProfile } from "./types";
 
-export const DEFAULT_PROFILE: AccessibilityProfile = {
+export const DEFAULT_TEDERASH_PROFILE: TederashProfile = {
   id: "standard",
   name: "Standard",
   description: "Standard application settings with baseline accessible behavior.",
@@ -44,7 +44,9 @@ export const DEFAULT_PROFILE: AccessibilityProfile = {
   },
 };
 
-export const LOW_VISION_PRESET: AccessibilityProfile = {
+export const DEFAULT_PROFILE = DEFAULT_TEDERASH_PROFILE;
+
+export const LOW_VISION_PRESET: TederashProfile = {
   id: "low-vision",
   name: "Low Vision & High Contrast",
   description: "Enhanced text size, high contrast borders, and underlined interactive links.",
@@ -70,7 +72,7 @@ export const LOW_VISION_PRESET: AccessibilityProfile = {
   },
 };
 
-export const MOTOR_ASSIST_PRESET: AccessibilityProfile = {
+export const MOTOR_ASSIST_PRESET: TederashProfile = {
   id: "motor-assist",
   name: "Motor & Target Sizing",
   description: "Extra large interactive touch targets, relaxed precision, and high-visibility keyboard focus.",
@@ -94,7 +96,7 @@ export const MOTOR_ASSIST_PRESET: AccessibilityProfile = {
   },
 };
 
-export const COGNITIVE_ASSIST_PRESET: AccessibilityProfile = {
+export const COGNITIVE_ASSIST_PRESET: TederashProfile = {
   id: "cognitive-assist",
   name: "Cognitive & Reading Guidance",
   description: "Plain language instructions, minimal distractions, guided form workflows, and inline hints.",
@@ -118,7 +120,7 @@ export const COGNITIVE_ASSIST_PRESET: AccessibilityProfile = {
   },
 };
 
-export const REDUCED_MOTION_PRESET: AccessibilityProfile = {
+export const REDUCED_MOTION_PRESET: TederashProfile = {
   id: "reduced-motion",
   name: "Reduced Motion",
   description: "Disables unnecessary animations, transitions, and moving page elements.",
@@ -132,7 +134,7 @@ export const REDUCED_MOTION_PRESET: AccessibilityProfile = {
   },
 };
 
-export const KEYBOARD_FIRST_PRESET: AccessibilityProfile = {
+export const KEYBOARD_FIRST_PRESET: TederashProfile = {
   id: "keyboard-first",
   name: "Keyboard Navigation",
   description: "Strongest focus indicators, keyboard shortcuts, and keyboard-oriented form flow.",
@@ -147,7 +149,7 @@ export const KEYBOARD_FIRST_PRESET: AccessibilityProfile = {
   },
 };
 
-export const AMHARIC_PRESET: AccessibilityProfile = {
+export const AMHARIC_PRESET: TederashProfile = {
   id: "amharic",
   name: "አማርኛ / Amharic",
   description:
@@ -166,8 +168,8 @@ export const AMHARIC_PRESET: AccessibilityProfile = {
   },
 };
 
-export const PRESET_PROFILES: AccessibilityProfile[] = [
-  DEFAULT_PROFILE,
+export const TEDERASH_PRESETS: TederashProfile[] = [
+  DEFAULT_TEDERASH_PROFILE,
   LOW_VISION_PRESET,
   MOTOR_ASSIST_PRESET,
   COGNITIVE_ASSIST_PRESET,
@@ -175,3 +177,7 @@ export const PRESET_PROFILES: AccessibilityProfile[] = [
   KEYBOARD_FIRST_PRESET,
   AMHARIC_PRESET,
 ];
+
+export const PRESET_PROFILES = TEDERASH_PRESETS;
+export const defaultTederashProfile = DEFAULT_TEDERASH_PROFILE;
+export const defaultAccessibilityProfile = DEFAULT_TEDERASH_PROFILE;

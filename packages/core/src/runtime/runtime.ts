@@ -4,25 +4,25 @@ import { Announcement, AnnouncementListener, AnnouncementOptions } from "../even
 import { LocalStorageAdapter } from "../persistence/local-storage";
 import { MemoryStorageAdapter } from "../persistence/memory";
 import { PersistenceAdapter } from "../persistence/types";
-import { DEFAULT_PROFILE } from "../profiles/defaults";
+import { DEFAULT_TEDERASH_PROFILE } from "../profiles/defaults";
 import { deepMerge, resolveProfile } from "../profiles/merge";
 import {
-  AccessibilityPreferencesUpdate,
-  AccessibilityProfile,
   DeepPartial,
+  TederashPreferencesUpdate,
+  TederashProfile,
 } from "../profiles/types";
 import { sanitizeProfile, validateProfile } from "../profiles/validation";
 import {
-  AccessibilityRuntime,
-  RuntimeConfig,
-  RuntimeListener,
-  RuntimeState,
+  TederashRuntime,
+  TederashRuntimeConfig,
+  TederashRuntimeListener,
+  TederashRuntimeState,
 } from "./types";
 
-export function createAccessibilityRuntime(
-  config: RuntimeConfig = {}
-): AccessibilityRuntime {
-  const baseDefault = config.defaultProfile ?? DEFAULT_PROFILE;
+export function createTederashRuntime(
+  config: TederashRuntimeConfig = {}
+): TederashRuntime {
+  const baseDefault = config.defaultProfile ?? DEFAULT_TEDERASH_PROFILE;
   const appDefaults = config.appDefaults;
 
   let persistence: PersistenceAdapter | null = null;
@@ -38,7 +38,7 @@ export function createAccessibilityRuntime(
   }
 
   // Initial profile resolution: check persistence first, fallback to defaults
-  let initialProfile: AccessibilityProfile = resolveProfile(
+  let initialProfile: TederashProfile = resolveProfile(
     baseDefault,
     appDefaults
   );
@@ -50,18 +50,18 @@ export function createAccessibilityRuntime(
     }
   }
 
-  let currentProfile: AccessibilityProfile = sanitizeProfile(initialProfile);
+  let currentProfile: TederashProfile = sanitizeProfile(initialProfile);
   let currentAdaptations = resolveAdaptations(currentProfile);
 
-  let currentState: RuntimeState = {
+  let currentState: TederashRuntimeState = {
     profile: currentProfile,
     adaptations: currentAdaptations,
   };
 
-  const listeners: Set<RuntimeListener> = new Set();
+  const listeners: Set<TederashRuntimeListener> = new Set();
   const eventBus = new AccessibilityEventBus();
 
-  const updateStateAndNotify = (newProfile: AccessibilityProfile) => {
+  const updateStateAndNotify = (newProfile: TederashProfile) => {
     currentProfile = newProfile;
     currentAdaptations = resolveAdaptations(currentProfile);
     currentState = {
@@ -78,7 +78,7 @@ export function createAccessibilityRuntime(
     }
   };
 
-  const runtime: AccessibilityRuntime = {
+  const runtime: TederashRuntime = {
     getProfile() {
       return currentState.profile;
     },
@@ -95,7 +95,7 @@ export function createAccessibilityRuntime(
       const merged = resolveProfile(
         baseDefault,
         appDefaults,
-        profile as DeepPartial<AccessibilityProfile>
+        profile as DeepPartial<TederashProfile>
       );
       const sanitized = sanitizeProfile(merged);
 
@@ -106,11 +106,11 @@ export function createAccessibilityRuntime(
       updateStateAndNotify(sanitized);
     },
 
-    updatePreferences(preferences: AccessibilityPreferencesUpdate) {
+    updatePreferences(preferences: TederashPreferencesUpdate) {
       const merged = deepMerge(
         currentProfile as unknown as Record<string, unknown>,
         preferences as unknown as Record<string, unknown>
-      ) as unknown as AccessibilityProfile;
+      ) as unknown as TederashProfile;
 
       const sanitized = sanitizeProfile(merged);
 
@@ -131,7 +131,7 @@ export function createAccessibilityRuntime(
       updateStateAndNotify(reset);
     },
 
-    subscribe(listener: RuntimeListener) {
+    subscribe(listener: TederashRuntimeListener) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -154,3 +154,5 @@ export function createAccessibilityRuntime(
 
   return runtime;
 }
+
+export const createAccessibilityRuntime = createTederashRuntime;

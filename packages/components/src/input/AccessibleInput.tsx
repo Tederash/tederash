@@ -7,7 +7,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleInputProps
+export interface TederashInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Visible label text for accessible name */
   label?: string;
@@ -21,9 +21,11 @@ export interface AccessibleInputProps
   visuallyHideLabel?: boolean;
 }
 
-export const AccessibleInput = React.forwardRef<
+export type AccessibleInputProps = TederashInputProps;
+
+export const TederashInput = React.forwardRef<
   HTMLInputElement,
-  AccessibleInputProps
+  TederashInputProps
 >(
   (
     {
@@ -118,7 +120,7 @@ export const AccessibleInput = React.forwardRef<
         <input
           ref={ref}
           id={inputId}
-          data-slot="accessible-input"
+          data-slot="tederash-input"
           aria-invalid={Boolean(error)}
           aria-required={required}
           aria-describedby={ariaDescribedBy}
@@ -152,4 +154,6 @@ export const AccessibleInput = React.forwardRef<
   }
 );
 
-AccessibleInput.displayName = "AccessibleInput";
+TederashInput.displayName = "TederashInput";
+
+export const AccessibleInput = TederashInput;

@@ -1,13 +1,13 @@
 ---
-title: "AccessibleTextarea"
+title: "TederashTextarea"
 description: "Accessible multi-line text input with live character counter announcements."
 ---
 
 import { TextareaDemo } from "../../components/demos/TextareaDemo";
 
-# AccessibleTextarea
+# TederashTextarea
 
-`AccessibleTextarea` provides an accessible multi-line text area supporting label associations, simplified cognitive descriptions, error messaging, and live character limit counters linked to assistive technologies.
+`TederashTextarea` (also exported as `AccessibleTextarea`) provides an accessible multi-line text area supporting label associations, simplified cognitive descriptions, error messaging, and live character limit counters linked to assistive technologies.
 
 ## Component Preview
 
@@ -18,13 +18,13 @@ Below is the live component output. Type inside the character-limited textarea t
 ## Usage
 
 ```tsx
-import { AccessibleTextarea } from "@tederash/components";
+import { TederashTextarea } from "@tederash/components";
 
 export function FeedbackExample() {
   const [feedback, setFeedback] = React.useState("");
 
   return (
-    <AccessibleTextarea
+    <TederashTextarea
       label="Your Feedback"
       value={feedback}
       onChange={(e) => setFeedback(e.target.value)}
@@ -41,7 +41,7 @@ export function FeedbackExample() {
 
 ## Props Reference
 
-`AccessibleTextarea` extends all standard HTML textarea attributes (`React.TextareaHTMLAttributes<HTMLTextAreaElement>`).
+`TederashTextarea` extends all standard HTML textarea attributes (`React.TextareaHTMLAttributes<HTMLTextAreaElement>`).
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |

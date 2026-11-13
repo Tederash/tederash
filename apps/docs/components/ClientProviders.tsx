@@ -1,16 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { AccessibilityProvider } from "@tederash/react";
-import { LiveRegion } from "@tederash/components";
+import { TederashProvider } from "@tederash/react";
+import { TederashLiveRegion } from "@tederash/components";
 import { AccessibilityControlPanel } from "./AccessibilityControlPanel";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
-    <AccessibilityProvider storageKey="tederash:app:a11y">
+    <TederashProvider storageKey="tederash:app:profile">
       <AccessibilityControlPanel />
-      <LiveRegion showVisualBanner={true} />
+      <TederashLiveRegion showVisualBanner={true} />
       {children}
-    </AccessibilityProvider>
+    </TederashProvider>
   );
 }

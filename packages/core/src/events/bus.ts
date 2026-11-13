@@ -51,3 +51,5 @@ export class AccessibilityEventBus {
     this.listeners.clear();
   }
 }
+
+export const TederashEventBus = AccessibilityEventBus;

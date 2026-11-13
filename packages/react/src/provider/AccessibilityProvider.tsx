@@ -1,25 +1,25 @@
 import * as React from "react";
 import {
-  AccessibilityProfile,
-  AccessibilityRuntime,
   DeepPartial,
   PersistenceAdapter,
-  createAccessibilityRuntime,
+  TederashProfile,
+  TederashRuntime,
+  createTederashRuntime,
 } from "@tederash/core";
 import {
-  AccessibilityContext,
-  AccessibilityContextValue,
   ComponentOverrideContext,
+  TederashContext,
+  TederashContextValue,
 } from "../context/AccessibilityContext";
 
-export interface AccessibilityProviderProps {
+export interface TederashProviderProps {
   children: React.ReactNode;
   /** Pass an existing runtime or let the provider instantiate one */
-  runtime?: AccessibilityRuntime;
+  runtime?: TederashRuntime;
   /** Initial profile fallback (defaults to standard) */
-  defaultProfile?: AccessibilityProfile;
+  defaultProfile?: TederashProfile;
   /** Application-wide default overrides */
-  appDefaults?: DeepPartial<AccessibilityProfile>;
+  appDefaults?: DeepPartial<TederashProfile>;
   /** Storage persistence method: 'local' (default), 'memory', 'none', or custom adapter */
   persistence?: "local" | "memory" | "none" | PersistenceAdapter;
   /** Custom localStorage key */
@@ -28,7 +28,9 @@ export interface AccessibilityProviderProps {
   applyStylesToRoot?: boolean;
 }
 
-export function AccessibilityProvider({
+export type AccessibilityProviderProps = TederashProviderProps;
+
+export function TederashProvider({
   children,
   runtime: externalRuntime,
   defaultProfile,
@@ -36,11 +38,11 @@ export function AccessibilityProvider({
   persistence = "local",
   storageKey,
   applyStylesToRoot = true,
-}: AccessibilityProviderProps) {
+}: TederashProviderProps) {
   // Lazily instantiate runtime if not supplied
-  const [internalRuntime] = React.useState<AccessibilityRuntime>(() => {
+  const [internalRuntime] = React.useState<TederashRuntime>(() => {
     if (externalRuntime) return externalRuntime;
-    return createAccessibilityRuntime({
+    return createTederashRuntime({
       defaultProfile,
       appDefaults,
       persistence,
@@ -77,7 +79,7 @@ export function AccessibilityProvider({
     }
   }, [state.adaptations, applyStylesToRoot]);
 
-  const contextValue = React.useMemo<AccessibilityContextValue>(() => {
+  const contextValue = React.useMemo<TederashContextValue>(() => {
     return {
       runtime,
       profile: state.profile,
@@ -90,24 +92,28 @@ export function AccessibilityProvider({
   }, [runtime, state.profile, state.adaptations]);
 
   return (
-    <AccessibilityContext.Provider value={contextValue}>
+    <TederashContext.Provider value={contextValue}>
       {children}
-    </AccessibilityContext.Provider>
+    </TederashContext.Provider>
   );
 }
 
-export interface AccessibilityOverrideProps {
+export const AccessibilityProvider = TederashProvider;
+
+export interface TederashOverrideProps {
   children: React.ReactNode;
-  override: Partial<AccessibilityProfile>;
+  override: Partial<TederashProfile>;
 }
+
+export type AccessibilityOverrideProps = TederashOverrideProps;
 
 /**
  * Allows scoping preference overrides to a sub-tree of components
  */
-export function AccessibilityOverride({
+export function TederashOverride({
   children,
   override,
-}: AccessibilityOverrideProps) {
+}: TederashOverrideProps) {
   const parentOverride = React.useContext(ComponentOverrideContext);
   const mergedOverride = React.useMemo(() => {
     return { ...parentOverride, ...override };
@@ -119,3 +125,5 @@ export function AccessibilityOverride({
     </ComponentOverrideContext.Provider>
   );
 }
+
+export const AccessibilityOverride = TederashOverride;

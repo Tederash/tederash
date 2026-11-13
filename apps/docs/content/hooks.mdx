@@ -3,29 +3,31 @@ title: "React Hooks API"
 description: "Every hook in @tederash/react with signatures and examples."
 ---
 
-All hooks require an ancestor `<AccessibilityProvider>`. Calling them outside a provider throws a descriptive error (by design — silent no-ops hide accessibility bugs).
+All hooks require an ancestor `<TederashProvider>`. Calling them outside a provider throws a descriptive error (by design: silent no-ops hide accessibility bugs).
 
-## useAccessibility
+## useTederash
+
+`useTederash` (also exported as `useAccessibility`) is the primary hook to access runtime state:
 
 ```ts
 const {
-  profile,        // active AccessibilityProfile
+  profile,        // active TederashProfile
   adaptations,    // resolved ComponentAdaptations for the whole tree
   runtime,        // the underlying runtime (escape hatch)
-  setProfile,     // (profile: AccessibilityProfile) => void
-  updatePreferences, // (DeepPartial<Profile>) => void
+  setProfile,     // (profile: TederashProfile) => void
+  updatePreferences, // (DeepPartial<TederashProfile>) => void
   resetProfile,   // () => void
   announce,       // (options: AnnouncementOptions) => Announcement
-  effectiveProfile, // profile with any active <AccessibilityOverride> merged
-} = useAccessibility();
+  effectiveProfile, // profile with any active <TederashOverride> merged
+} = useTederash();
 ```
 
-## useAccessibilityPreference
+## useTederashPreference
 
-Dot-notated selector hook. Only re-renders when the selected value changes.
+Dot-notated selector hook (also aliased as `useAccessibilityPreference`). Only re-renders when the selected value changes.
 
 ```ts
-const fontScale = useAccessibilityPreference("visual.fontScale"); // number | undefined
+const fontScale = useTederashPreference("visual.fontScale"); // number | undefined
 ```
 
 ## useAdaptations
@@ -36,10 +38,10 @@ adaptations.minTargetHeight; // "48px"
 adaptations.cssVariables;    // Record<string, string>
 ```
 
-## useAnnounce / useLiveAnnouncements
+## useTederashAnnounce / useLiveAnnouncements
 
 ```ts
-const announce = useAnnounce();
+const announce = useTederashAnnounce();
 announce({
   message: "Saved successfully.",
   priority: "polite",
@@ -102,23 +104,23 @@ startListening({ lang: "am-ET" });
 - Sessions are aborted automatically on unmount.
 - Errors (microphone denied, no speech, network) map to friendly strings and set `isListening` to `false`.
 
-## AccessibilityOverride
+## TederashOverride
 
-Scope preferences to a sub-tree (highest precedence tier):
+Scope preferences to a sub-tree (highest precedence tier, also aliased as `AccessibilityOverride`):
 
 ```tsx
-<AccessibilityOverride override={{ visual: { fontScale: 1.5 } }}>
+<TederashOverride override={{ visual: { fontScale: 1.5 } }}>
   <DataGrid />
-</AccessibilityOverride>
+</TederashOverride>
 ```
 
 ## Provider props
 
 | Prop | Default | Notes |
 |---|---|---|
-| `runtime` | — | Reuse an existing runtime (SSR/testing) |
-| `defaultProfile` | `DEFAULT_PROFILE` | Initial profile |
-| `appDefaults` | — | Application-level preference floor |
+| `runtime` | None | Reuse an existing runtime (SSR/testing) |
+| `defaultProfile` | `DEFAULT_TEDERASH_PROFILE` | Initial baseline profile |
+| `appDefaults` | None | Application-level preference floor |
 | `persistence` | `"local"` | `"local" \| "memory" \| "none" \| PersistenceAdapter` |
 | `storageKey` | built-in key | Custom localStorage key |
-| `applyStylesToRoot` | `true` | Sync CSS variables/data attributes to `document.documentElement` |
+| `applyStylesToRoot` | `true` | Sync CSS variables and data attributes to `document.documentElement` |

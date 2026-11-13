@@ -1,13 +1,13 @@
 ---
-title: "AccessibleInput"
+title: "TederashInput"
 description: "Accessible form input with automatic label association, cognitive plain-language descriptions, and validation linking."
 ---
 
 import { InputDemo } from "../../components/demos/InputDemo";
 
-# AccessibleInput
+# TederashInput
 
-`AccessibleInput` provides an accessible form text input. It manages accessible names (`label`), descriptive helper texts (`aria-describedby`), simplified cognitive instructions (`simplifiedDescription`), and accessible error states (`aria-invalid`).
+`TederashInput` (also exported as `AccessibleInput`) provides an accessible form text input. It manages accessible names (`label`), descriptive helper texts (`aria-describedby`), simplified cognitive instructions (`simplifiedDescription`), and accessible error states (`aria-invalid`).
 
 ## Component Preview
 
@@ -18,13 +18,13 @@ Below is the live component output. Toggle profiles or test validation error sta
 ## Usage
 
 ```tsx
-import { AccessibleInput } from "@tederash/components";
+import { TederashInput } from "@tederash/components";
 
 export function InputExample() {
   const [email, setEmail] = React.useState("");
 
   return (
-    <AccessibleInput
+    <TederashInput
       label="Corporate Email"
       type="email"
       value={email}
@@ -40,7 +40,7 @@ export function InputExample() {
 
 ## Props Reference
 
-`AccessibleInput` extends `React.InputHTMLAttributes<HTMLInputElement>` (omitting native `size`).
+`TederashInput` extends `React.InputHTMLAttributes<HTMLInputElement>` (omitting native `size`).
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |

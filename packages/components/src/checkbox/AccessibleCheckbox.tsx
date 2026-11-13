@@ -7,7 +7,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleCheckboxProps {
+export interface TederashCheckboxProps {
   /** Unique HTML id for the checkbox button and label association */
   id?: string;
   /** Visible label text */
@@ -44,9 +44,11 @@ export interface AccessibleCheckboxProps {
   labelClassName?: string;
 }
 
-export const AccessibleCheckbox = React.forwardRef<
+export type AccessibleCheckboxProps = TederashCheckboxProps;
+
+export const TederashCheckbox = React.forwardRef<
   HTMLButtonElement,
-  AccessibleCheckboxProps
+  TederashCheckboxProps
 >(
   (
     {
@@ -243,4 +245,6 @@ export const AccessibleCheckbox = React.forwardRef<
   }
 );
 
-AccessibleCheckbox.displayName = "AccessibleCheckbox";
+TederashCheckbox.displayName = "TederashCheckbox";
+
+export const AccessibleCheckbox = TederashCheckbox;

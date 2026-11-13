@@ -1,25 +1,31 @@
 import * as React from "react";
 import {
-  AccessibilityPreferencesUpdate,
-  AccessibilityProfile,
-  AccessibilityRuntime,
   Announcement,
   AnnouncementOptions,
   ComponentAdaptations,
+  TederashPreferencesUpdate,
+  TederashProfile,
+  TederashRuntime,
 } from "@tederash/core";
 
-export interface AccessibilityContextValue {
-  runtime: AccessibilityRuntime;
-  profile: AccessibilityProfile;
+export interface TederashContextValue {
+  runtime: TederashRuntime;
+  profile: TederashProfile;
   adaptations: ComponentAdaptations;
-  setProfile: (profile: AccessibilityProfile | Partial<AccessibilityProfile>) => void;
-  updatePreferences: (preferences: AccessibilityPreferencesUpdate) => void;
+  setProfile: (profile: TederashProfile | Partial<TederashProfile>) => void;
+  updatePreferences: (preferences: TederashPreferencesUpdate) => void;
   resetProfile: () => void;
   announce: (options: AnnouncementOptions) => Announcement;
 }
 
-export const AccessibilityContext =
-  React.createContext<AccessibilityContextValue | null>(null);
+export type AccessibilityContextValue = TederashContextValue;
 
-export const ComponentOverrideContext =
-  React.createContext<Partial<AccessibilityProfile> | null>(null);
+export const TederashContext =
+  React.createContext<TederashContextValue | null>(null);
+
+export const AccessibilityContext = TederashContext;
+
+export const TederashOverrideContext =
+  React.createContext<Partial<TederashProfile> | null>(null);
+
+export const ComponentOverrideContext = TederashOverrideContext;

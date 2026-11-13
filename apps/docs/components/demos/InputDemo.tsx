@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleInput } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashInput } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function InputDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [val1, setVal1] = React.useState("Abebe Bikila");
   const [val2, setVal2] = React.useState("invalid-email");
   const [showError, setShowError] = React.useState(true);
@@ -41,7 +41,7 @@ export function InputDemo() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AccessibleInput
+        <TederashInput
           label="Full Legal Name"
           value={val1}
           onChange={(e) => setVal1(e.target.value)}
@@ -50,7 +50,7 @@ export function InputDemo() {
           required
         />
 
-        <AccessibleInput
+        <TederashInput
           label="Corporate Email Address"
           type="email"
           value={val2}

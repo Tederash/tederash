@@ -1,27 +1,29 @@
 import * as React from "react";
 import {
-  AccessibilityProfile,
+  TederashProfile,
   resolveAdaptations,
   resolveProfile,
 } from "@tederash/core";
 import {
-  AccessibilityContext,
-  AccessibilityContextValue,
   ComponentOverrideContext,
+  TederashContext,
+  TederashContextValue,
 } from "../context/AccessibilityContext";
 
-export interface UseAccessibilityResult extends AccessibilityContextValue {
+export interface UseTederashResult extends TederashContextValue {
   /** Effective profile considering active component-level overrides */
-  effectiveProfile: AccessibilityProfile;
+  effectiveProfile: TederashProfile;
 }
 
-export function useAccessibility(): UseAccessibilityResult {
-  const context = React.useContext(AccessibilityContext);
+export type UseAccessibilityResult = UseTederashResult;
+
+export function useTederash(): UseTederashResult {
+  const context = React.useContext(TederashContext);
   const override = React.useContext(ComponentOverrideContext);
 
   if (!context) {
     throw new Error(
-      "useAccessibility must be used within an <AccessibilityProvider>. Ensure <AccessibilityProvider> wraps your component tree."
+      "useTederash / useAccessibility must be used within an <AccessibilityProvider> or <TederashProvider>. Ensure <TederashProvider> wraps your component tree."
     );
   }
 
@@ -41,3 +43,5 @@ export function useAccessibility(): UseAccessibilityResult {
     adaptations: effectiveAdaptations,
   };
 }
+
+export const useAccessibility = useTederash;

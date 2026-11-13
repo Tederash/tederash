@@ -1,13 +1,13 @@
 ---
-title: "AccessibleForm"
+title: "TederashForm"
 description: "Accessible form wrapper with centralized error alerts, live announcements, and guided wizard mode."
 ---
 
 import { FormDemo } from "../../components/demos/FormDemo";
 
-# AccessibleForm
+# TederashForm
 
-`AccessibleForm` wraps form controls with centralized accessibility features. It renders an accessible error summary alert at the top of the form, announces validation feedback to assistive technologies, and supports guided multi-step wizard interaction modes.
+`TederashForm` (also exported as `AccessibleForm`) wraps form controls with centralized accessibility features. It renders an accessible error summary alert at the top of the form, announces validation feedback to assistive technologies, and supports guided multi-step wizard interaction modes.
 
 ## Component Preview
 
@@ -18,7 +18,7 @@ Below is the live component output. Try submitting without filling required fiel
 ## Usage
 
 ```tsx
-import { AccessibleForm, AccessibleInput, AccessibleButton } from "@tederash/components";
+import { TederashForm, TederashInput, TederashButton } from "@tederash/components";
 
 export function FormExample() {
   const [errors, setErrors] = React.useState<string[]>([]);
@@ -31,21 +31,21 @@ export function FormExample() {
   };
 
   return (
-    <AccessibleForm
+    <TederashForm
       errors={errors}
       onSubmit={handleSubmit}
       successAnnouncement="Registration completed successfully."
     >
-      <AccessibleInput label="Account Name" required />
-      <AccessibleButton type="submit">Submit</AccessibleButton>
-    </AccessibleForm>
+      <TederashInput label="Account Name" required />
+      <TederashButton type="submit">Submit</TederashButton>
+    </TederashForm>
   );
 }
 ```
 
 ## Props Reference
 
-`AccessibleForm` extends all standard HTML form attributes (`React.FormHTMLAttributes<HTMLFormElement>`).
+`TederashForm` extends all standard HTML form attributes (`React.FormHTMLAttributes<HTMLFormElement>`).
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |

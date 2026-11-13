@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleNavigation } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashNavigation } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function NavigationDemo() {
-  const { profile, setProfile } = useAccessibility();
+  const { profile, setProfile } = useTederash();
   const [active, setActive] = React.useState("/docs/components");
 
   const sampleLinks = [
@@ -46,7 +46,7 @@ export function NavigationDemo() {
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden bg-background">
-        <AccessibleNavigation
+        <TederashNavigation
           links={sampleLinks}
           activeRoute={active}
           brandName="Tederash UI"

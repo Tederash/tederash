@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleDialog, AccessibleButton } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashDialog, TederashButton } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function DialogDemo() {
-  const { profile, setProfile } = useAccessibility();
+  const { profile, setProfile } = useTederash();
   const [openStandard, setOpenStandard] = React.useState(false);
   const [openDestructive, setOpenDestructive] = React.useState(false);
 
@@ -40,17 +40,17 @@ export function DialogDemo() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <AccessibleButton variant="primary" onClick={() => setOpenStandard(true)}>
+        <TederashButton variant="primary" onClick={() => setOpenStandard(true)}>
           Open Standard Dialog
-        </AccessibleButton>
+        </TederashButton>
 
-        <AccessibleButton variant="destructive" onClick={() => setOpenDestructive(true)}>
+        <TederashButton variant="destructive" onClick={() => setOpenDestructive(true)}>
           Open Destructive Alert Dialog
-        </AccessibleButton>
+        </TederashButton>
       </div>
 
       {/* Standard Dialog */}
-      <AccessibleDialog
+      <TederashDialog
         open={openStandard}
         onOpenChange={setOpenStandard}
         title="Workspace Accessibility Settings"
@@ -62,18 +62,18 @@ export function DialogDemo() {
             only within the dialog, and pressing <kbd className="px-1 py-0.5 rounded bg-muted border font-mono">Escape</kbd> restores focus back to the trigger button.
           </p>
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
-            <AccessibleButton variant="outline" onClick={() => setOpenStandard(false)}>
+            <TederashButton variant="outline" onClick={() => setOpenStandard(false)}>
               Cancel
-            </AccessibleButton>
-            <AccessibleButton variant="primary" onClick={() => setOpenStandard(false)}>
+            </TederashButton>
+            <TederashButton variant="primary" onClick={() => setOpenStandard(false)}>
               Save changes
-            </AccessibleButton>
+            </TederashButton>
           </div>
         </div>
-      </AccessibleDialog>
+      </TederashDialog>
 
       {/* Destructive Alert Dialog */}
-      <AccessibleDialog
+      <TederashDialog
         open={openDestructive}
         onOpenChange={setOpenDestructive}
         role="alertdialog"
@@ -86,15 +86,15 @@ export function DialogDemo() {
             Warning: Screen readers announce this alert dialog with high priority. Focus is trapped immediately on confirmation controls.
           </p>
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
-            <AccessibleButton variant="outline" onClick={() => setOpenDestructive(false)}>
+            <TederashButton variant="outline" onClick={() => setOpenDestructive(false)}>
               Keep project
-            </AccessibleButton>
-            <AccessibleButton variant="destructive" onClick={() => setOpenDestructive(false)}>
+            </TederashButton>
+            <TederashButton variant="destructive" onClick={() => setOpenDestructive(false)}>
               Confirm deletion
-            </AccessibleButton>
+            </TederashButton>
           </div>
         </div>
-      </AccessibleDialog>
+      </TederashDialog>
 
       <div className="pt-3 border-t border-border text-xs text-muted-foreground">
         <span>Accessibility: Implements WAI-ARIA 1.2 modal dialog pattern with automatic focus restoration.</span>

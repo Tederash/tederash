@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { LiveRegion } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
-import { AccessibleButton } from "@tederash/components";
+import { TederashLiveRegion, TederashButton } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function LiveRegionDemo() {
-  const { profile, setProfile, announce } = useAccessibility();
+  const { profile, setProfile, announce } = useTederash();
   const [history, setHistory] = React.useState<string[]>([]);
 
   const handleAnnounce = (priority: "polite" | "assertive", msg: string) => {
@@ -48,26 +47,26 @@ export function LiveRegionDemo() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <AccessibleButton
+        <TederashButton
           variant="primary"
           onClick={() => handleAnnounce("polite", "Preferences saved successfully.")}
         >
           Announce Polite Status
-        </AccessibleButton>
+        </TederashButton>
 
-        <AccessibleButton
+        <TederashButton
           variant="destructive"
           onClick={() => handleAnnounce("assertive", "Critical validation error detected.")}
         >
           Announce Assertive Alert
-        </AccessibleButton>
+        </TederashButton>
 
-        <AccessibleButton
+        <TederashButton
           variant="outline"
           onClick={() => handleAnnounce("polite", "File upload 100% complete.")}
         >
           Announce Progress Update
-        </AccessibleButton>
+        </TederashButton>
       </div>
 
       {/* Visual LiveRegion */}
@@ -86,7 +85,7 @@ export function LiveRegionDemo() {
         )}
       </div>
 
-      <LiveRegion showVisualBanner />
+      <TederashLiveRegion showVisualBanner />
 
       <div className="pt-3 border-t border-border text-xs text-muted-foreground">
         <span>Dual Live Region: Maintains aria-live=&quot;polite&quot; and aria-live=&quot;assertive&quot; nodes simultaneously.</span>

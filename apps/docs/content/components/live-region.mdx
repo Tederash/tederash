@@ -1,13 +1,13 @@
 ---
-title: "LiveRegion"
+title: "TederashLiveRegion"
 description: "Accessible polite and assertive live region announcer for assistive technologies."
 ---
 
 import { LiveRegionDemo } from "../../components/demos/LiveRegionDemo";
 
-# LiveRegion
+# TederashLiveRegion
 
-`LiveRegion` maintains screen-reader-compatible ARIA live regions that announce asynchronous state changes, form completion events, and urgent validation alerts.
+`TederashLiveRegion` (also exported as `LiveRegion`) maintains screen-reader-compatible ARIA live regions that announce asynchronous state changes, form completion events, and urgent validation alerts.
 
 ## Component Preview
 
@@ -18,11 +18,11 @@ Below is the live component output. Trigger polite status announcements or asser
 ## Usage
 
 ```tsx
-import { LiveRegion } from "@tederash/components";
-import { useAccessibility } from "@tederash/react";
+import { TederashLiveRegion } from "@tederash/components";
+import { useTederash } from "@tederash/react";
 
 export function NotificationManager() {
-  const { announce } = useAccessibility();
+  const { announce } = useTederash();
 
   const handleComplete = () => {
     announce({
@@ -34,8 +34,8 @@ export function NotificationManager() {
   return (
     <>
       <button onClick={handleComplete}>Trigger Complete</button>
-      {/* LiveRegion is normally mounted once at root provider level */}
-      <LiveRegion showVisualBanner />
+      {/* TederashLiveRegion is normally mounted once at root provider level */}
+      <TederashLiveRegion showVisualBanner />
     </>
   );
 }

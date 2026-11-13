@@ -8,7 +8,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleNavigationLink {
+export interface TederashNavigationLink {
   /** Target URL or route */
   href: string;
   /** Visible label */
@@ -23,10 +23,12 @@ export interface AccessibleNavigationLink {
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
-export interface AccessibleNavigationProps
+export type AccessibleNavigationLink = TederashNavigationLink;
+
+export interface TederashNavigationProps
   extends React.HTMLAttributes<HTMLElement> {
   /** Array of navigation links */
-  links: AccessibleNavigationLink[];
+  links: TederashNavigationLink[];
   /** Currently active route (matched against link.href) */
   activeRoute?: string;
   /** Brand name string or custom brand logo node (default: "Tederash") */
@@ -39,7 +41,7 @@ export interface AccessibleNavigationProps
   skipToContentTarget?: string;
   /** Label for skip link (default: "Skip to main content") */
   skipToContentLabel?: string;
-  /** Whether to render the skip to content link (default: true) */
+  /** Whether to render the skip to link (default: true) */
   showSkipLink?: boolean;
   /** Custom actions or controls slot (e.g. theme toggle, accessibility settings) */
   actions?: React.ReactNode;
@@ -51,7 +53,9 @@ export interface AccessibleNavigationProps
   isActiveRoute?: (href: string, activeRoute?: string) => boolean;
 }
 
-export const AccessibleNavigation: React.FC<AccessibleNavigationProps> = ({
+export type AccessibleNavigationProps = TederashNavigationProps;
+
+export const TederashNavigation: React.FC<TederashNavigationProps> = ({
   links,
   activeRoute = "/",
   brandName = "Tederash",
@@ -275,4 +279,6 @@ export const AccessibleNavigation: React.FC<AccessibleNavigationProps> = ({
   );
 };
 
-AccessibleNavigation.displayName = "AccessibleNavigation";
+TederashNavigation.displayName = "TederashNavigation";
+
+export const AccessibleNavigation = TederashNavigation;

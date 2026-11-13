@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleCheckbox } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashCheckbox } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function CheckboxDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [checked1, setChecked1] = React.useState(true);
   const [checked2, setChecked2] = React.useState(false);
   const [indeterminate, setIndeterminate] = React.useState(true);
@@ -41,7 +41,7 @@ export function CheckboxDemo() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <AccessibleCheckbox
+        <TederashCheckbox
           id="cb-terms"
           label="I accept the terms and conditions"
           description="Required to create an active account and use developer APIs."
@@ -51,7 +51,7 @@ export function CheckboxDemo() {
           required
         />
 
-        <AccessibleCheckbox
+        <TederashCheckbox
           id="cb-marketing"
           label="Email notifications for accessibility release notes"
           description="We send updates at most once a month."
@@ -59,7 +59,7 @@ export function CheckboxDemo() {
           onCheckedChange={setChecked2}
         />
 
-        <AccessibleCheckbox
+        <TederashCheckbox
           id="cb-tri"
           label="Select all sub-workspace permissions (Indeterminate)"
           indeterminate={indeterminate}
@@ -68,7 +68,7 @@ export function CheckboxDemo() {
           description="Click to toggle indeterminate state."
         />
 
-        <AccessibleCheckbox
+        <TederashCheckbox
           id="cb-disabled"
           label="Disabled administrative privilege option"
           disabled

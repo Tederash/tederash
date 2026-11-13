@@ -1,13 +1,13 @@
 ---
-title: "AccessibleCheckbox"
+title: "TederashCheckbox"
 description: "Accessible checkbox component supporting checked, unchecked, and indeterminate tri-state behavior."
 ---
 
 import { CheckboxDemo } from "../../components/demos/CheckboxDemo";
 
-# AccessibleCheckbox
+# TederashCheckbox
 
-`AccessibleCheckbox` provides an accessible checkbox control conforming to WAI-ARIA 1.2 checkbox authoring practices. It supports controlled and uncontrolled modes, indeterminate states, and dynamic touch target scaling.
+`TederashCheckbox` (also exported as `AccessibleCheckbox`) provides an accessible checkbox control conforming to WAI-ARIA 1.2 checkbox authoring practices. It supports controlled and uncontrolled modes, indeterminate states, and dynamic touch target scaling.
 
 ## Component Preview
 
@@ -18,13 +18,13 @@ Below is the live component output. Test Space key activation, indeterminate sta
 ## Usage
 
 ```tsx
-import { AccessibleCheckbox } from "@tederash/components";
+import { TederashCheckbox } from "@tederash/components";
 
 export function CheckboxExample() {
   const [accepted, setAccepted] = React.useState(false);
 
   return (
-    <AccessibleCheckbox
+    <TederashCheckbox
       id="terms-checkbox"
       label="I agree to the privacy policy"
       description="Required to process your data according to GDPR."

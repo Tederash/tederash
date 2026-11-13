@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AccessibleForm, AccessibleInput, AccessibleButton } from "@tederash/components";
-import { useAccessibility, PRESET_PROFILES } from "@tederash/react";
+import { TederashForm, TederashInput, TederashButton } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
 
 export function FormDemo() {
-  const { profile, setProfile, adaptations } = useAccessibility();
+  const { profile, setProfile, adaptations } = useTederash();
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [errors, setErrors] = React.useState<string[]>([]);
@@ -64,7 +64,7 @@ export function FormDemo() {
           <p className="text-xs text-muted-foreground">
             An accessible polite announcement was dispatched to assistive technologies.
           </p>
-          <AccessibleButton
+          <TederashButton
             variant="outline"
             className="w-fit text-xs mt-1"
             onClick={() => {
@@ -74,16 +74,16 @@ export function FormDemo() {
             }}
           >
             Reset Sample Form
-          </AccessibleButton>
+          </TederashButton>
         </div>
       ) : (
-        <AccessibleForm
+        <TederashForm
           errors={errors}
           onSubmit={handleSubmit}
           successAnnouncement="Form submitted successfully."
           className="flex flex-col gap-4"
         >
-          <AccessibleInput
+          <TederashInput
             label="Contact Name"
             value={name}
             onChange={(e) => {
@@ -94,7 +94,7 @@ export function FormDemo() {
             description="Enter the primary contact name."
           />
 
-          <AccessibleInput
+          <TederashInput
             label="Email Address"
             type="email"
             value={email}
@@ -107,10 +107,10 @@ export function FormDemo() {
           />
 
           <div className="flex items-center gap-3 pt-2">
-            <AccessibleButton type="submit" variant="primary">
+            <TederashButton type="submit" variant="primary">
               Submit Form
-            </AccessibleButton>
-            <AccessibleButton
+            </TederashButton>
+            <TederashButton
               type="button"
               variant="outline"
               onClick={() => {
@@ -120,9 +120,9 @@ export function FormDemo() {
               }}
             >
               Clear
-            </AccessibleButton>
+            </TederashButton>
           </div>
-        </AccessibleForm>
+        </TederashForm>
       )}
 
       <div className="pt-3 border-t border-border text-xs text-muted-foreground">

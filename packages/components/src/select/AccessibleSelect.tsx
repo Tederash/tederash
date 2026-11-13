@@ -8,20 +8,22 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleSelectOption {
+export interface TederashSelectOption {
   value: string;
   label: string;
   disabled?: boolean;
   description?: string;
 }
 
-export interface AccessibleSelectProps {
+export type AccessibleSelectOption = TederashSelectOption;
+
+export interface TederashSelectProps {
   /** Unique HTML id for the select element and label linkage */
   id?: string;
   /** Visible label for accessible name */
   label: string;
   /** Array of available options */
-  options: AccessibleSelectOption[];
+  options: TederashSelectOption[];
   /** Controlled selected value */
   value?: string;
   /** Default value for uncontrolled usage */
@@ -52,9 +54,11 @@ export interface AccessibleSelectProps {
   listboxClassName?: string;
 }
 
-export const AccessibleSelect = React.forwardRef<
+export type AccessibleSelectProps = TederashSelectProps;
+
+export const TederashSelect = React.forwardRef<
   HTMLButtonElement,
-  AccessibleSelectProps
+  TederashSelectProps
 >(
   (
     {
@@ -373,4 +377,6 @@ export const AccessibleSelect = React.forwardRef<
   }
 );
 
-AccessibleSelect.displayName = "AccessibleSelect";
+TederashSelect.displayName = "TederashSelect";
+
+export const AccessibleSelect = TederashSelect;

@@ -1,13 +1,13 @@
 ---
-title: "AccessibleNavigation"
+title: "TederashNavigation"
 description: "Accessible navigation bar with skip-to-content affordances and current page signalling."
 ---
 
 import { NavigationDemo } from "../../components/demos/NavigationDemo";
 
-# AccessibleNavigation
+# TederashNavigation
 
-`AccessibleNavigation` renders an accessible `<header>` and `<nav>` landmark navigation bar. It includes built-in keyboard skip links, `aria-current="page"` marking on active routes, and responsive mobile navigation.
+`TederashNavigation` (also exported as `AccessibleNavigation`) renders an accessible `<header>` and `<nav>` landmark navigation bar. It includes built-in keyboard skip links, `aria-current="page"` marking on active routes, and responsive mobile navigation.
 
 ## Component Preview
 
@@ -18,7 +18,7 @@ Below is the live component output. You can change active links or tab through t
 ## Usage
 
 ```tsx
-import { AccessibleNavigation } from "@tederash/components";
+import { TederashNavigation } from "@tederash/components";
 
 const links = [
   { href: "/", label: "Home" },
@@ -28,7 +28,7 @@ const links = [
 
 export function HeaderExample() {
   return (
-    <AccessibleNavigation
+    <TederashNavigation
       links={links}
       activeRoute="/docs"
       brandName="My Application"
@@ -42,7 +42,7 @@ export function HeaderExample() {
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `links` | `AccessibleNavigationLink[]` | **Required** | Array of link objects: `{ href, label, icon?, badge?, external?, onClick? }`. |
+| `links` | `TederashNavigationLink[]` | **Required** | Array of link objects: `{ href, label, icon?, badge?, external?, onClick? }`. |
 | `activeRoute` | `string` | `"/"` | The currently active URL path. Matching link receives `aria-current="page"`. |
 | `brandName` | `string \| React.ReactNode` | `"Tederash"` | Brand logo or application title displayed on the left. |
 | `brandHref` | `string` | `"/"` | Destination link for the brand logo. |

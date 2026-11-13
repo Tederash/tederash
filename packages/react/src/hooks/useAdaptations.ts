@@ -1,7 +1,9 @@
 import { ComponentAdaptations } from "@tederash/core";
-import { useAccessibility } from "./useAccessibility";
+import { useTederash } from "./useAccessibility";
 
-export function useAdaptations(): ComponentAdaptations {
-  const { adaptations } = useAccessibility();
+export function useTederashAdaptations(): ComponentAdaptations {
+  const { adaptations } = useTederash();
   return adaptations;
 }
+
+export const useAdaptations = useTederashAdaptations;

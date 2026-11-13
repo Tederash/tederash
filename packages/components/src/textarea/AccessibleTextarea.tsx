@@ -8,7 +8,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleTextareaProps
+export interface TederashTextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Visible label text for accessible name */
   label?: string;
@@ -26,9 +26,11 @@ export interface AccessibleTextareaProps
   showCharacterCount?: boolean;
 }
 
-export const AccessibleTextarea = React.forwardRef<
+export type AccessibleTextareaProps = TederashTextareaProps;
+
+export const TederashTextarea = React.forwardRef<
   HTMLTextAreaElement,
-  AccessibleTextareaProps
+  TederashTextareaProps
 >(
   (
     {
@@ -223,4 +225,6 @@ export const AccessibleTextarea = React.forwardRef<
   }
 );
 
-AccessibleTextarea.displayName = "AccessibleTextarea";
+TederashTextarea.displayName = "TederashTextarea";
+
+export const AccessibleTextarea = TederashTextarea;

@@ -2,50 +2,55 @@ import { ComponentAdaptations } from "../adaptation/types";
 import { Announcement, AnnouncementListener, AnnouncementOptions } from "../events/types";
 import { PersistenceAdapter } from "../persistence/types";
 import {
-  AccessibilityPreferencesUpdate,
-  AccessibilityProfile,
   DeepPartial,
+  TederashPreferencesUpdate,
+  TederashProfile,
 } from "../profiles/types";
 
-export interface RuntimeConfig {
-  /** The initial baseline profile, defaults to DEFAULT_PROFILE */
-  defaultProfile?: AccessibilityProfile;
+export interface TederashRuntimeConfig {
+  /** The initial baseline profile, defaults to DEFAULT_TEDERASH_PROFILE */
+  defaultProfile?: TederashProfile;
   /** Application-level preference defaults applied under the active profile */
-  appDefaults?: DeepPartial<AccessibilityProfile>;
+  appDefaults?: DeepPartial<TederashProfile>;
   /** Persistence strategy */
   persistence?: "local" | "memory" | "none" | PersistenceAdapter;
   /** Custom storage key for localStorage */
   storageKey?: string;
 }
 
-export interface RuntimeState {
-  profile: AccessibilityProfile;
+export type RuntimeConfig = TederashRuntimeConfig;
+
+export interface TederashRuntimeState {
+  profile: TederashProfile;
   adaptations: ComponentAdaptations;
 }
 
-export type RuntimeListener = (state: RuntimeState) => void;
+export type RuntimeState = TederashRuntimeState;
 
-export interface AccessibilityRuntime {
+export type TederashRuntimeListener = (state: TederashRuntimeState) => void;
+export type RuntimeListener = TederashRuntimeListener;
+
+export interface TederashRuntime {
   /** Retrieve the current active profile */
-  getProfile(): AccessibilityProfile;
+  getProfile(): TederashProfile;
 
   /** Retrieve the resolved adaptations for the active profile */
   getAdaptations(): ComponentAdaptations;
 
   /** Retrieve the complete runtime state */
-  getState(): RuntimeState;
+  getState(): TederashRuntimeState;
 
   /** Replace the active profile with a new one */
-  setProfile(profile: AccessibilityProfile | Partial<AccessibilityProfile>): void;
+  setProfile(profile: TederashProfile | Partial<TederashProfile>): void;
 
   /** Deep update specific preferences within the active profile */
-  updatePreferences(preferences: AccessibilityPreferencesUpdate): void;
+  updatePreferences(preferences: TederashPreferencesUpdate): void;
 
   /** Reset preferences back to the default profile */
   resetProfile(): void;
 
   /** Subscribe to profile and adaptation state changes */
-  subscribe(listener: RuntimeListener): () => void;
+  subscribe(listener: TederashRuntimeListener): () => void;
 
   /** Dispatch a live announcement for screen readers and UI feedback */
   announce(options: AnnouncementOptions): Announcement;
@@ -56,3 +61,5 @@ export interface AccessibilityRuntime {
   /** Clean up all subscribers and event listeners */
   destroy(): void;
 }
+
+export type AccessibilityRuntime = TederashRuntime;

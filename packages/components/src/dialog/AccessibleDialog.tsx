@@ -8,7 +8,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleDialogProps {
+export interface TederashDialogProps {
   /** Whether the dialog is open */
   open: boolean;
   /** Callback fired when the dialog open state changes */
@@ -41,7 +41,9 @@ export interface AccessibleDialogProps {
   destructive?: boolean;
 }
 
-export const AccessibleDialog: React.FC<AccessibleDialogProps> = ({
+export type AccessibleDialogProps = TederashDialogProps;
+
+export const TederashDialog: React.FC<TederashDialogProps> = ({
   open,
   onOpenChange,
   title,
@@ -318,4 +320,6 @@ export const AccessibleDialog: React.FC<AccessibleDialogProps> = ({
   );
 };
 
-AccessibleDialog.displayName = "AccessibleDialog";
+TederashDialog.displayName = "TederashDialog";
+
+export const AccessibleDialog = TederashDialog;

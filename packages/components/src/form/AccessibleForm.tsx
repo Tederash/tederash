@@ -8,7 +8,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface AccessibleFormProps
+export interface TederashFormProps
   extends React.FormHTMLAttributes<HTMLFormElement> {
   /** Array of active form error messages to summarize at the top of the form */
   errors?: string[];
@@ -16,9 +16,11 @@ export interface AccessibleFormProps
   successAnnouncement?: string;
 }
 
-export const AccessibleForm = React.forwardRef<
+export type AccessibleFormProps = TederashFormProps;
+
+export const TederashForm = React.forwardRef<
   HTMLFormElement,
-  AccessibleFormProps
+  TederashFormProps
 >(
   (
     {
@@ -55,7 +57,7 @@ export const AccessibleForm = React.forwardRef<
     return (
       <form
         ref={ref}
-        data-slot="accessible-form"
+        data-slot="tederash-form"
         data-guided={adaptations.guidedInteraction}
         noValidate
         onSubmit={handleSubmit}
@@ -94,4 +96,6 @@ export const AccessibleForm = React.forwardRef<
   }
 );
 
-AccessibleForm.displayName = "AccessibleForm";
+TederashForm.displayName = "TederashForm";
+
+export const AccessibleForm = TederashForm;

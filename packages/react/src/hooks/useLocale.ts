@@ -9,7 +9,7 @@ import {
   getTypographyForLocale,
   translate,
 } from "@tederash/core";
-import { useAccessibility } from "./useAccessibility";
+import { useTederash } from "./useAccessibility";
 
 export interface UseLocaleResult {
   /** Active locale tag, e.g. 'en', 'am' */
@@ -31,7 +31,7 @@ export interface UseLocaleResult {
  * tokens. Locale changes apply instantly without a page reload.
  */
 export function useLocale(): UseLocaleResult {
-  const { profile, updatePreferences } = useAccessibility();
+  const { profile, updatePreferences } = useTederash();
 
   const locale = profile.locale ?? "en";
 

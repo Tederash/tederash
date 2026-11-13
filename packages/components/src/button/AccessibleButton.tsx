@@ -33,15 +33,19 @@ export const buttonBaseVariants = cva(
   }
 );
 
-export interface AccessibleButtonProps
+export interface TederashButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonBaseVariants> {
   asChild?: boolean;
   /** Explicit confirmation required when clicking destructive actions */
   confirmDestructivePrompt?: string;
-}export const AccessibleButton = React.forwardRef<
+}
+
+export type AccessibleButtonProps = TederashButtonProps;
+
+export const TederashButton = React.forwardRef<
   HTMLButtonElement,
-  AccessibleButtonProps
+  TederashButtonProps
 >(
   (
     {
@@ -108,7 +112,7 @@ export interface AccessibleButtonProps
     return (
       <Comp
         ref={ref}
-        data-slot="accessible-button"
+        data-slot="tederash-button"
         data-target-size={adaptations.targetSize}
         data-high-contrast={adaptations.highContrast}
         className={cn(
@@ -128,4 +132,6 @@ export interface AccessibleButtonProps
   }
 );
 
-AccessibleButton.displayName = "AccessibleButton";
+TederashButton.displayName = "TederashButton";
+
+export const AccessibleButton = TederashButton;
