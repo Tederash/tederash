@@ -400,9 +400,7 @@ async function handleContentMessage(
   }
 
   const msg = parsed.data;
-  if (msg.type === 'page/ready' && sender.tab?.id !== undefined) {
-    const origin = isAllowedOrigin(msg.payload.url);
-    await sendAdaptToTab(sender.tab.id, origin);
+  if (msg.type === 'page/ready') {
     return { ok: true };
   }
 

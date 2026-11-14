@@ -336,16 +336,6 @@ export async function runAgentTask(
         }),
         execute: async (args: { selector?: string }) => executeContentTool(tabId, session, 'read_text', args),
       }),
-      set_adaptation: tool({
-        description: 'Apply accessibility settings such as fontScale, high-contrast theme, or reading aids to the page',
-        inputSchema: z.object({
-          fontScale: z.number().optional().describe('Font scale factor (e.g. 1.25)'),
-          theme: z.enum(['light', 'dark', 'high-contrast']).optional().describe('Visual contrast theme'),
-          readingRuler: z.boolean().optional().describe('Enable reading guide ruler'),
-          largeTargets: z.boolean().optional().describe('Enlarge touch/click targets to 44px min'),
-        }),
-        execute: async (args: { fontScale?: number; theme?: 'light' | 'dark' | 'high-contrast'; readingRuler?: boolean; largeTargets?: boolean }) => executeContentTool(tabId, session, 'set_adaptation', args),
-      }),
       say: tool({
         description: 'Speak a concise message aloud to the user using text-to-speech',
         inputSchema: z.object({

@@ -63,20 +63,20 @@ export class HeuristicLlmProvider implements LlmProvider {
       }
     }
 
-    // 1. Text scaling / font size
+    // 1. Accessibility font scale preferences
     if (userText.includes('increase text') || userText.includes('larger text') || userText.includes('bigger font') || userText.includes('zoom text')) {
       return {
         toolCalls: [
           {
-            name: 'set_adaptation',
-            args: { textScale: 1.3 },
+            name: 'tederash_update_pref',
+            args: { fontScale: 1.35 },
           },
           {
             name: 'say',
-            args: { text: 'Increased text size to 130% for improved readability.' },
+            args: { text: 'Adapted font scale to 135% via Tederash runtime.' },
           },
         ],
-        content: 'I have scaled up the text size to 130%. Let me know if you would like it even larger or smaller.',
+        content: 'I have updated the accessibility profile font scale to 135%.',
       };
     }
 
@@ -84,11 +84,11 @@ export class HeuristicLlmProvider implements LlmProvider {
       return {
         toolCalls: [
           {
-            name: 'set_adaptation',
-            args: { textScale: 1.0 },
+            name: 'tederash_update_pref',
+            args: { fontScale: 1.0 },
           },
         ],
-        content: 'Reset text scale to standard 100%.',
+        content: 'Reset accessibility font scale to standard 100%.',
       };
     }
 
@@ -97,11 +97,11 @@ export class HeuristicLlmProvider implements LlmProvider {
       return {
         toolCalls: [
           {
-            name: 'set_adaptation',
-            args: { contrastTheme: 'high-contrast' },
+            name: 'tederash_update_pref',
+            args: { highContrast: true },
           },
         ],
-        content: 'Applied high-contrast theme across the page.',
+        content: 'Activated high-contrast mode in the Tederash accessibility runtime.',
       };
     }
 
