@@ -11,6 +11,10 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 [![Chrome Extension](https://img.shields.io/badge/Extension-Manifest%20V3-yellow?style=flat-square&logo=googlechrome)](https://developer.chrome.com/docs/extensions/)
 [![WCAG 2.2](https://img.shields.io/badge/Target-WCAG%202.2%20AA-success?style=flat-square)](https://www.w3.org/WAI/standards-guidelines/wcag/)
+[![npm @tederash/core](https://img.shields.io/npm/v/@tederash/core?style=flat-square&logo=npm&label=%40tederash%2Fcore)](https://www.npmjs.com/package/@tederash/core)
+[![npm @tederash/react](https://img.shields.io/npm/v/@tederash/react?style=flat-square&logo=npm&label=%40tederash%2Freact)](https://www.npmjs.com/package/@tederash/react)
+[![npm @tederash/components](https://img.shields.io/npm/v/@tederash/components?style=flat-square&logo=npm&label=%40tederash%2Fcomponents)](https://www.npmjs.com/package/@tederash/components)
+[![npm @tederash/assistance](https://img.shields.io/npm/v/@tederash/assistance?style=flat-square&logo=npm&label=%40tederash%2Fassistance)](https://www.npmjs.com/package/@tederash/assistance)
 
 [Quick Start](#quick-start) • [Packages](#packages) • [Profiles & Precedence](#accessibility-profiles--precedence) • [Adaptive Components](#adaptive-components) • [Browser Extension](#browser-extension--sidepanel-assistant) • [Documentation](docs/)
 
@@ -39,12 +43,12 @@ The monorepo uses `pnpm` workspaces to decouple the runtime, component primitive
 
 | Package | Version | Description |
 |---|---|---|
-| [`@tederash/core`](packages/core) | `0.1.0` | **Framework-independent accessibility runtime**. Manages profiles, runs the deterministic adaptation engine, computes CSS variables, handles storage persistence, and provides capability-aware Web Speech abstractions. |
-| [`@tederash/react`](packages/react) | `0.1.0` | **React bindings & SDK**. Exposes `<AccessibilityProvider>`, `<AccessibilityOverride>`, context values, and hooks (`useAccessibility`, `useAccessibilityPreference`, `useAdaptations`, `useAnnounce`, `useLocale`, `useSpeechRecognition`, `useSpeechSynthesis`). |
-| [`@tederash/components`](packages/components) | `0.1.0` | **Adaptive accessible component library** built on Radix UI primitives. Reshapes interactive dimensions, typography, error states, and assistance affordances at runtime. |
-| [`@tederash/assistance`](packages/assistance) | `0.1.0` | **Intelligent form assistance engine**. Provides deterministic heuristic guidance and provider-agnostic abstractions for contextual field instructions and plain-language validation errors. |
-| [`extension`](extension) | `0.1.0` | **Chrome Extension (Manifest V3)**. Brings adaptive accessibility and an intelligent sidepanel assistant to any web application, communicating via an in-page deterministic bridge protocol. |
-| [`apps/docs`](apps/docs) | `0.1.0` | **Nextra-powered documentation site & live playground**. Features interactive profile switching, component previews, a multi-step job application demo, and automated axe-core audit inspectors. |
+| [`@tederash/core`](https://www.npmjs.com/package/@tederash/core) ([source](packages/core)) | [![npm](https://img.shields.io/npm/v/@tederash/core?style=flat-square&logo=npm)](https://www.npmjs.com/package/@tederash/core) | **Framework-independent accessibility runtime**. Manages profiles, runs the deterministic adaptation engine, computes CSS variables, handles storage persistence, and provides capability-aware Web Speech abstractions. |
+| [`@tederash/react`](https://www.npmjs.com/package/@tederash/react) ([source](packages/react)) | [![npm](https://img.shields.io/npm/v/@tederash/react?style=flat-square&logo=npm)](https://www.npmjs.com/package/@tederash/react) | **React bindings & SDK**. Exposes `<AccessibilityProvider>`, `<AccessibilityOverride>`, context values, and hooks (`useAccessibility`, `useAccessibilityPreference`, `useAdaptations`, `useAnnounce`, `useLocale`, `useSpeechRecognition`, `useSpeechSynthesis`). |
+| [`@tederash/components`](https://www.npmjs.com/package/@tederash/components) ([source](packages/components)) | [![npm](https://img.shields.io/npm/v/@tederash/components?style=flat-square&logo=npm)](https://www.npmjs.com/package/@tederash/components) | **Adaptive accessible component library** built on Radix UI primitives. Reshapes interactive dimensions, typography, error states, and assistance affordances at runtime. |
+| [`@tederash/assistance`](https://www.npmjs.com/package/@tederash/assistance) ([source](packages/assistance)) | [![npm](https://img.shields.io/npm/v/@tederash/assistance?style=flat-square&logo=npm)](https://www.npmjs.com/package/@tederash/assistance) | **Intelligent form assistance engine**. Provides deterministic heuristic guidance and provider-agnostic abstractions for contextual field instructions and plain-language validation errors. |
+| [`extension`](extension) | `private` | **Chrome Extension (Manifest V3)**. Brings adaptive accessibility and an intelligent sidepanel assistant to any web application, communicating via an in-page deterministic bridge protocol. |
+| [`apps/docs`](apps/docs) | `private` | **Nextra-powered documentation site & live playground**. Features interactive profile switching, component previews, a multi-step job application demo, and automated axe-core audit inspectors. |
 
 ---
 
