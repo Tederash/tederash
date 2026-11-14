@@ -16,7 +16,10 @@ export type LiveRegionProps = TederashLiveRegionProps;
  * Screen-reader-compatible live region component.
  * Maintains dedicated polite and assertive live regions to announce interface state changes.
  */
-export function TederashLiveRegion({ showVisualBanner = false, className = "" }: TederashLiveRegionProps) {
+export const TederashLiveRegion = React.forwardRef<
+  HTMLDivElement,
+  TederashLiveRegionProps
+>(function TederashLiveRegion({ showVisualBanner = false, className = "" }, ref) {
   const { runtime, adaptations } = useAccessibility();
   const [politeMessage, setPoliteMessage] = React.useState<string>("");
   const [assertiveMessage, setAssertiveMessage] = React.useState<string>("");
@@ -46,6 +49,8 @@ export function TederashLiveRegion({ showVisualBanner = false, className = "" }:
     <>
       {/* Visually hidden live regions for assistive technologies */}
       <div
+        ref={ref}
+        data-slot="live-region"
         style={{
           position: "absolute",
           width: "1px",
@@ -97,7 +102,9 @@ export function TederashLiveRegion({ showVisualBanner = false, className = "" }:
       )}
     </>
   );
-}
+});
+
+TederashLiveRegion.displayName = "TederashLiveRegion";
 
 export const LiveRegion = TederashLiveRegion;
 export const AccessibleLiveRegion = TederashLiveRegion;

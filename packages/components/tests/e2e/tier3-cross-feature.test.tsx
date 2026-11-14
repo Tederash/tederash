@@ -275,8 +275,6 @@ describe("Tier 3: Cross-Feature Combinations (8 Pairwise & Multi-Way Interaction
   // Interaction 7: LiveRegion Deduplication + Destructive Action Cancel
   // ==========================================================================
   it("E2E-T3-CM-07: Announcement deduplication on destructive cancel", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-
     const { getPoliteAnnouncement } = renderWithA11y(
       <AccessibleButton variant="destructive">Delete Item</AccessibleButton>,
       {
@@ -289,15 +287,19 @@ describe("Tier 3: Cross-Feature Combinations (8 Pairwise & Multi-Way Interaction
 
     const btn = screen.getByRole("button", { name: /delete item/i });
 
-    // Rapid double-click cancel
+    // Rapid double-click opens a single confirmation dialog
     fireEvent.click(btn);
     fireEvent.click(btn);
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(2);
+    // Cancel via button, then reopen and cancel via Escape
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(btn);
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     // Cancellation announcement emitted safely
     expect(getPoliteAnnouncement()).toContain("Action cancelled.");
-
-    confirmSpy.mockRestore();
   });
 
   // ==========================================================================

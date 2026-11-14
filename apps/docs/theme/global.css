@@ -7,6 +7,13 @@
 @import "tailwindcss";
 @import "nextra-theme-docs/style.css";
 
+/*
+ * Tailwind v4 only auto-scans this app's directory. The adaptive components
+ * live in a sibling workspace package, so register it explicitly; otherwise
+ * profile-driven classes (e.g. min-h-[56px], dialog positioning) are never generated.
+ */
+@source "../../../packages/components/src";
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

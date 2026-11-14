@@ -3,6 +3,15 @@ import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
 import { cn } from "../ui/utils";
 import { X } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "../ui/dialog";
 
 export interface TederashDialogProps {
   /** Whether the dialog is open */
@@ -39,164 +48,32 @@ export interface TederashDialogProps {
 
 export type AccessibleDialogProps = TederashDialogProps;
 
-export const TederashDialog: React.FC<TederashDialogProps> = ({
-  open,
-  onOpenChange,
-  title,
-  description,
-  children,
-  role = "dialog",
-  ariaLabel,
-  closeOnEscape = true,
-  closeOnBackdropClick = true,
-  initialFocusRef,
-  restoreFocusRef,
-  showCloseButton = true,
-  closeButtonAriaLabel,
-  className = "",
-  destructive = false,
-}) => {
+export const TederashDialog = React.forwardRef<
+  HTMLDivElement,
+  TederashDialogProps
+>(function TederashDialog(
+  {
+    open,
+    onOpenChange,
+    title,
+    description,
+    children,
+    role = "dialog",
+    ariaLabel,
+    closeOnEscape = true,
+    closeOnBackdropClick = true,
+    initialFocusRef,
+    restoreFocusRef,
+    showCloseButton = true,
+    closeButtonAriaLabel,
+    className = "",
+    destructive = false,
+  },
+  ref
+) {
   const { adaptations } = useAccessibility();
   const { t } = useLocalization();
-  const dialogRef = React.useRef<HTMLDivElement>(null);
-  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
-  const originalOverflowRef = React.useRef<string>("");
-  const wasOpenRef = React.useRef(false);
-
-  // Keep callbacks and refs in stable useRef to prevent re-triggering effects on parent re-renders
-  const onOpenChangeRef = React.useRef(onOpenChange);
-  onOpenChangeRef.current = onOpenChange;
-  const closeOnEscapeRef = React.useRef(closeOnEscape);
-  closeOnEscapeRef.current = closeOnEscape;
-  const initialFocusRefStable = React.useRef(initialFocusRef);
-  initialFocusRefStable.current = initialFocusRef;
-  const restoreFocusRefStable = React.useRef(restoreFocusRef);
-  restoreFocusRefStable.current = restoreFocusRef;
-
-  const baseId = React.useId();
-  const titleId = `dialog-title-${baseId}`;
-  const descId = `dialog-desc-${baseId}`;
-
-  // Focus trap & restoration
-  React.useEffect(() => {
-    if (!open) {
-      if (wasOpenRef.current) {
-        if (typeof document !== "undefined") {
-          document.body.style.overflow = originalOverflowRef.current;
-        }
-        if (restoreFocusRefStable.current?.current) {
-          restoreFocusRefStable.current.current.focus();
-        } else if (
-          previousActiveElementRef.current &&
-          typeof previousActiveElementRef.current.focus === "function"
-        ) {
-          try {
-            previousActiveElementRef.current.focus();
-          } catch {
-            // Ignore if unmounted or focus fails
-          }
-        }
-        wasOpenRef.current = false;
-      }
-      return;
-    }
-
-    wasOpenRef.current = true;
-    if (typeof document !== "undefined") {
-      previousActiveElementRef.current = document.activeElement as HTMLElement;
-      originalOverflowRef.current = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-    }
-
-    // Move initial focus
-    const focusTimer = setTimeout(() => {
-      if (initialFocusRefStable.current?.current) {
-        initialFocusRefStable.current.current.focus();
-      } else if (dialogRef.current) {
-        const focusableSelector =
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector);
-        if (focusables.length > 0) {
-          focusables[0].focus();
-        } else {
-          dialogRef.current.focus();
-        }
-      }
-    }, 10);
-
-    return () => clearTimeout(focusTimer);
-  }, [open]);
-
-  // Keyboard navigation: Escape key & Tab trapping
-  React.useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && closeOnEscapeRef.current) {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpenChangeRef.current(false);
-        return;
-      }
-
-      if (e.key === "Tab" && dialogRef.current) {
-        const focusableSelector =
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
-        const focusables = Array.from(
-          dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector)
-        ).filter((el) => el.offsetParent !== null);
-
-        if (focusables.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  // Clean up body overflow on unmount
-  React.useEffect(() => {
-    return () => {
-      if (wasOpenRef.current && typeof document !== "undefined") {
-        document.body.style.overflow = originalOverflowRef.current;
-        if (restoreFocusRefStable.current?.current) {
-          restoreFocusRefStable.current.current.focus();
-        } else if (
-          previousActiveElementRef.current &&
-          typeof previousActiveElementRef.current.focus === "function"
-        ) {
-          try {
-            previousActiveElementRef.current.focus();
-          } catch {
-            // Ignore if unmounted or focus fails
-          }
-        }
-        wasOpenRef.current = false;
-      }
-    };
-  }, [open]);
-
-  if (!open) return null;
+  const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
 
   // Adaptive styles
   const isExtraLarge = adaptations.targetSize === "extra-large";
@@ -224,98 +101,127 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       : "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
 
   const motionClasses = adaptations.reduceMotion
-    ? "transition-none animate-none"
-    : "transition-all duration-200";
+    ? "transition-none animate-none data-[state=open]:animate-none data-[state=closed]:animate-none"
+    : "transition-all duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+
+  const accessibleTitle = title || ariaLabel || "";
 
   return (
-    <div
-      role="presentation"
-      data-slot="accessible-dialog-overlay"
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs",
-        adaptations.highContrast ? "bg-black/80" : "bg-black/60",
-        motionClasses
-      )}
-      onClick={() => {
-        if (closeOnBackdropClick) {
-          onOpenChangeRef.current(false);
-        }
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role={role}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-label={ariaLabel}
-        aria-labelledby={title ? titleId : undefined}
-        aria-describedby={description ? descId : undefined}
-        data-slot="accessible-dialog"
-        data-target-size={adaptations.targetSize}
-        data-high-contrast={String(adaptations.highContrast)}
-        className={cn(
-          "w-full rounded-lg relative outline-none bg-background text-foreground",
-          sizeClasses,
-          contrastClasses,
-          motionClasses,
-          destructive && "border-destructive ring-1 ring-destructive/30",
-          className
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          data-slot="dialog-header"
-          className="flex flex-col gap-1.5 text-left pb-4"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPortal>
+        <DialogOverlay
+          data-slot="accessible-dialog-overlay"
+          className={cn(
+            adaptations.highContrast ? "bg-black/80" : "bg-black/60",
+            motionClasses
+          )}
+          onClick={() => {
+            if (closeOnBackdropClick) onOpenChange(false);
+          }}
+        />
+        <DialogPrimitive.Content
+          ref={ref}
+          role={role}
+          aria-modal="true"
+          aria-label={title ? undefined : ariaLabel}
+          // Radix links aria-describedby automatically when a Description renders;
+          // explicitly clear it otherwise so no dangling reference is emitted.
+          {...(description ? {} : { "aria-describedby": undefined })}
+          data-slot="accessible-dialog"
+          data-target-size={adaptations.targetSize}
+          data-high-contrast={String(adaptations.highContrast)}
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
+            "w-[calc(100%-2rem)] rounded-lg outline-none bg-background text-foreground",
+            sizeClasses,
+            contrastClasses,
+            motionClasses,
+            destructive && "border-destructive ring-1 ring-destructive/30",
+            className
+          )}
+          onEscapeKeyDown={(e) => {
+            if (!closeOnEscape) e.preventDefault();
+          }}
+          // Backdrop dismissal is handled explicitly by the overlay's onClick so
+          // closeOnBackdropClick is honoured deterministically.
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => {
+            // Radix fires this before moving focus, so activeElement is still
+            // the element that opened the dialog.
+            previouslyFocusedRef.current =
+              typeof document !== "undefined"
+                ? (document.activeElement as HTMLElement | null)
+                : null;
+            const target = initialFocusRef?.current;
+            if (target) {
+              e.preventDefault();
+              target.focus();
+            }
+          }}
+          onCloseAutoFocus={(e) => {
+            // Radix only restores focus to its own <Dialog.Trigger>, which this
+            // controlled API does not use, so restore to the opener explicitly.
+            const target =
+              restoreFocusRef?.current ??
+              (previouslyFocusedRef.current?.isConnected
+                ? previouslyFocusedRef.current
+                : null);
+            previouslyFocusedRef.current = null;
+            if (target) {
+              e.preventDefault();
+              target.focus();
+            }
+          }}
         >
-          <div className="flex items-center justify-between">
-            <h2
-              id={titleId}
-              data-slot="dialog-title"
-              className={cn(
-                "text-lg font-semibold leading-none tracking-tight",
-                isExtraLarge && "text-xl font-bold",
-                destructive && "text-destructive"
-              )}
-            >
-              {title}
-            </h2>
-            {showCloseButton && (
-              <button
-                type="button"
-                aria-label={closeButtonAriaLabel ?? t("labels.closeDialog")}
-                onClick={() => onOpenChangeRef.current(false)}
+          <div
+            data-slot="dialog-header"
+            className="flex flex-col gap-1.5 text-left pb-4"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle
                 className={cn(
-                  "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 inline-flex items-center justify-center text-muted-foreground hover:text-foreground",
-                  closeButtonSize,
-                  focusClasses,
-                  adaptations.highContrast && "border border-current font-bold"
+                  !title && "sr-only",
+                  isExtraLarge && "text-xl font-bold",
+                  destructive && "text-destructive"
                 )}
               >
-                <X className="size-4 shrink-0" aria-hidden="true" />
-              </button>
+                {accessibleTitle}
+              </DialogTitle>
+              {showCloseButton && (
+                <DialogClose
+                  type="button"
+                  aria-label={closeButtonAriaLabel ?? t("labels.closeDialog")}
+                  className={cn(
+                    "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 inline-flex items-center justify-center text-muted-foreground hover:text-foreground",
+                    closeButtonSize,
+                    focusClasses,
+                    adaptations.highContrast && "border border-current font-bold"
+                  )}
+                >
+                  <X className="size-4 shrink-0" aria-hidden="true" />
+                </DialogClose>
+              )}
+            </div>
+
+            {description && (
+              <DialogDescription
+                className={cn(
+                  "leading-relaxed mt-1",
+                  isExtraLarge && "text-base font-medium",
+                  adaptations.showInstructions && "font-medium text-foreground"
+                )}
+              >
+                {description}
+              </DialogDescription>
             )}
           </div>
 
-          {description && (
-            <p
-              id={descId}
-              data-slot="dialog-description"
-              className={cn(
-                "text-sm text-muted-foreground leading-relaxed mt-1",
-                isExtraLarge && "text-base font-medium",
-                adaptations.showInstructions && "font-medium text-foreground"
-              )}
-            >
-              {description}
-            </p>
-          )}
-        </div>
-
-        <div>{children}</div>
-      </div>
-    </div>
+          <div>{children}</div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   );
-};
+});
 
 TederashDialog.displayName = "TederashDialog";
 

@@ -4,6 +4,7 @@ import { useLocalization } from "../localization/useLocalization";
 import { cn } from "../ui/utils";
 import { Label } from "../ui/label";
 import { ChevronDown, Check } from "lucide-react";
+import * as SelectPrimitive from "@radix-ui/react-select";
 
 export interface TederashSelectOption {
   value: string;
@@ -41,7 +42,7 @@ export interface TederashSelectProps {
   error?: string;
   /** Hide label visually while preserving accessible name for screen readers */
   visuallyHideLabel?: boolean;
-  /** HTML form name */
+  /** HTML form name (a native select is submitted when rendered inside a `<form>`) */
   name?: string;
   /** Additional CSS class for the container */
   className?: string;
@@ -92,86 +93,11 @@ export const TederashSelect = React.forwardRef<
     const [internalValue, setInternalValue] = React.useState<string>(defaultValue);
     const activeValue = isControlled ? controlledValue : internalValue;
 
-    const [isOpen, setIsOpen] = React.useState<boolean>(false);
-    const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
-
-    const containerRef = React.useRef<HTMLDivElement>(null);
-    const triggerRef = React.useRef<HTMLButtonElement>(null);
-
-    // Merge internal trigger ref with forwarded ref
-    React.useImperativeHandle(ref, () => triggerRef.current as HTMLButtonElement);
-
-    const selectedIndex = options.findIndex((o) => o.value === activeValue);
-    const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : null;
-
-    // Close on outside click
-    React.useEffect(() => {
-      if (!isOpen) return;
-
-      const handlePointerDown = (e: MouseEvent | PointerEvent) => {
-        if (
-          containerRef.current &&
-          !containerRef.current.contains(e.target as Node)
-        ) {
-          setIsOpen(false);
-        }
-      };
-
-      document.addEventListener("mousedown", handlePointerDown);
-      return () => {
-        document.removeEventListener("mousedown", handlePointerDown);
-      };
-    }, [isOpen]);
-
-    const selectOptionByIndex = (index: number) => {
-      const opt = options[index];
-      if (!opt || opt.disabled) return;
+    const handleValueChange = (next: string) => {
       if (!isControlled) {
-        setInternalValue(opt.value);
+        setInternalValue(next);
       }
-      onChange?.(opt.value);
-      setIsOpen(false);
-      triggerRef.current?.focus();
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (disabled) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        if (!isOpen) {
-          setIsOpen(true);
-          setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-        } else {
-          setFocusedIndex((prev) => (prev + 1) % options.length);
-        }
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        if (!isOpen) {
-          setIsOpen(true);
-          setFocusedIndex(selectedIndex >= 0 ? selectedIndex : options.length - 1);
-        } else {
-          setFocusedIndex((prev) => (prev - 1 + options.length) % options.length);
-        }
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        if (isOpen && focusedIndex >= 0 && options[focusedIndex]) {
-          selectOptionByIndex(focusedIndex);
-        } else {
-          setIsOpen(true);
-          setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-        }
-      } else if (e.key === "Escape") {
-        if (isOpen) {
-          e.preventDefault();
-          setIsOpen(false);
-          triggerRef.current?.focus();
-        }
-      } else if (e.key === "Tab") {
-        if (isOpen) {
-          setIsOpen(false);
-        }
-      }
+      onChange?.(next);
     };
 
     const activeDescription =
@@ -215,8 +141,12 @@ export const TederashSelect = React.forwardRef<
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         : "";
 
+    const motionClass = adaptations.reduceMotion
+      ? "transition-none [&>svg]:transition-none"
+      : "";
+
     return (
-      <div ref={containerRef} className={cn("flex flex-col gap-1.5 relative w-full", className)}>
+      <div className={cn("flex flex-col gap-1.5 relative w-full", className)}>
         <Label
           htmlFor={selectId}
           className={cn(
@@ -247,110 +177,86 @@ export const TederashSelect = React.forwardRef<
           </p>
         )}
 
-        <button
-          ref={triggerRef}
-          type="button"
-          id={selectId}
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-controls={listboxId}
-          aria-activedescendant={
-            isOpen && focusedIndex >= 0 ? `${listboxId}-opt-${focusedIndex}` : undefined
-          }
-          aria-invalid={Boolean(error)}
-          aria-required={required}
-          aria-describedby={ariaDescribedBy}
+        <SelectPrimitive.Root
+          value={activeValue}
+          onValueChange={handleValueChange}
           disabled={disabled}
-          data-slot="accessible-select-trigger"
-          data-target-size={adaptations.targetSize}
-          data-high-contrast={String(adaptations.highContrast)}
-          onClick={() => {
-            if (disabled) return;
-            setIsOpen((open) => {
-              const next = !open;
-              if (next) {
-                setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-              }
-              return next;
-            });
-          }}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-            targetHeightClass,
-            contrastClass,
-            focusClass,
-            error && "border-destructive ring-destructive/20 dark:ring-destructive/40",
-            triggerClassName
-          )}
+          required={required}
+          name={name}
         >
-          <span className={cn(!selectedOption && "text-muted-foreground", "line-clamp-1")}>
-            {selectedOption ? selectedOption.label : placeholder ?? t("labels.selectAnOption")}
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            className={cn("size-4 shrink-0 opacity-50 transition-transform duration-200", isOpen && "rotate-180")}
-          />
-        </button>
-
-        {name && (
-          <input
-            type="hidden"
-            name={name}
-            value={activeValue}
-          />
-        )}
-
-        {isOpen && (
-          <ul
-            id={listboxId}
-            role="listbox"
-            aria-label={label}
+          <SelectPrimitive.Trigger
+            ref={ref}
+            id={selectId}
+            aria-invalid={Boolean(error)}
+            aria-required={required}
+            aria-describedby={ariaDescribedBy}
+            data-slot="accessible-select-trigger"
+            data-target-size={adaptations.targetSize}
+            data-high-contrast={String(adaptations.highContrast)}
             className={cn(
-              "absolute top-full left-0 right-0 mt-1.5 z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md max-h-60 overflow-y-auto p-1",
+              "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+              "data-[placeholder]:text-muted-foreground [&>span]:line-clamp-1 [&>svg]:transition-transform [&>svg]:duration-200 [&[data-state=open]>svg]:rotate-180",
+              targetHeightClass,
               contrastClass,
-              adaptations.highContrast && "border-2 border-foreground dark:border-white shadow-2xl",
-              listboxClassName
+              focusClass,
+              motionClass,
+              error && "border-destructive ring-destructive/20 dark:ring-destructive/40",
+              triggerClassName
             )}
           >
-            {options.map((opt, idx) => {
-              const isSelected = opt.value === activeValue;
-              const isFocused = idx === focusedIndex;
+            <SelectPrimitive.Value placeholder={placeholder ?? t("labels.selectAnOption")} />
+            <SelectPrimitive.Icon asChild>
+              <ChevronDown aria-hidden="true" className="size-4 shrink-0 opacity-50" />
+            </SelectPrimitive.Icon>
+          </SelectPrimitive.Trigger>
 
-              return (
-                <li
-                  key={opt.value}
-                  id={`${listboxId}-opt-${idx}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={opt.disabled}
-                  onClick={() => selectOptionByIndex(idx)}
-                  className={cn(
-                    "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
-                    optionHeightClass,
-                    opt.disabled && "opacity-50 cursor-not-allowed pointer-events-none",
-                    isFocused && "bg-accent text-accent-foreground font-medium",
-                    isSelected && "bg-accent font-semibold text-accent-foreground",
-                    adaptations.highContrast && isSelected && "border-l-4 border-primary font-bold"
-                  )}
-                >
-                  <div className="flex flex-col">
-                    <span>{opt.label}</span>
-                    {opt.description && (
-                      <span className="text-xs text-muted-foreground">
-                        {opt.description}
-                      </span>
+          <SelectPrimitive.Portal>
+            <SelectPrimitive.Content
+              id={listboxId}
+              position="popper"
+              sideOffset={6}
+              aria-label={label}
+              data-slot="accessible-select-content"
+              className={cn(
+                "relative z-50 max-h-60 min-w-[8rem] w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md",
+                contrastClass,
+                adaptations.highContrast && "border-2 border-foreground dark:border-white shadow-2xl",
+                listboxClassName
+              )}
+            >
+              <SelectPrimitive.Viewport className="p-1">
+                {options.map((opt) => (
+                  <SelectPrimitive.Item
+                    key={opt.value}
+                    value={opt.value}
+                    disabled={opt.disabled}
+                    data-slot="accessible-select-option"
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+                      "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:font-medium",
+                      "data-[state=checked]:font-semibold",
+                      "data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed data-[disabled]:pointer-events-none",
+                      adaptations.highContrast && "data-[state=checked]:border-l-4 data-[state=checked]:border-primary data-[state=checked]:font-bold",
+                      optionHeightClass
                     )}
-                  </div>
-                  {isSelected && (
-                    <Check aria-hidden="true" className="size-4 shrink-0 ml-2" />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                  >
+                    <div className="flex flex-col">
+                      <SelectPrimitive.ItemText>{opt.label}</SelectPrimitive.ItemText>
+                      {opt.description && (
+                        <span className="text-xs text-muted-foreground">
+                          {opt.description}
+                        </span>
+                      )}
+                    </div>
+                    <SelectPrimitive.ItemIndicator>
+                      <Check aria-hidden="true" className="size-4 shrink-0 ml-2" />
+                    </SelectPrimitive.ItemIndicator>
+                  </SelectPrimitive.Item>
+                ))}
+              </SelectPrimitive.Viewport>
+            </SelectPrimitive.Content>
+          </SelectPrimitive.Portal>
+        </SelectPrimitive.Root>
 
         {error && (
           <p

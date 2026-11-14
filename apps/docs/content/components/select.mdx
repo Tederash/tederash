@@ -1,6 +1,6 @@
 ---
 title: "TederashSelect"
-description: "Accessible custom combobox and listbox select component with full keyboard navigation."
+description: "Accessible combobox and listbox select built on Radix UI, with full keyboard navigation."
 ---
 
 import { SelectDemo } from "../../components/demos/SelectDemo";
@@ -62,9 +62,12 @@ export function SelectExample() {
 | `id` | `string` | `useId()` | Unique HTML id for element linkage. |
 | `className` | `string` | `undefined` | Additional container CSS class names. |
 
+Built on `@radix-ui/react-select`. The listbox renders in a portal and matches the trigger's width. When the select is inside a `<form>` and has a `name`, an `aria-hidden` native `<select>` carries the value so it submits with the form.
+
 ## Keyboard Interaction
 
 - <kbd>Enter</kbd> or <kbd>Space</kbd> or <kbd>↓</kbd>: Opens the listbox popup and highlights the selected or first option.
 - <kbd>↑</kbd> and <kbd>↓</kbd>: Moves active selection through enabled options.
 - <kbd>Home</kbd> and <kbd>End</kbd>: Jumps to the first or last enabled option.
 - <kbd>Escape</kbd>: Closes the listbox and returns focus cleanly to the trigger button.
+- Typing characters: Jumps to the first option whose label starts with them (typeahead).

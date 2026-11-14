@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import "./setup/dom-polyfills";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import {
   AccessibilityProvider,
   createAccessibilityRuntime,
@@ -9,6 +10,7 @@ import {
   LOW_VISION_PRESET,
   COGNITIVE_ASSIST_PRESET,
   KEYBOARD_FIRST_PRESET,
+  DEFAULT_PROFILE,
 } from "@tederash/react";
 import {
   AccessibleButton,
@@ -78,8 +80,8 @@ describe("AccessibleButton Component", () => {
     expect(button.className).toContain("border-2");
   });
 
-  it("requests confirmation before destructive action when preference is active", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("requests confirmation via an in-app alertdialog (not window.confirm) when preference is active", () => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
     const handleClick = vi.fn();
 
     render(
@@ -93,10 +95,122 @@ describe("AccessibleButton Component", () => {
     const button = screen.getByRole("button", { name: /delete account/i });
     fireEvent.click(button);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    const alert = screen.getByRole("alertdialog", { name: /requires confirmation/i });
+    expect(alert.getAttribute("aria-modal")).toBe("true");
+    expect(
+      screen.getByText("Are you sure you want to proceed with this destructive action?")
+    ).toBeTruthy();
+    expect(nativeConfirm).not.toHaveBeenCalled();
     expect(handleClick).not.toHaveBeenCalled();
 
-    confirmSpy.mockRestore();
+    // Least-destructive option receives initial focus
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).not.toHaveBeenCalled();
+
+    nativeConfirm.mockRestore();
+  });
+
+  it("runs onClick once after the user confirms and restores focus to the trigger", async () => {
+    const handleClick = vi.fn();
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleButton
+          variant="destructive"
+          onClick={handleClick}
+          confirmDestructivePrompt="Delete this account permanently?"
+        >
+          Delete Account
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("button", { name: /delete account/i });
+    fireEvent.click(trigger);
+    expect(screen.getByText("Delete this account permanently?")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(handleClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("treats Escape in the confirmation dialog as cancel", () => {
+    const handleClick = vi.fn();
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleButton variant="destructive" onClick={handleClick}>
+          Remove
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /remove/i }));
+    const alert = screen.getByRole("alertdialog");
+    fireEvent.keyDown(alert, { key: "Escape" });
+
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it("skips confirmation when the preference is disabled", () => {
+    const handleClick = vi.fn();
+    const runtime = createAccessibilityRuntime({
+      defaultProfile: {
+        ...DEFAULT_PROFILE,
+        interaction: { confirmationBeforeDestructiveActions: false },
+      },
+      persistence: "none",
+    });
+
+    render(
+      <AccessibilityProvider runtime={runtime}>
+        <AccessibleButton variant="destructive" onClick={handleClick}>
+          Delete
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks form submission until confirmed, then re-submits via requestSubmit", () => {
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    const requestSubmit = vi
+      .spyOn(HTMLFormElement.prototype, "requestSubmit")
+      .mockImplementation(function (this: HTMLFormElement) {
+        this.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <form onSubmit={onSubmit}>
+          <AccessibleButton type="submit" variant="destructive">
+            Delete Records
+          </AccessibleButton>
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /delete records/i });
+    fireEvent.click(submitBtn);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(requestSubmit).toHaveBeenCalledWith(submitBtn);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    requestSubmit.mockRestore();
   });
 });
 
@@ -201,7 +315,14 @@ describe("AccessibleCheckbox Component", () => {
     const checkbox = screen.getByRole("checkbox", { name: /i agree to the terms/i });
     expect(checkbox.getAttribute("aria-checked")).toBe("true");
 
-    fireEvent.keyDown(checkbox, { key: " " });
+    // Per WAI-ARIA, Enter must not toggle a checkbox
+    const enterNotPrevented = fireEvent.keyDown(checkbox, { key: "Enter" });
+    expect(enterNotPrevented).toBe(false);
+    expect(handleChange).not.toHaveBeenCalled();
+
+    // Space activates the native <button>, which browsers dispatch as a click
+    // (jsdom does not synthesize that click, so we dispatch it directly).
+    fireEvent.click(checkbox);
     expect(handleChange).toHaveBeenCalledWith(false);
   });
 
@@ -256,7 +377,6 @@ describe("AccessibleCheckbox Component", () => {
     expect(checkbox.getAttribute("aria-disabled")).toBe("true");
 
     fireEvent.click(checkbox);
-    fireEvent.keyDown(checkbox, { key: " " });
     expect(handleChange).not.toHaveBeenCalled();
   });
 
@@ -272,7 +392,8 @@ describe("AccessibleCheckbox Component", () => {
 
     const checkbox = screen.getByRole("checkbox", { name: /indeterminate parent/i });
     expect(checkbox.getAttribute("aria-checked")).toBe("mixed");
-    expect(checkbox.textContent).toContain("—");
+    expect(checkbox.getAttribute("data-state")).toBe("indeterminate");
+    expect(checkbox.querySelector('[data-slot="checkbox-indicator"] svg')).toBeTruthy();
   });
 
   it("exposes error message with role='alert' and aria-invalid", () => {
@@ -300,6 +421,38 @@ describe("AccessibleCheckbox Component", () => {
     );
 
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it("manages its own state when uncontrolled", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleCheckbox label="Subscribe" defaultChecked={false} />
+      </AccessibilityProvider>
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /subscribe/i });
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(checkbox);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
+    // Clicking the visible label text also toggles
+    fireEvent.click(screen.getByText("Subscribe"));
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("submits its value with the surrounding form when named", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <form data-testid="prefs-form">
+          <AccessibleCheckbox label="Newsletter" name="newsletter" value="yes" />
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const form = screen.getByTestId("prefs-form") as HTMLFormElement;
+    expect(new FormData(form).get("newsletter")).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /newsletter/i }));
+    expect(new FormData(form).get("newsletter")).toBe("yes");
   });
 });
 
@@ -354,7 +507,7 @@ describe("AccessibleSelect Component", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("navigates options via keyboard ArrowDown/ArrowUp and selects with Enter", () => {
+  it("navigates options via keyboard ArrowDown/ArrowUp and selects with Enter", async () => {
     const handleChange = vi.fn();
     render(
       <AccessibilityProvider persistence="none">
@@ -369,17 +522,30 @@ describe("AccessibleSelect Component", () => {
 
     const trigger = screen.getByRole("combobox", { name: /country/i });
 
-    // Open via ArrowDown (focuses first option: index 0)
+    // Open via ArrowDown; focus moves into the listbox onto the first option
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const [first] = screen.getAllByRole("option");
+    // Radix moves focus once the popper has been positioned (async in jsdom)
+    await waitFor(() => expect(document.activeElement).toBe(first));
 
-    // Move to next option (index 1: Ethiopia)
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const ethiopia = screen.getByRole("option", { name: "Ethiopia" });
+
+    // Move to next option (Ethiopia); Radix moves focus on the next tick
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(ethiopia));
+
+    // ArrowUp moves back
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+    await waitFor(() => expect(document.activeElement).toBe(first));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(ethiopia));
 
     // Commit selection via Enter
-    fireEvent.keyDown(trigger, { key: "Enter" });
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
     expect(handleChange).toHaveBeenCalledWith("et");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.textContent).toContain("Ethiopia");
   });
 
   it("closes dropdown on Escape key", () => {
@@ -459,6 +625,82 @@ describe("AccessibleSelect Component", () => {
 
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
   });
+
+  it("shows the localized placeholder and the selected label in the trigger", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect label="Country" options={options} />
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("combobox", { name: /country/i });
+    expect(trigger.textContent).toContain("Select an option");
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText("Canada"));
+    expect(trigger.textContent).toContain("Canada");
+    expect(trigger.textContent).not.toContain("Select an option");
+  });
+
+  it("does not select disabled options and renders option descriptions", () => {
+    const handleChange = vi.fn();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect
+          label="Plan"
+          onChange={handleChange}
+          options={[
+            { value: "free", label: "Free", description: "Basic features" },
+            { value: "pro", label: "Pro", disabled: true },
+          ]}
+        />
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: /plan/i }));
+    expect(screen.getByText("Basic features")).toBeTruthy();
+
+    const pro = screen.getByRole("option", { name: "Pro" });
+    expect(pro.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(pro);
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
+  it("returns focus to the trigger after closing with Escape", async () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect label="Country" options={options} />
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("combobox", { name: /country/i });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const [first] = screen.getAllByRole("option");
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("submits the selected value with the surrounding form when named", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <form data-testid="country-form">
+          <AccessibleSelect label="Country" name="country" options={options} defaultValue="us" />
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const form = screen.getByTestId("country-form") as HTMLFormElement;
+    expect(new FormData(form).get("country")).toBe("us");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /country/i }));
+    // Query by role: the aria-hidden native <select> Radix renders for forms
+    // contains matching <option> text but is excluded from the a11y tree.
+    fireEvent.click(screen.getByRole("option", { name: "Ethiopia" }));
+    expect(new FormData(form).get("country")).toBe("et");
+  });
 });
 
 // ============================================================================
@@ -517,7 +759,7 @@ describe("AccessibleDialog Component", () => {
       </AccessibilityProvider>
     );
 
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -641,6 +883,113 @@ describe("AccessibleDialog Component", () => {
     expect(input.value).toBe("hello world");
     expect(document.activeElement).toBe(input);
   });
+
+  it("stays open on Escape when closeOnEscape=false and on backdrop click when closeOnBackdropClick=false", () => {
+    const handleOpenChange = vi.fn();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog
+          open
+          onOpenChange={handleOpenChange}
+          title="Locked Modal"
+          closeOnEscape={false}
+          closeOnBackdropClick={false}
+        >
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    const overlay = document.querySelector('[data-slot="accessible-dialog-overlay"]');
+    if (overlay) fireEvent.click(overlay);
+
+    expect(handleOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /locked modal/i })).toBeTruthy();
+  });
+
+  it("moves initial focus to initialFocusRef when provided", () => {
+    function FocusDemo() {
+      const targetRef = React.useRef<HTMLInputElement>(null);
+      return (
+        <AccessibleDialog
+          open
+          onOpenChange={() => {}}
+          title="Focus Modal"
+          initialFocusRef={targetRef}
+        >
+          <button type="button">Other</button>
+          <input aria-label="Target field" ref={targetRef} />
+        </AccessibleDialog>
+      );
+    }
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <FocusDemo />
+      </AccessibilityProvider>
+    );
+
+    expect(document.activeElement).toBe(screen.getByLabelText("Target field"));
+  });
+
+  it("uses ariaLabel as the accessible name when no title is given", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog open onOpenChange={() => {}} title="" ariaLabel="Untitled modal">
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    expect(screen.getByRole("dialog", { name: "Untitled modal" })).toBeTruthy();
+  });
+
+  it("forwards ref to the dialog element", () => {
+    const ref = React.createRef<HTMLDivElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog ref={ref} open onOpenChange={() => {}} title="Ref Modal">
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current).toBe(screen.getByRole("dialog", { name: /ref modal/i }));
+  });
+
+  it("returns focus to the element that opened it when closed (no restoreFocusRef)", async () => {
+    function OpenerDemo() {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open settings
+          </button>
+          <AccessibleDialog open={open} onOpenChange={setOpen} title="Settings">
+            <button type="button">Inside</button>
+          </AccessibleDialog>
+        </>
+      );
+    }
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <OpenerDemo />
+      </AccessibilityProvider>
+    );
+
+    const opener = screen.getByRole("button", { name: "Open settings" });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const dialog = screen.getByRole("dialog", { name: "Settings" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
 });
 
 // ============================================================================
@@ -652,6 +1001,17 @@ describe("AccessibleNavigation Component", () => {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/settings", label: "Settings" },
   ];
+
+  it("forwards ref to the header element", () => {
+    const ref = React.createRef<HTMLElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleNavigation ref={ref} links={links} />
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current?.tagName).toBe("HEADER");
+  });
 
   it("renders navigation landmark with skip-to-content link", () => {
     render(
@@ -879,6 +1239,18 @@ describe("AccessibleTextarea Component", () => {
 // 9. LiveRegion
 // ============================================================================
 describe("LiveRegion Component", () => {
+  it("forwards ref to the visually hidden live region container", () => {
+    const ref = React.createRef<HTMLDivElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <LiveRegion ref={ref} />
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current?.getAttribute("data-slot")).toBe("live-region");
+    expect(ref.current?.querySelector('[aria-live="polite"]')).toBeTruthy();
+  });
+
   it("renders polite and assertive aria-live regions", () => {
     render(
       <AccessibilityProvider persistence="none">

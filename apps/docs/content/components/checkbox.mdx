@@ -53,7 +53,7 @@ export function CheckboxExample() {
 | `simplifiedDescription` | `string` | `undefined` | Plain-language description shown when cognitive profile is active. |
 | `error` | `string` | `undefined` | Error message linked via `aria-describedby` that sets `aria-invalid="true"`. |
 | `visuallyHideLabel` | `boolean` | `false` | Visually hides the label text while keeping it accessible to screen readers. |
-| `name` | `string` | `undefined` | Form input name. |
+| `name` | `string` | `undefined` | Form field name. Inside a `<form>`, a native checkbox input carries `value` when the box is checked. |
 | `value` | `string` | `undefined` | Form input value. |
 | `className` | `string` | `undefined` | Additional CSS class names. |
 
@@ -61,4 +61,4 @@ export function CheckboxExample() {
 
 - **Target Dimensions**: Scales the outer clickable region to meet minimum touch target guidelines (`44px`, `48px`, `56px`) without disrupting visual alignment.
 - **High Contrast**: Enhances borders and focus outlines with high-contrast tokens under low-vision profiles.
-- **Keyboard Affordance**: Supports standard <kbd>Space</kbd> key toggling and highlights focus with prominent contrast rings.
+- **Keyboard Affordance**: Built on `@radix-ui/react-checkbox`. <kbd>Space</kbd> toggles and <kbd>Enter</kbd> does not, per WAI-ARIA. Focus shows prominent contrast rings.

@@ -3,6 +3,7 @@ import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
 import { Button, buttonVariants } from "../ui/button";
 import { cn } from "../ui/utils";
+import { TederashDialog } from "../dialog/AccessibleDialog";
 import type { VariantProps } from "class-variance-authority";
 
 export const buttonBaseVariants = buttonVariants;
@@ -11,7 +12,10 @@ export interface TederashButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  /** Explicit confirmation required when clicking destructive actions */
+  /**
+   * Message shown in the confirmation dialog when a destructive button is
+   * clicked while `interaction.confirmationBeforeDestructiveActions` is active.
+   */
   confirmDestructivePrompt?: string;
 }
 
@@ -37,28 +41,53 @@ export const TederashButton = React.forwardRef<
     const { t } = useLocalization();
 
     const isDestructive = variant === "destructive";
+    const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+    const cancelRef = React.useRef<HTMLButtonElement>(null);
+    // Holds the original click event while the confirmation dialog is open.
+    const [pendingEvent, setPendingEvent] =
+      React.useState<React.MouseEvent<HTMLButtonElement> | null>(null);
+
+    const setRefs = React.useCallback(
+      (node: HTMLButtonElement | null) => {
+        buttonRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref]
+    );
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (
-        isDestructive &&
-        adaptations.confirmationBeforeDestructiveActions &&
-        typeof window !== "undefined"
-      ) {
-        const confirmed = window.confirm(
-          confirmDestructivePrompt ?? t("labels.confirmDestructivePrompt")
-        );
-        if (!confirmed) {
-          e.preventDefault();
-          announce({
-            message: t("labels.actionCancelled"),
-            priority: "polite",
-            category: "info",
-          });
-          return;
-        }
+      if (isDestructive && adaptations.confirmationBeforeDestructiveActions) {
+        // Block the native action (e.g. form submission) until the user confirms.
+        e.preventDefault();
+        setPendingEvent(e);
+        return;
       }
 
       onClick?.(e);
+    };
+
+    const handleCancel = () => {
+      setPendingEvent(null);
+      announce({
+        message: t("labels.actionCancelled"),
+        priority: "polite",
+        category: "info",
+      });
+    };
+
+    const handleConfirm = () => {
+      const event = pendingEvent;
+      setPendingEvent(null);
+      if (!event) return;
+
+      onClick?.(event);
+
+      // Re-trigger the native submit that was blocked while awaiting confirmation.
+      const button = buttonRef.current;
+      if (button && button.type === "submit" && button.form) {
+        button.form.requestSubmit(button);
+      }
     };
 
     // Scaled touch sizing when motor preferences are active; standard 40px compliance touch target otherwise
@@ -89,8 +118,9 @@ export const TederashButton = React.forwardRef<
       : "";
 
     return (
+      <>
       <Button
-        ref={ref}
+        ref={setRefs}
         asChild={asChild}
         variant={variant}
         data-slot="tederash-button"
@@ -108,6 +138,47 @@ export const TederashButton = React.forwardRef<
       >
         {children}
       </Button>
+      {isDestructive && (
+        <TederashDialog
+          open={pendingEvent !== null}
+          onOpenChange={(open) => {
+            if (!open) handleCancel();
+          }}
+          role="alertdialog"
+          destructive
+          title={t("announcements.confirmationRequired")}
+          description={
+            confirmDestructivePrompt ?? t("labels.confirmDestructivePrompt")
+          }
+          initialFocusRef={cancelRef}
+          restoreFocusRef={buttonRef}
+          showCloseButton={false}
+        >
+          <div
+            data-slot="confirm-actions"
+            className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+          >
+            <Button
+              ref={cancelRef}
+              type="button"
+              variant="outline"
+              className={cn(adaptiveSizeClasses, contrastClasses, focusClasses)}
+              onClick={handleCancel}
+            >
+              {t("labels.cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className={cn(adaptiveSizeClasses, contrastClasses, focusClasses)}
+              onClick={handleConfirm}
+            >
+              {t("labels.confirm")}
+            </Button>
+          </div>
+        </TederashDialog>
+      )}
+      </>
     );
   }
 );

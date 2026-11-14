@@ -29,7 +29,7 @@ export interface TederashCheckboxProps {
   error?: string;
   /** Hide label visually while preserving accessible name for screen readers */
   visuallyHideLabel?: boolean;
-  /** HTML form name */
+  /** HTML form name (a native input is submitted when rendered inside a `<form>`) */
   name?: string;
   /** HTML form value */
   value?: string;
@@ -81,7 +81,6 @@ export const TederashCheckbox = React.forwardRef<
     const isChecked = isControlled ? controlledChecked : internalChecked;
 
     const handleCheckedChange = (nextChecked: boolean) => {
-      if (disabled) return;
       if (!isControlled) {
         setInternalChecked(nextChecked);
       }
@@ -141,6 +140,9 @@ export const TederashCheckbox = React.forwardRef<
             aria-disabled={disabled}
             aria-invalid={Boolean(error)}
             aria-required={required}
+            required={required}
+            name={name}
+            value={value}
             aria-describedby={ariaDescribedBy}
             data-slot="tederash-checkbox"
             data-target-size={adaptations.targetSize}
@@ -171,19 +173,6 @@ export const TederashCheckbox = React.forwardRef<
             )}
           </span>
         </label>
-
-        {name && (
-          <input
-            type="checkbox"
-            name={name}
-            value={value}
-            checked={isChecked}
-            readOnly
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden="true"
-          />
-        )}
 
         {/* Helpful description / simplified instructions */}
         {activeDescription && (

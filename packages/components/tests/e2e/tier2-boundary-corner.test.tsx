@@ -226,7 +226,6 @@ describe("Tier 2: Boundary & Corner Cases (32 Tests across 6 Equivalence Classes
   // ==========================================================================
   describe("Class 3: Adaptive Component Library", () => {
     it("E2E-T2-CP-01: AccessibleButton destructive prompt cancelled announces feedback", () => {
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
       const onClick = vi.fn();
 
       const { getPoliteAnnouncement } = renderWithA11y(
@@ -243,11 +242,10 @@ describe("Tier 2: Boundary & Corner Cases (32 Tests across 6 Equivalence Classes
 
       const btn = screen.getByRole("button", { name: /delete item/i });
       fireEvent.click(btn);
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(confirmSpy).toHaveBeenCalled();
       expect(onClick).not.toHaveBeenCalled();
       expect(getPoliteAnnouncement()).toContain("Action cancelled.");
-      confirmSpy.mockRestore();
     });
 
     it("E2E-T2-CP-02: AccessibleInput with visually hidden label", () => {
@@ -307,13 +305,19 @@ describe("Tier 2: Boundary & Corner Cases (32 Tests across 6 Equivalence Classes
       const lastBtn = screen.getByRole("button", { name: "Last" });
       const firstBtn = screen.getByRole("button", { name: "First" });
 
+      const closeBtn = screen.getByRole("button", { name: /close dialog/i });
+
       lastBtn.focus();
       expect(document.activeElement).toBe(lastBtn);
 
-      // Tab on last element wraps focus to first element
-      fireEvent.keyDown(window, { key: "Tab", shiftKey: false });
-      // In JSDOM, dispatching event exercises the focus trapping logic
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      // Tab on last tabbable wraps focus to the first tabbable (header close button)
+      fireEvent.keyDown(lastBtn, { key: "Tab", shiftKey: false });
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Shift+Tab on first tabbable wraps back to the last
+      fireEvent.keyDown(closeBtn, { key: "Tab", shiftKey: true });
+      expect(document.activeElement).toBe(lastBtn);
+      expect(firstBtn).toBeTruthy();
     });
 
     it("E2E-T2-CP-06: LiveRegion burst of 20 announcements", () => {

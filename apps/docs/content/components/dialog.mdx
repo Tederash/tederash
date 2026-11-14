@@ -66,9 +66,11 @@ export function DialogExample() {
 | `initialFocusRef` | `React.RefObject<HTMLElement>` | `undefined` | Element to focus when the dialog opens (defaults to first interactive element). |
 | `restoreFocusRef` | `React.RefObject<HTMLElement>` | `undefined` | Element to return focus to when the dialog closes (defaults to trigger button). |
 | `className` | `string` | `""` | Additional CSS class names. |
+| `ref` | `React.Ref<HTMLDivElement>` | `undefined` | Forwarded to the dialog element (the node with `role="dialog"` / `"alertdialog"`). |
 
 ## Accessibility Guarantees
 
+- **Built on Radix UI**: Focus trapping, scroll locking, focus restoration, outside-content `aria-hidden` and Escape handling come from `@radix-ui/react-dialog`. The content renders in a portal on `document.body`.
 - **Focus Trap**: Keyboard navigation with <kbd>Tab</kbd> and <kbd>Shift + Tab</kbd> remains strictly trapped within the active dialog container.
 - **Scroll Lock**: The background `<body>` scroll is locked to prevent background disorientation while modal is open.
 - **Accessible Labelling**: Automatically connects `title` and `description` to the dialog root via generated `aria-labelledby` and `aria-describedby` IDs.
