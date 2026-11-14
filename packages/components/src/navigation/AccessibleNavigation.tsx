@@ -51,7 +51,10 @@ export interface TederashNavigationProps
 
 export type AccessibleNavigationProps = TederashNavigationProps;
 
-export const TederashNavigation: React.FC<TederashNavigationProps> = ({
+export const TederashNavigation = React.forwardRef<
+  HTMLElement,
+  TederashNavigationProps
+>(function TederashNavigation({
   links,
   activeRoute = "/",
   brandName = "Tederash",
@@ -65,7 +68,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
   navClassName = "",
   isActiveRoute = (href, currentRoute) => href === currentRoute,
   ...props
-}) => {
+}, ref) {
   const { adaptations } = useAccessibility();
   const { t } = useLocalization();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -110,6 +113,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
 
   return (
     <header
+      ref={ref}
       data-slot="accessible-navigation-header"
       className={cn(contrastHeader, className)}
       {...props}
@@ -275,7 +279,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
       )}
     </header>
   );
-};
+});
 
 TederashNavigation.displayName = "TederashNavigation";
 

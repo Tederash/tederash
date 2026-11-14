@@ -47,7 +47,7 @@ export function ActionExample() {
 | :--- | :--- | :--- | :--- |
 | `variant` | `"primary" \| "secondary" \| "destructive" \| "outline" \| "ghost" \| "link"` | `"primary"` | Visual styling variant of the button. Adapts colors and contrast automatically under high-contrast profiles. |
 | `asChild` | `boolean` | `false` | When true, renders child element directly via Radix UI Slot while preserving all button accessibility attributes and event handlers. Useful for Next.js `<Link>` integration. |
-| `confirmDestructivePrompt` | `string` | `undefined` | Prompt message required when `variant="destructive"` or when the user profile enables `confirmationBeforeDestructiveActions`. Triggers a double-click confirmation step before executing `onClick`. |
+| `confirmDestructivePrompt` | `string` | Localized default | Message shown in the confirmation `alertdialog` when a `variant="destructive"` button is clicked while `confirmationBeforeDestructiveActions` is active. |
 | `disabled` | `boolean` | `false` | When true, marks the button as disabled with accessible styling, sets `aria-disabled="true"`, and prevents click events. |
 | `className` | `string` | `undefined` | Additional CSS class names merged via `tailwind-merge`. Preserves runtime adaptation styles. |
 | `onClick` | `(e: React.MouseEvent) => void` | `undefined` | Standard click event handler callback. |
@@ -57,5 +57,5 @@ export function ActionExample() {
 
 - **Touch Target Scaling**: Automatically adapts minimum height to `44px` (normal), `48px` (large), or `56px` (extra-large) based on `profile.motor.targetSize`.
 - **Focus Rings**: Applies prominent 3px focus ring with high-contrast offsets when `profile.motor.keyboardNavigation` is active.
-- **Destructive Confirmation**: When `profile.interaction.confirmationBeforeDestructiveActions` is active, clicking destructive buttons requires a confirmation step.
+- **Destructive Confirmation**: When `profile.interaction.confirmationBeforeDestructiveActions` is active (the default), clicking a destructive button opens an in-app `alertdialog` instead of running `onClick`. **Cancel** receives initial focus. Cancel, <kbd>Escape</kbd> or a backdrop click aborts the action and announces "Action cancelled."; **Confirm** runs `onClick` once and returns focus to the button. For `type="submit"` buttons, the blocked submission is re-sent with `form.requestSubmit()` after confirmation. The dialog's labels and sizing follow the active locale and profile. If your app already shows its own confirmation dialog, set `confirmationBeforeDestructiveActions: false` to avoid double prompts.
 - **Motion Suppression**: Disables active transform animations when `profile.visual.reduceMotion` is enabled.

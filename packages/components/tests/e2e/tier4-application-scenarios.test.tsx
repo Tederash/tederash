@@ -242,8 +242,6 @@ describe("Tier 4: Real-World Application Scenarios (5 End-to-End User Workflows)
   // ==========================================================================
   it("E2E-T4-SC-03: Multimodal voice dictation, speech readout, and accessible modal confirmation", () => {
     const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-
     function MultimodalCancellationApp() {
       const { announce } = useAccessibility();
       const { speak } = useSpeechSynthesis();
@@ -308,7 +306,13 @@ describe("Tier 4: Real-World Application Scenarios (5 End-to-End User Workflows)
       );
     }
 
-    const { getPoliteAnnouncement } = renderWithA11y(<MultimodalCancellationApp />);
+    // The app supplies its own alertdialog, so the framework-level confirmation is disabled
+    const { getPoliteAnnouncement } = renderWithA11y(<MultimodalCancellationApp />, {
+      defaultProfile: {
+        ...DEFAULT_PROFILE,
+        interaction: { confirmationBeforeDestructiveActions: false },
+      },
+    });
 
     // 1. Voice dictation
     fireEvent.click(screen.getByRole("button", { name: /voice dictate reason/i }));
@@ -342,7 +346,6 @@ describe("Tier 4: Real-World Application Scenarios (5 End-to-End User Workflows)
     expect(getPoliteAnnouncement()).toContain("Subscription successfully cancelled.");
 
     speakSpy.mockRestore();
-    confirmSpy.mockRestore();
   });
 
   // ==========================================================================
@@ -438,8 +441,6 @@ describe("Tier 4: Real-World Application Scenarios (5 End-to-End User Workflows)
   // Scenario 5: Nested Workspace Settings with Scoped Subtree Overrides
   // ==========================================================================
   it("E2E-T4-SC-05: Nested workspace settings with scoped AccessibilityOverride subtrees", () => {
-    const confirmSpy = vi.spyOn(window, "confirm");
-
     function WorkspaceSettingsApp() {
       const [workspaceName, setWorkspaceName] = React.useState("My Team Workspace");
       const [deleted, setDeleted] = React.useState(false);
@@ -499,19 +500,23 @@ describe("Tier 4: Real-World Application Scenarios (5 End-to-End User Workflows)
     expect(dangerDeleteBtn.getAttribute("data-high-contrast")).toBe("true");
     expect(dangerDeleteBtn.className).toContain("min-h-[56px]");
 
-    // 1. User clicks delete and cancels in browser confirmation dialog
-    confirmSpy.mockReturnValueOnce(false);
+    // 1. User clicks delete and cancels in the in-app confirmation dialog
     fireEvent.click(dangerDeleteBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith("Confirm permanent deletion of workspace?");
+    const alert = screen.getByRole("alertdialog");
+    expect(alert.textContent).toContain("Confirm permanent deletion of workspace?");
+    // Scoped overrides also apply to the confirmation actions
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    expect(cancelBtn.className).toContain("min-h-[56px]");
+
+    fireEvent.click(cancelBtn);
     expect(screen.queryByText("Workspace has been deleted.")).toBeNull();
     expect(getPoliteAnnouncement()).toContain("Action cancelled.");
 
     // 2. User clicks delete again and confirms
-    confirmSpy.mockReturnValueOnce(true);
     fireEvent.click(dangerDeleteBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(screen.getByText("Workspace has been deleted.")).toBeTruthy();
-    confirmSpy.mockRestore();
   });
 });

@@ -269,7 +269,6 @@ describe("Tier 1: Feature Coverage (36 Happy-Path Tests across 6 Equivalence Cla
     });
 
     it("E2E-T1-CP-02: AccessibleButton Destructive Action", () => {
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
       const onClick = vi.fn();
 
       renderWithA11y(
@@ -287,9 +286,12 @@ describe("Tier 1: Feature Coverage (36 Happy-Path Tests across 6 Equivalence Cla
       const btn = screen.getByRole("button", { name: /delete workspace/i });
       fireEvent.click(btn);
 
-      expect(confirmSpy).toHaveBeenCalled();
-      expect(onClick).toHaveBeenCalled();
-      confirmSpy.mockRestore();
+      // In-app alertdialog gates the action until the user explicitly confirms
+      expect(screen.getByRole("alertdialog")).toBeTruthy();
+      expect(onClick).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+      expect(onClick).toHaveBeenCalledTimes(1);
     });
 
     it("E2E-T1-CP-03: AccessibleInput Label & ARIA Binding", () => {
@@ -430,7 +432,7 @@ describe("Tier 1: Feature Coverage (36 Happy-Path Tests across 6 Equivalence Cla
       expect(screen.getByText("Are you sure you want to proceed?")).toBeTruthy();
 
       // Escape key dismisses dialog
-      fireEvent.keyDown(window, { key: "Escape" });
+      fireEvent.keyDown(dialog, { key: "Escape" });
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
 

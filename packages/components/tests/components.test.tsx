@@ -9,6 +9,7 @@ import {
   LOW_VISION_PRESET,
   COGNITIVE_ASSIST_PRESET,
   KEYBOARD_FIRST_PRESET,
+  DEFAULT_PROFILE,
 } from "@tederash/react";
 import {
   AccessibleButton,
@@ -78,8 +79,8 @@ describe("AccessibleButton Component", () => {
     expect(button.className).toContain("border-2");
   });
 
-  it("requests confirmation before destructive action when preference is active", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("requests confirmation via an in-app alertdialog (not window.confirm) when preference is active", () => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
     const handleClick = vi.fn();
 
     render(
@@ -93,10 +94,122 @@ describe("AccessibleButton Component", () => {
     const button = screen.getByRole("button", { name: /delete account/i });
     fireEvent.click(button);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    const alert = screen.getByRole("alertdialog", { name: /requires confirmation/i });
+    expect(alert.getAttribute("aria-modal")).toBe("true");
+    expect(
+      screen.getByText("Are you sure you want to proceed with this destructive action?")
+    ).toBeTruthy();
+    expect(nativeConfirm).not.toHaveBeenCalled();
     expect(handleClick).not.toHaveBeenCalled();
 
-    confirmSpy.mockRestore();
+    // Least-destructive option receives initial focus
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).not.toHaveBeenCalled();
+
+    nativeConfirm.mockRestore();
+  });
+
+  it("runs onClick once after the user confirms and restores focus to the trigger", async () => {
+    const handleClick = vi.fn();
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleButton
+          variant="destructive"
+          onClick={handleClick}
+          confirmDestructivePrompt="Delete this account permanently?"
+        >
+          Delete Account
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("button", { name: /delete account/i });
+    fireEvent.click(trigger);
+    expect(screen.getByText("Delete this account permanently?")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(handleClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("treats Escape in the confirmation dialog as cancel", () => {
+    const handleClick = vi.fn();
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleButton variant="destructive" onClick={handleClick}>
+          Remove
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /remove/i }));
+    const alert = screen.getByRole("alertdialog");
+    fireEvent.keyDown(alert, { key: "Escape" });
+
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it("skips confirmation when the preference is disabled", () => {
+    const handleClick = vi.fn();
+    const runtime = createAccessibilityRuntime({
+      defaultProfile: {
+        ...DEFAULT_PROFILE,
+        interaction: { confirmationBeforeDestructiveActions: false },
+      },
+      persistence: "none",
+    });
+
+    render(
+      <AccessibilityProvider runtime={runtime}>
+        <AccessibleButton variant="destructive" onClick={handleClick}>
+          Delete
+        </AccessibleButton>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks form submission until confirmed, then re-submits via requestSubmit", () => {
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    const requestSubmit = vi
+      .spyOn(HTMLFormElement.prototype, "requestSubmit")
+      .mockImplementation(function (this: HTMLFormElement) {
+        this.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <form onSubmit={onSubmit}>
+          <AccessibleButton type="submit" variant="destructive">
+            Delete Records
+          </AccessibleButton>
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /delete records/i });
+    fireEvent.click(submitBtn);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(requestSubmit).toHaveBeenCalledWith(submitBtn);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    requestSubmit.mockRestore();
   });
 });
 
@@ -517,7 +630,7 @@ describe("AccessibleDialog Component", () => {
       </AccessibilityProvider>
     );
 
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -641,6 +754,80 @@ describe("AccessibleDialog Component", () => {
     expect(input.value).toBe("hello world");
     expect(document.activeElement).toBe(input);
   });
+
+  it("stays open on Escape when closeOnEscape=false and on backdrop click when closeOnBackdropClick=false", () => {
+    const handleOpenChange = vi.fn();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog
+          open
+          onOpenChange={handleOpenChange}
+          title="Locked Modal"
+          closeOnEscape={false}
+          closeOnBackdropClick={false}
+        >
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    const overlay = document.querySelector('[data-slot="accessible-dialog-overlay"]');
+    if (overlay) fireEvent.click(overlay);
+
+    expect(handleOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /locked modal/i })).toBeTruthy();
+  });
+
+  it("moves initial focus to initialFocusRef when provided", () => {
+    function FocusDemo() {
+      const targetRef = React.useRef<HTMLInputElement>(null);
+      return (
+        <AccessibleDialog
+          open
+          onOpenChange={() => {}}
+          title="Focus Modal"
+          initialFocusRef={targetRef}
+        >
+          <button type="button">Other</button>
+          <input aria-label="Target field" ref={targetRef} />
+        </AccessibleDialog>
+      );
+    }
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <FocusDemo />
+      </AccessibilityProvider>
+    );
+
+    expect(document.activeElement).toBe(screen.getByLabelText("Target field"));
+  });
+
+  it("uses ariaLabel as the accessible name when no title is given", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog open onOpenChange={() => {}} title="" ariaLabel="Untitled modal">
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    expect(screen.getByRole("dialog", { name: "Untitled modal" })).toBeTruthy();
+  });
+
+  it("forwards ref to the dialog element", () => {
+    const ref = React.createRef<HTMLDivElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleDialog ref={ref} open onOpenChange={() => {}} title="Ref Modal">
+          <p>Body</p>
+        </AccessibleDialog>
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current).toBe(screen.getByRole("dialog", { name: /ref modal/i }));
+  });
 });
 
 // ============================================================================
@@ -652,6 +839,17 @@ describe("AccessibleNavigation Component", () => {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/settings", label: "Settings" },
   ];
+
+  it("forwards ref to the header element", () => {
+    const ref = React.createRef<HTMLElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleNavigation ref={ref} links={links} />
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current?.tagName).toBe("HEADER");
+  });
 
   it("renders navigation landmark with skip-to-content link", () => {
     render(
@@ -879,6 +1077,18 @@ describe("AccessibleTextarea Component", () => {
 // 9. LiveRegion
 // ============================================================================
 describe("LiveRegion Component", () => {
+  it("forwards ref to the visually hidden live region container", () => {
+    const ref = React.createRef<HTMLDivElement>();
+    render(
+      <AccessibilityProvider persistence="none">
+        <LiveRegion ref={ref} />
+      </AccessibilityProvider>
+    );
+
+    expect(ref.current?.getAttribute("data-slot")).toBe("live-region");
+    expect(ref.current?.querySelector('[aria-live="polite"]')).toBeTruthy();
+  });
+
   it("renders polite and assertive aria-live regions", () => {
     render(
       <AccessibilityProvider persistence="none">
