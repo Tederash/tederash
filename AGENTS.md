@@ -846,28 +846,85 @@ Do not publish incomplete packages simply to have a package registry presence.
 
 ---
 
-## Phase 10 — Future Browser Extension
+## Phase 10 — Browser Extension & Tederash Ecosystem Integration
 
-**Not part of the initial MVP.**
+**Status: In Active Development.**
 
-Once the core framework is stable, explore a browser extension that reuses the accessibility profile schema and adaptation concepts.
+The Tederash Browser Extension acts as an intelligent, accessibility-focused assistant sidepanel that connects directly with web applications built using the Tederash Component Library.
 
-The extension should eventually help users interact with websites that do not use the component library.
+### 10.1 Architectural Strategy: First-Class Tederash Bridge vs. Blind Scraping
 
-Potential capabilities:
+Rather than relying on brittle, generic HTML scraping (which causes communication errors on restricted browser pages and requires heuristic DOM guessing), the extension and component library adhere to a **deterministic bridge protocol**:
 
-- User-controlled visual adaptations.
-- Simplified page instructions.
-- Reading assistance.
-- Guided form interaction.
-- Voice-based assistance.
-- Reusable accessibility preferences.
+1. **Pre-flight Handshake**:
+   - The assistant only runs active perception on pages with an accessible, confirmed content script.
+   - Internal browser pages (`chrome://*`, `chrome-extension://*`, blank tabs) are detected immediately, prompting the user with a clean guidance message instead of launching failing LLM loops.
+2. **Deep Runtime Integration**:
+   - On Tederash-powered applications, the extension interacts directly with the **Tederash Accessibility Runtime** (`@tederash/core`), **React Provider** (`@tederash/react`), and **Assistance Engine** (`@tederash/assistance`), avoiding blind CSS mutations and element guessing.
 
-Do not assume that every third-party website can be safely or reliably transformed.
+---
 
-The extension will require separate research into dynamic DOM handling, browser permissions, security, compatibility, and interaction safety.
+### 10.2 Component Library Compatibility Specification
 
-The core framework should not depend on extension-specific APIs.
+To make any web application built with `@tederash/components` instantly recognizable and controllable by the extension assistant, the component library exposes the following lightweight contracts:
+
+#### 1. Root Handshake Stamp in `AccessibilityProvider`
+When `AccessibilityProvider` mounts, it stamps runtime attributes on `document.documentElement`:
+```html
+<html
+  data-tederash-root="true"
+  data-tederash-version="0.1.0"
+  data-a11y-profile="standard"
+  data-a11y-locale="en"
+>
+```
+- **Detection**: The extension content script inspects `data-tederash-root` in under 0.1ms.
+- **Fail-safe**: If absent, the assistant displays a clear notification: *"Tederash runtime not detected on this page. Open a page built with Tederash components to enable full assistance."*
+
+#### 2. In-Page Event Bridge (`CustomEvent` Protocol)
+In `packages/react/src/provider/AccessibilityProvider.tsx`, the provider establishes a window event listener:
+- **Requests from Content Script**: Dispatched on `window` as `'tederash:request'` containing `{ type, payload, reqId }`.
+- **Responses from React Runtime**: Emitted as `'tederash:response'` containing `{ reqId, data, ok }`.
+- **Supported operations**:
+  - `tederash:query_state`: Returns `{ profile, adaptations, locale }`.
+  - `tederash:set_profile`: Calls `runtime.setProfile(profileId)`.
+  - `tederash:update_prefs`: Calls `runtime.updatePreferences(partial)`.
+  - `tederash:announce`: Dispatches announcement through `runtime.announce(...)`.
+
+#### 3. Semantic Component Data Attributes
+Every component in `@tederash/components` passes semantic data attributes to its outermost interactive DOM element:
+- **Button**: `data-tederash-component="button" data-tederash-id="<id>" data-tederash-intent="<variant>"`
+- **Input / Textarea**: `data-tederash-component="input" data-tederash-id="<id>" data-tederash-field="<name>" data-tederash-invalid="<boolean>"`
+- **Select**: `data-tederash-component="select" data-tederash-id="<id>" data-tederash-value="<val>"`
+- **Checkbox**: `data-tederash-component="checkbox" data-tederash-id="<id>" data-tederash-checked="<boolean>"`
+- **Dialog**: `data-tederash-component="dialog" data-tederash-state="open|closed"`
+
+---
+
+### 10.3 Tederash Agent Tools Specification (Vercel AI SDK)
+
+The browser extension orchestrates its agent loop using **Vercel AI SDK** (`ai` + `@ai-sdk/openai` + `zod`) running against Groq's high-speed inference (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`), guarded by the extension **Policy Engine**:
+
+| Tool Name | Purpose | Parameters (Zod Schema) | Execution & Safety |
+|---|---|---|---|
+| **`tederash_detect`** | Verifies Tederash presence and retrieves root accessibility state | None (`z.object({})`) | Reads `data-tederash-*` on root; risk: `none` |
+| **`tederash_get_tree`** | Retrieves semantic component hierarchy (fields, buttons, dialogs) | `filter?: 'all' \| 'form_fields' \| 'buttons' \| 'dialogs'` | Structured JSON representation from component registry; risk: `none` |
+| **`tederash_set_profile`** | Switches active accessibility profile globally | `profileId: 'standard' \| 'low-vision' \| 'motor' \| 'cognitive' \| 'dyslexia' \| 'high-contrast'` | Dispatches to React runtime; triggers instant reactive re-render; risk: `none` |
+| **`tederash_update_pref`** | Granularly adjusts specific accessibility settings | `fontScale?: number, highContrast?: boolean, targetSize?: string, locale?: 'en' \| 'am', simplifiedLanguage?: boolean` | Calls `runtime.updatePreferences`; risk: `none` |
+| **`tederash_explain_field`** | Provides plain-language cognitive assistance for a form field | `fieldId: string` | Interfaces with `@tederash/assistance` engine; risk: `none` |
+| **`tederash_explain_error`** | Explains validation failures with plain-language remediation | `fieldId?: string` | Queries active errors and generates accessible guidance; risk: `none` |
+| **`tederash_interact`** | Executes semantic action on a Tederash component | `componentId: string, action: 'click' \| 'fill' \| 'select' \| 'toggle', value?: string` | Evaluated against Policy Engine; dispatches synthetic React events; risk: `low` / `consequential` |
+| **`tederash_announce`** | Broadcasts live accessibility announcement | `message: string, priority?: 'polite' \| 'assertive'` | Routes to Tederash `LiveRegion`; risk: `none` |
+| **`tederash_finish`** | Concludes the task with a summary | `summary: string` | Concludes agent turn; risk: `none` |
+
+---
+
+### 10.4 Agent Orchestration & Execution Rules
+
+1. **Pre-flight Ping Mandatory**: Before invoking `generateText`, the background worker must send `content/ping`. If unreachable, terminate immediately with actionable user guidance instead of burning LLM tokens.
+2. **Policy Engine Gate**: Every tool execution must call `evaluatePolicy(call)` before contacting the content script. Actions that violate user safety, exfiltrate sensitive data, or bypass confirmation are blocked deterministically.
+3. **Structured Tool Calling**: Use Vercel AI SDK's `tool({ inputSchema, execute })` with `stopWhen: isStepCount(6)` to manage agent multi-step turns deterministically.
+4. **Markdown Formatting**: All assistant conversational output must render through `MarkdownRenderer` with clean typography matching the component library documentation.
 
 ---
 
