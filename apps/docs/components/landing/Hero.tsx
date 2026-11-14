@@ -1,13 +1,21 @@
 import React from "react";
 import Link from "next/link";
+import { DitheringShader } from "../ui/dithering-shader";
 import { CodeBlock } from "./CodeBlock";
 
 const INSTALL_COMMAND = "pnpm add @tederash/core @tederash/react @tederash/components";
 
 export function Hero() {
   return (
-    <section aria-labelledby="hero-heading" className="border-b border-border">
-      <div className="max-w-3xl lg:max-w-5xl mx-auto px-6 pt-16 pb-14 md:pt-24 md:pb-20">
+    <section aria-labelledby="hero-heading" className="relative overflow-hidden border-b border-border">
+      {/* Decorative dithered wave background (theme-matched, aria-hidden). */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <DitheringShader className="h-full w-full" />
+        {/* Fade the pattern so headline text stays legible. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/55 via-background/30 to-background" />
+      </div>
+
+      <div className="relative z-10 max-w-3xl lg:max-w-5xl mx-auto px-6 pt-16 pb-14 md:pt-24 md:pb-20">
         <h1
           id="hero-heading"
           className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] lg:max-w-4xl"
