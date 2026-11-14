@@ -14,6 +14,7 @@ function loadEnv() {
     path.join(ROOT, 'extension', '.env'),
     path.resolve(path.dirname(new URL(import.meta.url).pathname), '../.env'),
     path.resolve(ROOT, '../extension/.env'),
+    path.resolve(ROOT, '../.env'),
   ];
   const env = {};
   for (const envPath of possiblePaths) {
@@ -36,8 +37,17 @@ function loadEnv() {
 }
 
 const envVars = loadEnv();
-const groqKey = envVars.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
+const groqKey = process.env.TEDERASH_NO_DEV_KEY
+  ? ''
+  : envVars.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
 const groqModel = envVars.GROQ_MODEL || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+
+if (groqKey) {
+  console.warn(
+    '[build-extension] GROQ_API_KEY from .env is embedded in background.js as a dev default. ' +
+      'Do not distribute this build; set TEDERASH_NO_DEV_KEY=1 to omit it.'
+  );
+}
 
 async function buildAll() {
   if (!fs.existsSync(OUT_DIR)) {
@@ -52,8 +62,10 @@ async function buildAll() {
     logLevel: 'info',
     define: {
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
-      'process.env.GROQ_API_KEY': JSON.stringify(groqKey),
-      'process.env.GROQ_MODEL': JSON.stringify(groqModel),
+      // Dev convenience only: seeds the AI config when the user has not saved a key.
+      // Never read via `process.env` (the service worker has no `process`).
+      __TEDERASH_DEV_GROQ_KEY__: JSON.stringify(groqKey),
+      __TEDERASH_DEV_GROQ_MODEL__: JSON.stringify(groqModel),
     },
   };
 

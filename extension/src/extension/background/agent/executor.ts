@@ -2,6 +2,7 @@ import { createEnvelope } from '../../../shared/envelope';
 import type { ChatMessage, ToolCallItem } from '../../../shared/messages';
 import type { ToolCall, ToolName, ToolResult } from '../../../shared/tools';
 import { evaluatePolicy } from '../policy';
+import { normalizeToolArgs } from './args';
 import type { AgentSession } from './session';
 import {
   type AgentStreamListener,
@@ -14,10 +15,11 @@ export async function executeContentTool(
   tabId: number,
   session: AgentSession,
   name: ToolName,
-  args: Record<string, unknown>,
+  rawArgs: Record<string, unknown>,
   activeAssistantMsg?: ChatMessage,
   onEvent?: AgentStreamListener
 ): Promise<ToolResult> {
+  const args = normalizeToolArgs(rawArgs);
   const call: ToolCall = { name: name as any, args: args as any };
   const rationale = formatStepRationale(call);
   const activeVerb = getActiveVerb(name);
@@ -71,7 +73,9 @@ export async function executeContentTool(
   let result: ToolResult;
   try {
     const envelope = createEnvelope('tool/exec', { call });
-    result = (await chrome.tabs.sendMessage(tabId, envelope)) as ToolResult;
+    // Top frame only: the content script runs in every frame, and the first frame to
+    // answer would otherwise win.
+    result = (await chrome.tabs.sendMessage(tabId, envelope, { frameId: 0 })) as ToolResult;
   } catch (err) {
     result = {
       ok: false,

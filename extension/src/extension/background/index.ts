@@ -14,7 +14,7 @@ import {
   runAgentTaskStream,
   stopSession,
 } from './agent/runner';
-import { getAiConfig, setAiConfig } from './llm';
+import { getPublicAiConfig, loadAiConfig, setAiConfig } from './llm';
 import { storageService } from './storage/service';
 
 function isAllowedOrigin(url?: string): string | undefined {
@@ -403,12 +403,13 @@ async function handleUiMessage(
     }
 
     case 'ai/getConfig': {
-      return { ok: true, config: getAiConfig() };
+      await loadAiConfig();
+      return { ok: true, config: getPublicAiConfig() };
     }
 
     case 'ai/setConfig': {
-      setAiConfig(msg.payload);
-      return { ok: true, config: getAiConfig() };
+      await setAiConfig(msg.payload);
+      return { ok: true, config: getPublicAiConfig() };
     }
   }
 }

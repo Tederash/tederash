@@ -10,10 +10,10 @@ export function createFormInspectorTools(ctx: ToolExecutionContext) {
       inputSchema: z.object({
         formSelector: z
           .string()
-          .optional()
+          .nullish()
           .describe('Optional CSS selector targeting a specific form container'),
       }),
-      execute: async (args: { formSelector?: string }) =>
+      execute: async (args) =>
         ctx.execute('inspect_form', args),
     }),
 
@@ -25,7 +25,7 @@ export function createFormInspectorTools(ctx: ToolExecutionContext) {
           .string()
           .describe('The data-tederash-id of the target form field (e.g. email, password)'),
       }),
-      execute: async (args: { componentId: string }) =>
+      execute: async (args) =>
         ctx.execute('tederash_explain_field', args),
     }),
   };

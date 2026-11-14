@@ -54,6 +54,9 @@ export interface AiConfig {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  /** Set by the background when reporting config to UI pages (the key itself is never sent). */
+  hasApiKey?: boolean;
+  apiKeySource?: 'saved' | 'dev' | 'none';
 }
 
 export interface ElementSnapshot {

@@ -5,10 +5,7 @@ import { Button } from '../ui/Button';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { ThoughtProcess } from './ThoughtProcess';
 
-const envGroqKey =
-  typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
-const envGroqModel =
-  typeof process !== 'undefined' && process.env?.GROQ_MODEL ? process.env.GROQ_MODEL : 'openai/gpt-oss-120b';
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 export function ChatSidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -18,11 +15,11 @@ export function ChatSidebar() {
   const [showSettings, setShowSettings] = useState(false);
   const [aiConfig, setAiConfigState] = useState<AiConfig>({
     provider: 'groq',
-    model: envGroqModel,
-    apiKey: envGroqKey,
+    model: DEFAULT_MODEL,
   });
-  const [apiKeyInput, setApiKeyInput] = useState(envGroqKey);
-  const [modelInput, setModelInput] = useState(envGroqModel);
+  // The background never sends the saved key back; an empty input keeps it.
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [modelInput, setModelInput] = useState(DEFAULT_MODEL);
   const [tederashState, setTederashState] = useState<{
     checked: boolean;
     isTederash: boolean;
@@ -132,8 +129,8 @@ export function ChatSidebar() {
           )) as { ok: boolean; config?: AiConfig };
           if (configRes?.ok && configRes.config) {
             setAiConfigState(configRes.config);
-            setApiKeyInput(configRes.config.apiKey || envGroqKey);
-            setModelInput(configRes.config.model || envGroqModel);
+            setApiKeyInput('');
+            setModelInput(configRes.config.model || DEFAULT_MODEL);
           }
         }
       } catch {
@@ -175,11 +172,9 @@ export function ChatSidebar() {
       setInput('');
     }
 
-    const effectiveKey = aiConfig.apiKey || envGroqKey;
-
     if (
       (aiConfig.provider === 'groq' || aiConfig.provider === 'openai') &&
-      (!effectiveKey || !effectiveKey.trim())
+      aiConfig.hasApiKey === false
     ) {
       setMessages((prev) => [
         ...prev,
@@ -517,7 +512,7 @@ export function ChatSidebar() {
         >
           <div className="flex items-center justify-between">
             <span className="font-medium text-xs text-fg">AI Configuration</span>
-            {envGroqKey && (
+            {aiConfig.apiKeySource === 'dev' && (
               <span className="text-[11px] text-success font-mono">.env key detected</span>
             )}
           </div>
@@ -534,15 +529,15 @@ export function ChatSidebar() {
                 setAiConfigState((prev) => ({
                   ...prev,
                   provider: nextProvider,
-                  model: nextProvider === 'groq' ? envGroqModel : prev.model,
+                  model: nextProvider === 'groq' ? DEFAULT_MODEL : prev.model,
                 }));
                 if (nextProvider === 'groq') {
-                  setModelInput(envGroqModel);
+                  setModelInput(DEFAULT_MODEL);
                 }
               }}
               className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="groq">Groq (Auto-discovered / 120B Reasoning)</option>
+              <option value="groq">Groq (gpt-oss-120b)</option>
               <option value="heuristic">Built-in Deterministic (No Key Needed)</option>
               <option value="gemini">Google Gemini (OpenAI-compatible)</option>
               <option value="openai">OpenAI (GPT-4o)</option>
@@ -560,9 +555,11 @@ export function ChatSidebar() {
                   id="ai-apikey"
                   type="password"
                   placeholder={
-                    envGroqKey && aiConfig.provider === 'groq'
-                      ? '•••••••• (Loaded from .env)'
-                      : aiConfig.provider === 'groq'
+                    aiConfig.apiKeySource === 'saved'
+                      ? '•••••••• (saved — leave empty to keep)'
+                      : aiConfig.apiKeySource === 'dev'
+                        ? '•••••••• (dev key from .env)'
+                        : aiConfig.provider === 'groq'
                         ? 'gsk_...'
                         : 'API Key'
                   }
@@ -579,7 +576,7 @@ export function ChatSidebar() {
                 <input
                   id="ai-model"
                   type="text"
-                  placeholder={envGroqModel}
+                  placeholder={DEFAULT_MODEL}
                   value={modelInput}
                   onChange={(e) => setModelInput(e.target.value)}
                   className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"

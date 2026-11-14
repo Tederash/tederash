@@ -10,7 +10,7 @@ export function createInteractionTools(ctx: ToolExecutionContext) {
       inputSchema: z.object({
         ref: z.string().describe('Element ref code from observe_page'),
       }),
-      execute: async (args: { ref: string }) =>
+      execute: async (args) =>
         ctx.execute('click', args),
     }),
 
@@ -21,7 +21,7 @@ export function createInteractionTools(ctx: ToolExecutionContext) {
         ref: z.string().describe('Input element ref code from observe_page'),
         value: z.string().describe('Text string to enter into the field'),
       }),
-      execute: async (args: { ref: string; value: string }) =>
+      execute: async (args) =>
         ctx.execute('fill_field', args),
     }),
 
@@ -34,18 +34,14 @@ export function createInteractionTools(ctx: ToolExecutionContext) {
           .describe('Direction to scroll'),
         amount: z
           .enum(['small', 'half', 'page'])
-          .optional()
+          .nullish()
           .describe('Distance to scroll'),
         ref: z
           .string()
-          .optional()
+          .nullish()
           .describe('Optional element ref code to scroll into view'),
       }),
-      execute: async (args: {
-        direction: 'up' | 'down' | 'top' | 'bottom';
-        amount?: 'small' | 'half' | 'page';
-        ref?: string;
-      }) => ctx.execute('scroll', args),
+      execute: async (args) => ctx.execute('scroll', args),
     }),
 
     tederash_interact: tool({
@@ -60,14 +56,10 @@ export function createInteractionTools(ctx: ToolExecutionContext) {
           .describe('Interaction action to perform'),
         value: z
           .string()
-          .optional()
+          .nullish()
           .describe('Value to fill into input or select'),
       }),
-      execute: async (args: {
-        componentId: string;
-        action: 'click' | 'focus' | 'fill' | 'toggle' | 'select';
-        value?: string;
-      }) => ctx.execute('tederash_interact', args),
+      execute: async (args) => ctx.execute('tederash_interact', args),
     }),
   };
 }

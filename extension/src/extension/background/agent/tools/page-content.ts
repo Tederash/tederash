@@ -10,10 +10,10 @@ export function createPageContentTools(ctx: ToolExecutionContext) {
       inputSchema: z.object({
         detail: z
           .enum(['summary', 'full'])
-          .optional()
+          .nullish()
           .describe('Level of detail: "summary" for overview or "full" for full readable body text'),
       }),
-      execute: async (args: { detail?: 'summary' | 'full' }) =>
+      execute: async (args) =>
         ctx.execute('inspect_page', args),
     }),
 
@@ -23,14 +23,14 @@ export function createPageContentTools(ctx: ToolExecutionContext) {
       inputSchema: z.object({
         mode: z
           .enum(['interactive', 'content', 'form'])
-          .optional()
+          .nullish()
           .describe('Observation mode: interactive elements, textual content, or form controls'),
         viewportOnly: z
           .boolean()
-          .optional()
+          .nullish()
           .describe('Limit observation to elements currently inside the visible viewport'),
       }),
-      execute: async (args: { mode?: 'interactive' | 'content' | 'form'; viewportOnly?: boolean }) =>
+      execute: async (args) =>
         ctx.execute('observe_page', args),
     }),
 
@@ -43,10 +43,10 @@ export function createPageContentTools(ctx: ToolExecutionContext) {
           .describe('Search query matching element text, aria-label, or placeholder'),
         role: z
           .string()
-          .optional()
+          .nullish()
           .describe('Optional ARIA role filter, e.g. button, input, link, checkbox'),
       }),
-      execute: async (args: { query: string; role?: string }) =>
+      execute: async (args) =>
         ctx.execute('find_elements', args),
     }),
 
@@ -56,18 +56,18 @@ export function createPageContentTools(ctx: ToolExecutionContext) {
       inputSchema: z.object({
         ref: z
           .string()
-          .optional()
+          .nullish()
           .describe('Optional element ref code from observe_page'),
         scope: z
           .enum(['page', 'main', 'selection'])
-          .optional()
+          .nullish()
           .describe('Text extraction scope'),
         maxChars: z
           .number()
-          .optional()
+          .nullish()
           .describe('Maximum number of characters to read (up to 10000)'),
       }),
-      execute: async (args: { ref?: string; scope?: 'page' | 'main' | 'selection'; maxChars?: number }) =>
+      execute: async (args) =>
         ctx.execute('read_text', args),
     }),
   };

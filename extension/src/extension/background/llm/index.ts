@@ -1,49 +1,104 @@
 import type { AiConfig } from '../../../shared/messages';
-import { DirectLlmProvider } from './direct';
-import { HeuristicLlmProvider } from './heuristic';
-import type { LlmProvider } from './types';
+import { DEV_GROQ_KEY, DEV_GROQ_MODEL } from './dev-env';
 
-const defaultGroqKey =
-  typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
-const defaultGroqModel =
-  typeof process !== 'undefined' && process.env?.GROQ_MODEL ? process.env.GROQ_MODEL : 'openai/gpt-oss-120b';
+export const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
+/** Same family, smaller: used when the primary model is unavailable or rate limited. */
+export const FALLBACK_GROQ_MODEL = 'openai/gpt-oss-20b';
 
-let currentConfig: AiConfig = {
-  provider: 'groq',
-  model: defaultGroqModel,
-  apiKey: defaultGroqKey,
-};
+const STORAGE_KEY = 'tederash.aiConfig';
 
-let cachedProvider: LlmProvider | null = defaultGroqKey
-  ? new DirectLlmProvider({
-      provider: 'groq',
-      apiKey: defaultGroqKey,
-      model: defaultGroqModel,
-    })
-  : null;
+/** What the user saved (persisted). The dev key is never persisted. */
+type StoredAiConfig = Pick<AiConfig, 'provider' | 'apiKey' | 'model' | 'baseUrl'>;
 
-export function setAiConfig(config: AiConfig): LlmProvider {
-  currentConfig = config;
-  if (config.provider !== 'heuristic' && config.apiKey && config.apiKey.trim().length > 0) {
-    cachedProvider = new DirectLlmProvider({
-      provider: config.provider,
-      apiKey: config.apiKey,
-      model: config.model || (config.provider === 'groq' ? defaultGroqModel : undefined),
-      baseUrl: config.baseUrl,
-    });
-  } else {
-    cachedProvider = new HeuristicLlmProvider();
+let stored: StoredAiConfig | null = null;
+let loading: Promise<void> | null = null;
+
+function storageArea(): chrome.storage.StorageArea | undefined {
+  try {
+    return typeof chrome !== 'undefined' ? chrome.storage?.local : undefined;
+  } catch {
+    return undefined;
   }
-  return cachedProvider;
 }
 
+function sanitize(config: Partial<StoredAiConfig>): StoredAiConfig {
+  const provider = config.provider ?? 'groq';
+  const trim = (v?: string) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  return {
+    provider,
+    apiKey: trim(config.apiKey),
+    model: trim(config.model),
+    baseUrl: trim(config.baseUrl),
+  };
+}
+
+/** Effective config used by the agent: saved settings, falling back to the dev key for Groq. */
 export function getAiConfig(): AiConfig {
-  return currentConfig;
+  const base = stored ?? { provider: 'groq' as const };
+  const usesDevKey = base.provider === 'groq' && !base.apiKey && Boolean(DEV_GROQ_KEY);
+  const apiKey = base.apiKey || (usesDevKey ? DEV_GROQ_KEY : undefined);
+  const model =
+    base.model || (base.provider === 'groq' ? DEV_GROQ_MODEL || DEFAULT_GROQ_MODEL : undefined);
+  return {
+    provider: base.provider,
+    apiKey,
+    model,
+    baseUrl: base.baseUrl,
+    hasApiKey: Boolean(apiKey),
+    apiKeySource: base.apiKey ? 'saved' : usesDevKey ? 'dev' : 'none',
+  };
 }
 
-export function getActiveProvider(): LlmProvider {
-  if (!cachedProvider) {
-    cachedProvider = new HeuristicLlmProvider();
+/** Config safe to send to UI pages: never includes the key itself. */
+export function getPublicAiConfig(): AiConfig {
+  const { apiKey: _omit, ...rest } = getAiConfig();
+  return rest;
+}
+
+/** Loads the saved config once per service-worker lifetime. Safe to call repeatedly. */
+export function loadAiConfig(): Promise<AiConfig> {
+  if (!loading) {
+    loading = (async () => {
+      const area = storageArea();
+      if (!area) return;
+      try {
+        const res = await area.get(STORAGE_KEY);
+        const raw = res?.[STORAGE_KEY];
+        if (raw && typeof raw === 'object') stored = sanitize(raw as Partial<StoredAiConfig>);
+      } catch {
+        // Storage unavailable: keep defaults.
+      }
+    })();
   }
-  return cachedProvider;
+  return loading.then(getAiConfig);
+}
+
+/**
+ * Saves settings from the UI. An omitted/empty apiKey keeps the previously saved key
+ * (the settings form never receives the key back, so it cannot resend it).
+ */
+export async function setAiConfig(config: Partial<StoredAiConfig>): Promise<AiConfig> {
+  await loadAiConfig();
+  const next = sanitize(config);
+  if (!next.apiKey && stored?.apiKey && stored.provider === next.provider) {
+    next.apiKey = stored.apiKey;
+  }
+  stored = next;
+  try {
+    await storageArea()?.set({ [STORAGE_KEY]: next });
+  } catch {
+    // Keep the in-memory value even if persistence fails.
+  }
+  return getAiConfig();
+}
+
+export function isLlmConfigured(config: AiConfig): boolean {
+  if (config.provider === 'heuristic') return false;
+  return Boolean(config.apiKey) || config.provider === 'custom';
+}
+
+/** Test helper: forget cached state so the next load re-reads storage. */
+export function resetAiConfigCache(): void {
+  stored = null;
+  loading = null;
 }
