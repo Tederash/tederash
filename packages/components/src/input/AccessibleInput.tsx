@@ -58,23 +58,27 @@ export const TederashInput = React.forwardRef<
     const ariaDescribedBy = describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
 
     // Adaptive sizing
-    const sizeClasses =
-      adaptations.targetSize === "extra-large"
-        ? "min-h-[56px] px-4 text-lg rounded-lg"
-        : adaptations.targetSize === "large"
-        ? "min-h-[48px] px-3.5 text-base rounded-md"
-        : "min-h-[40px] px-3 text-sm rounded-md";
+    const isExtraLarge =
+      adaptations.targetSize === "extra-large" ||
+      adaptations.minTargetHeight === "56px";
+    const isLarge =
+      adaptations.targetSize === "large" ||
+      adaptations.minTargetHeight === "48px";
+
+    const adaptiveSizeClasses = isExtraLarge
+      ? "min-h-[56px] px-4 text-lg rounded-lg"
+      : isLarge
+      ? "min-h-[48px] px-3.5 text-base rounded-md"
+      : "";
 
     const contrastClasses = adaptations.highContrast
-      ? "border-2 border-foreground dark:border-white font-medium bg-background text-foreground"
-      : "border border-input bg-background";
+      ? "border-2 border-foreground dark:border-white font-medium"
+      : "";
 
     const focusClasses =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-        : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+        : "";
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
@@ -83,9 +87,7 @@ export const TederashInput = React.forwardRef<
             htmlFor={inputId}
             className={cn(
               visuallyHideLabel && "sr-only",
-              adaptations.targetSize === "extra-large"
-                ? "text-base font-semibold"
-                : "text-sm",
+              isExtraLarge ? "text-base font-semibold" : "text-sm",
               adaptations.highContrast && "text-foreground font-bold",
               error && "text-destructive font-semibold"
             )}
@@ -105,7 +107,7 @@ export const TederashInput = React.forwardRef<
             id={descriptionId}
             className={cn(
               "text-muted-foreground",
-              adaptations.targetSize === "extra-large" ? "text-sm" : "text-xs",
+              isExtraLarge ? "text-sm" : "text-xs",
               adaptations.showInstructions && "font-medium text-foreground"
             )}
           >
@@ -122,10 +124,9 @@ export const TederashInput = React.forwardRef<
           aria-describedby={ariaDescribedBy}
           disabled={disabled}
           className={cn(
-            sizeClasses,
+            adaptiveSizeClasses,
             contrastClasses,
             focusClasses,
-            error && "border-destructive ring-destructive/20",
             className
           )}
           {...props}
@@ -137,8 +138,9 @@ export const TederashInput = React.forwardRef<
             id={errorId}
             role="alert"
             className={cn(
-              "text-destructive font-medium mt-0.5",
-              adaptations.targetSize === "extra-large" ? "text-base font-bold" : "text-xs"
+              "text-destructive font-medium text-xs mt-0.5",
+              isExtraLarge && "text-base font-bold",
+              adaptations.highContrast && "font-bold text-destructive"
             )}
           >
             {error}

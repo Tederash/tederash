@@ -6,7 +6,7 @@ import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
 
 export interface TederashTextareaProps
-  extends TextareaProps {
+  extends Omit<TextareaProps, "size"> {
   /** Visible label text for accessible name */
   label?: string;
   /** Explanatory description */
@@ -17,9 +17,9 @@ export interface TederashTextareaProps
   error?: string;
   /** Hide label visually while preserving accessible name for screen readers */
   visuallyHideLabel?: boolean;
-  /** Maximum character limit (also displays character counter) */
+  /** Maximum character length */
   maxLength?: number;
-  /** Explicitly toggle character counter display (defaults to true if maxLength is set) */
+  /** Whether to show a live character counter */
   showCharacterCount?: boolean;
 }
 
@@ -39,13 +39,12 @@ export const TederashTextarea = React.forwardRef<
       visuallyHideLabel = false,
       maxLength,
       showCharacterCount,
-      className = "",
-      required = false,
-      disabled = false,
+      className,
+      required,
+      disabled,
       value,
       defaultValue,
       onChange,
-      rows = 3,
       ...props
     },
     ref
@@ -53,8 +52,8 @@ export const TederashTextarea = React.forwardRef<
     const generatedId = React.useId();
     const textareaId = explicitId || generatedId;
     const descriptionId = `${textareaId}-desc`;
-    const errorId = `${textareaId}-error`;
     const counterId = `${textareaId}-counter`;
+    const errorId = `${textareaId}-error`;
 
     const { adaptations } = useAccessibility();
     const { t } = useLocalization();
@@ -106,22 +105,20 @@ export const TederashTextarea = React.forwardRef<
       adaptations.targetSize === "large" ||
       adaptations.minTargetHeight === "48px";
 
-    const sizeClasses = isExtraLarge
+    const adaptiveSizeClasses = isExtraLarge
       ? "min-h-[120px] p-4 text-lg rounded-lg"
       : isLarge
       ? "min-h-[108px] p-3.5 text-base rounded-md"
-      : "min-h-[100px] p-3 text-sm rounded-md";
+      : "";
 
     const contrastClasses = adaptations.highContrast
-      ? "border-2 border-foreground dark:border-white font-medium bg-background text-foreground"
-      : "border border-input bg-background";
+      ? "border-2 border-foreground dark:border-white font-medium"
+      : "";
 
     const focusClasses =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-        : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none";
+        : "";
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
@@ -138,7 +135,7 @@ export const TederashTextarea = React.forwardRef<
           >
             <span>{label}</span>
             {required && (
-              <span className="text-destructive ml-1" aria-hidden="true">
+              <span className="text-destructive ml-0.5" aria-hidden="true">
                 *
               </span>
             )}
@@ -162,7 +159,7 @@ export const TederashTextarea = React.forwardRef<
         <Textarea
           ref={ref}
           id={textareaId}
-          data-slot="tederash-textarea"
+          data-slot="accessible-textarea"
           data-target-size={adaptations.targetSize}
           data-high-contrast={String(adaptations.highContrast)}
           aria-invalid={Boolean(error)}
@@ -173,27 +170,25 @@ export const TederashTextarea = React.forwardRef<
           value={value}
           defaultValue={defaultValue}
           onChange={handleChange}
-          rows={rows}
           className={cn(
-            "w-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 resize-y",
-            sizeClasses,
+            adaptiveSizeClasses,
             contrastClasses,
             focusClasses,
-            error && "border-destructive ring-1 ring-destructive",
             className
           )}
           {...props}
         />
 
-        {/* Footer containing error message and character counter */}
         <div className="flex items-center justify-between text-xs gap-2">
+          {/* Error message */}
           {error ? (
             <p
               id={errorId}
               role="alert"
               className={cn(
                 "text-destructive font-medium",
-                isExtraLarge ? "text-base font-bold" : "text-xs"
+                isExtraLarge ? "text-sm font-bold" : "text-xs",
+                adaptations.highContrast && "font-bold text-destructive"
               )}
             >
               {error}
@@ -202,19 +197,21 @@ export const TederashTextarea = React.forwardRef<
             <span />
           )}
 
+          {/* Accessible Character counter with live region */}
           {shouldShowCounter && maxLength !== undefined && (
-            <span
+            <div
               id={counterId}
               aria-live="polite"
               aria-atomic="true"
               className={cn(
-                "text-muted-foreground ml-auto font-mono select-none",
-                isExtraLarge ? "text-sm" : "text-xs",
-                currentCount >= maxLength && "text-destructive font-bold"
+                "text-muted-foreground font-mono select-none text-xs ml-auto",
+                isExtraLarge && "text-sm font-semibold",
+                currentCount >= maxLength && "text-destructive font-bold",
+                adaptations.highContrast && "font-bold text-foreground"
               )}
             >
               {t("labels.charactersUsed", { count: currentCount, max: maxLength })}
-            </span>
+            </div>
           )}
         </div>
       </div>

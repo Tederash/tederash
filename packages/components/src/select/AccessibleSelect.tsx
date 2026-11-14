@@ -196,26 +196,24 @@ export const TederashSelect = React.forwardRef<
       ? "min-h-[56px] text-lg px-4"
       : isLarge
       ? "min-h-[48px] text-base px-3.5"
-      : "min-h-[40px] text-sm px-3";
+      : "";
 
     const optionHeightClass = isExtraLarge
       ? "min-h-[56px] text-lg px-4 py-3"
       : isLarge
       ? "min-h-[48px] text-base px-3.5 py-2.5"
-      : "min-h-[40px] text-sm px-3 py-2";
+      : "";
 
     // High Contrast
     const contrastClass = adaptations.highContrast
-      ? "border-2 border-foreground dark:border-white font-medium bg-background text-foreground"
-      : "border border-input bg-background shadow-xs";
+      ? "border-2 border-foreground dark:border-white font-medium"
+      : "";
 
     // Focus indicator
     const focusClass =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
-        : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+        : "";
 
     return (
       <div ref={containerRef} className={cn("flex flex-col gap-1.5 relative w-full", className)}>
@@ -279,21 +277,20 @@ export const TederashSelect = React.forwardRef<
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            "w-full text-left flex items-center justify-between rounded-md transition-colors",
+            "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
             targetHeightClass,
             contrastClass,
             focusClass,
-            disabled && "opacity-50 cursor-not-allowed",
-            error && "border-destructive ring-1 ring-destructive",
+            error && "border-destructive ring-destructive/20 dark:ring-destructive/40",
             triggerClassName
           )}
         >
-          <span className={cn(!selectedOption && "text-muted-foreground")}>
+          <span className={cn(!selectedOption && "text-muted-foreground", "line-clamp-1")}>
             {selectedOption ? selectedOption.label : placeholder ?? t("labels.selectAnOption")}
           </span>
           <ChevronDown
             aria-hidden="true"
-            className={cn("size-4 shrink-0 transition-transform text-muted-foreground", isOpen && "rotate-180")}
+            className={cn("size-4 shrink-0 opacity-50 transition-transform duration-200", isOpen && "rotate-180")}
           />
         </button>
 
@@ -311,7 +308,7 @@ export const TederashSelect = React.forwardRef<
             role="listbox"
             aria-label={label}
             className={cn(
-              "absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground rounded-md shadow-md border max-h-60 overflow-y-auto p-1",
+              "absolute top-full left-0 right-0 mt-1.5 z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md max-h-60 overflow-y-auto p-1",
               contrastClass,
               adaptations.highContrast && "border-2 border-foreground dark:border-white shadow-2xl",
               listboxClassName
@@ -330,11 +327,11 @@ export const TederashSelect = React.forwardRef<
                   aria-disabled={opt.disabled}
                   onClick={() => selectOptionByIndex(idx)}
                   className={cn(
-                    "cursor-pointer flex items-center justify-between rounded-sm px-2 select-none transition-colors",
+                    "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
                     optionHeightClass,
-                    opt.disabled && "opacity-40 cursor-not-allowed pointer-events-none",
+                    opt.disabled && "opacity-50 cursor-not-allowed pointer-events-none",
                     isFocused && "bg-accent text-accent-foreground font-medium",
-                    isSelected && "font-bold bg-primary/10 text-primary",
+                    isSelected && "bg-accent font-semibold text-accent-foreground",
                     adaptations.highContrast && isSelected && "border-l-4 border-primary font-bold"
                   )}
                 >
@@ -347,7 +344,7 @@ export const TederashSelect = React.forwardRef<
                     )}
                   </div>
                   {isSelected && (
-                    <Check aria-hidden="true" className="size-4 shrink-0 font-bold ml-2 text-primary" />
+                    <Check aria-hidden="true" className="size-4 shrink-0 ml-2" />
                   )}
                 </li>
               );
@@ -360,8 +357,9 @@ export const TederashSelect = React.forwardRef<
             id={errorId}
             role="alert"
             className={cn(
-              "text-destructive font-medium",
-              isExtraLarge ? "text-base font-bold" : "text-xs"
+              "text-destructive font-medium text-xs mt-0.5",
+              isExtraLarge && "text-base font-bold",
+              adaptations.highContrast && "font-bold text-destructive"
             )}
           >
             {error}

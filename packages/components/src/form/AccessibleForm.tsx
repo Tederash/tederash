@@ -60,7 +60,7 @@ export const TederashForm = React.forwardRef<
         onSubmit={handleSubmit}
         className={cn(
           "w-full flex flex-col gap-6",
-          adaptations.guidedInteraction && "p-6 rounded-xl border-2 border-primary/20 bg-card shadow-sm",
+          adaptations.guidedInteraction && "p-6 rounded-lg border border-border bg-card shadow-xs",
           className
         )}
         {...props}
@@ -72,15 +72,14 @@ export const TederashForm = React.forwardRef<
             tabIndex={-1}
             aria-labelledby="form-error-heading"
             className={cn(
-              "flex flex-col gap-2 border-2",
-              adaptations.highContrast && "bg-black text-white border-4 border-destructive font-bold"
+              adaptations.highContrast && "bg-black text-white border-2 border-destructive font-bold"
             )}
           >
-            <AlertTitle id="form-error-heading" className="text-base font-bold flex items-center gap-2">
-              <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
+            <AlertTitle id="form-error-heading" className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
               <span>{t("errors.summaryHeading")}</span>
             </AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="mt-2">
               <ul className="list-disc list-inside space-y-1 text-sm font-medium">
                 {errors.map((err, idx) => (
                   <li key={idx}>{err}</li>

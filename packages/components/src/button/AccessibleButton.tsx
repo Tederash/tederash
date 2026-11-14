@@ -61,13 +61,19 @@ export const TederashButton = React.forwardRef<
       onClick?.(e);
     };
 
-    // Adaptive classes based on runtime preferences
-    const sizeClasses =
-      adaptations.targetSize === "extra-large"
-        ? "min-h-[56px] px-8 py-3.5 text-lg rounded-lg gap-3"
-        : adaptations.targetSize === "large"
-        ? "min-h-[48px] px-6 py-2.5 text-base rounded-md gap-2.5"
-        : "min-h-[40px] px-4 py-2 text-sm rounded-md gap-2";
+    // Scaled touch sizing when motor preferences are active; standard 40px compliance touch target otherwise
+    const isExtraLarge =
+      adaptations.targetSize === "extra-large" ||
+      adaptations.minTargetHeight === "56px";
+    const isLarge =
+      adaptations.targetSize === "large" ||
+      adaptations.minTargetHeight === "48px";
+
+    const adaptiveSizeClasses = isExtraLarge
+      ? "min-h-[56px] px-8 text-lg rounded-lg gap-3"
+      : isLarge
+      ? "min-h-[48px] px-6 text-base rounded-md gap-2.5"
+      : "min-h-[40px]";
 
     const contrastClasses = adaptations.highContrast
       ? "border-2 border-current font-bold"
@@ -76,11 +82,11 @@ export const TederashButton = React.forwardRef<
     const focusClasses =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-        : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+        : "";
 
-    const motionClasses = adaptations.reduceMotion ? "transition-none active:scale-100" : "";
+    const motionClasses = adaptations.reduceMotion
+      ? "transition-none active:scale-100"
+      : "";
 
     return (
       <Button
@@ -91,7 +97,7 @@ export const TederashButton = React.forwardRef<
         data-target-size={adaptations.targetSize}
         data-high-contrast={adaptations.highContrast}
         className={cn(
-          sizeClasses,
+          adaptiveSizeClasses,
           contrastClasses,
           focusClasses,
           motionClasses,

@@ -205,29 +205,27 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
   const sizeClasses = isExtraLarge
     ? "p-8 max-w-xl text-base"
     : isLarge
-    ? "p-6 max-w-lg text-base"
+    ? "p-7 max-w-lg text-base"
     : "p-6 max-w-lg text-sm";
 
   const closeButtonSize = isExtraLarge
-    ? "min-h-[48px] min-w-[48px] p-2 text-lg"
+    ? "min-h-[48px] min-w-[48px] p-2"
     : isLarge
-    ? "min-h-[44px] min-w-[44px] p-1.5 text-base"
-    : "min-h-[36px] min-w-[36px] p-1 text-sm";
+    ? "min-h-[44px] min-w-[44px] p-1.5"
+    : "size-8 p-1";
 
   const contrastClasses = adaptations.highContrast
     ? "border-2 border-foreground dark:border-white font-medium bg-background text-foreground shadow-2xl"
-    : "border border-border bg-background shadow-xl";
+    : "border border-border bg-background shadow-lg";
 
   const focusClasses =
     adaptations.focusIndicator === "high-visibility"
-      ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-      : adaptations.focusIndicator === "enhanced"
-      ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-      : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+      ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
+      : "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
 
   const motionClasses = adaptations.reduceMotion
     ? "transition-none animate-none"
-    : "transition-all duration-150";
+    : "transition-all duration-200";
 
   return (
     <div
@@ -235,7 +233,7 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       data-slot="accessible-dialog-overlay"
       className={cn(
         "fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs",
-        adaptations.highContrast ? "bg-black/80" : "bg-black/50",
+        adaptations.highContrast ? "bg-black/80" : "bg-black/60",
         motionClasses
       )}
       onClick={() => {
@@ -256,7 +254,7 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
         data-target-size={adaptations.targetSize}
         data-high-contrast={String(adaptations.highContrast)}
         className={cn(
-          "w-full rounded-xl relative outline-none",
+          "w-full rounded-lg relative outline-none bg-background text-foreground",
           sizeClasses,
           contrastClasses,
           motionClasses,
@@ -267,54 +265,53 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       >
         <div
           data-slot="dialog-header"
-          className={cn(
-            "flex flex-row items-center justify-between pb-3",
-            adaptations.highContrast ? "border-b-2 border-current" : "border-b"
-          )}
+          className="flex flex-col gap-1.5 text-left pb-4"
         >
-          <h2
-            id={titleId}
-            data-slot="dialog-title"
-            className={cn(
-              "font-bold leading-none tracking-tight",
-              isExtraLarge ? "text-xl" : "text-lg",
-              destructive && "text-destructive"
-            )}
-          >
-            {title}
-          </h2>
-          {showCloseButton && (
-            <button
-              type="button"
-              aria-label={closeButtonAriaLabel ?? t("labels.closeDialog")}
-              onClick={() => onOpenChangeRef.current(false)}
+          <div className="flex items-center justify-between">
+            <h2
+              id={titleId}
+              data-slot="dialog-title"
               className={cn(
-                "rounded-md hover:bg-muted font-bold flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
-                closeButtonSize,
-                focusClasses,
-                adaptations.highContrast && "border border-current font-bold"
+                "text-lg font-semibold leading-none tracking-tight",
+                isExtraLarge && "text-xl font-bold",
+                destructive && "text-destructive"
               )}
             >
-              <X className="size-4 shrink-0" aria-hidden="true" />
-            </button>
+              {title}
+            </h2>
+            {showCloseButton && (
+              <button
+                type="button"
+                aria-label={closeButtonAriaLabel ?? t("labels.closeDialog")}
+                onClick={() => onOpenChangeRef.current(false)}
+                className={cn(
+                  "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 inline-flex items-center justify-center text-muted-foreground hover:text-foreground",
+                  closeButtonSize,
+                  focusClasses,
+                  adaptations.highContrast && "border border-current font-bold"
+                )}
+              >
+                <X className="size-4 shrink-0" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          {description && (
+            <p
+              id={descId}
+              data-slot="dialog-description"
+              className={cn(
+                "text-sm text-muted-foreground leading-relaxed mt-1",
+                isExtraLarge && "text-base font-medium",
+                adaptations.showInstructions && "font-medium text-foreground"
+              )}
+            >
+              {description}
+            </p>
           )}
         </div>
 
-        {description && (
-          <p
-            id={descId}
-            data-slot="dialog-description"
-            className={cn(
-              "text-muted-foreground mt-2.5 leading-relaxed",
-              isExtraLarge ? "text-base font-medium" : "text-sm",
-              adaptations.showInstructions && "font-medium text-foreground"
-            )}
-          >
-            {description}
-          </p>
-        )}
-
-        <div className="mt-4">{children}</div>
+        <div>{children}</div>
       </div>
     </div>
   );

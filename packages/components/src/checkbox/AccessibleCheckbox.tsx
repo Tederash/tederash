@@ -98,7 +98,7 @@ export const TederashCheckbox = React.forwardRef<
     if (error) describedByParts.push(errorId);
     const ariaDescribedBy = describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
 
-    // Motor Target Sizing (40px / 48px / 56px touch target container)
+    // Motor Target Sizing: only expand size when explicit motor assistance profile is active
     const isExtraLarge =
       adaptations.targetSize === "extra-large" ||
       adaptations.minTargetHeight === "56px";
@@ -106,37 +106,27 @@ export const TederashCheckbox = React.forwardRef<
       adaptations.targetSize === "large" ||
       adaptations.minTargetHeight === "48px";
 
-    const targetSizeClass = isExtraLarge
+    const adaptiveSizeClasses = isExtraLarge
       ? "min-h-[56px] min-w-[56px]"
       : isLarge
       ? "min-h-[48px] min-w-[48px]"
-      : "min-h-[40px] min-w-[40px]";
+      : "";
 
-    const boxSizeClass = isExtraLarge
-      ? "h-6 w-6 text-base"
-      : isLarge
-      ? "h-5 w-5 text-sm"
-      : "h-4 w-4 text-xs";
-
-    // Visual Contrast
-    const contrastClass = adaptations.highContrast
+    const contrastClasses = adaptations.highContrast
       ? "border-2 border-current font-bold"
-      : "border border-input";
+      : "";
 
-    // Focus indicator
-    const focusClass =
+    const focusClasses =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-        : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+        : "";
 
     return (
       <div className={cn("flex flex-col gap-1", className)}>
         <label
           htmlFor={inputId}
           className={cn(
-            "inline-flex items-center gap-3 cursor-pointer select-none",
+            "inline-flex items-center gap-2.5 cursor-pointer select-none",
             disabled && "opacity-50 cursor-not-allowed",
             labelClassName
           )}
@@ -156,31 +146,19 @@ export const TederashCheckbox = React.forwardRef<
             data-target-size={adaptations.targetSize}
             data-high-contrast={String(adaptations.highContrast)}
             className={cn(
-              "rounded transition-colors bg-background",
-              targetSizeClass,
-              focusClass,
-              contrastClass,
-              isChecked ? "bg-primary text-primary-foreground" : "bg-background",
-              error && "border-destructive ring-destructive/30",
+              adaptiveSizeClasses,
+              contrastClasses,
+              focusClasses,
+              error && "border-destructive ring-destructive/20",
               checkboxClassName
             )}
-          >
-            <span
-              className={cn(
-                "inline-flex items-center justify-center font-bold",
-                boxSizeClass
-              )}
-              aria-hidden="true"
-            >
-              {indeterminate ? "—" : isChecked ? "✓" : ""}
-            </span>
-          </Checkbox>
+          />
 
           <span
             className={cn(
-              "font-medium leading-none",
+              "text-sm font-medium leading-none select-none text-foreground",
               visuallyHideLabel && "sr-only",
-              isExtraLarge ? "text-base" : "text-sm",
+              isExtraLarge && "text-base font-semibold",
               adaptations.highContrast && "font-bold text-foreground",
               error && "text-destructive font-semibold"
             )}
@@ -196,18 +174,24 @@ export const TederashCheckbox = React.forwardRef<
 
         {name && (
           <input
-            type="hidden"
+            type="checkbox"
             name={name}
-            value={isChecked ? value : ""}
+            value={value}
+            checked={isChecked}
+            readOnly
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
           />
         )}
 
+        {/* Helpful description / simplified instructions */}
         {activeDescription && (
           <p
             id={descriptionId}
             className={cn(
-              "text-muted-foreground ml-1",
-              isExtraLarge ? "text-sm" : "text-xs",
+              "text-muted-foreground ml-6 text-xs",
+              isExtraLarge && "text-sm",
               adaptations.showInstructions && "font-medium text-foreground"
             )}
           >
@@ -215,13 +199,15 @@ export const TederashCheckbox = React.forwardRef<
           </p>
         )}
 
+        {/* Error message */}
         {error && (
           <p
             id={errorId}
             role="alert"
             className={cn(
-              "text-destructive font-medium ml-1",
-              isExtraLarge ? "text-sm font-bold" : "text-xs"
+              "text-destructive font-medium ml-6 text-xs",
+              isExtraLarge && "text-sm font-bold",
+              adaptations.highContrast && "font-bold text-destructive"
             )}
           >
             {error}
