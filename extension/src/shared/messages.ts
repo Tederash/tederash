@@ -5,8 +5,57 @@ import {
   ProfileSchema,
   SettingsPatchSchema,
 } from './settings/schema';
+import { ToolCallSchema } from './tools';
 
 export const MessageVersionSchema = z.literal(1);
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system' | 'step';
+  content: string;
+  timestamp: number;
+  toolCall?: { name: string; args: Record<string, unknown> };
+  toolResult?: { ok: boolean; data?: unknown; error?: { message: string } };
+  status?: 'pending' | 'running' | 'success' | 'error';
+}
+
+export interface AgentChatResponse {
+  ok: boolean;
+  conversationId: string;
+  messages: ChatMessage[];
+  status: 'idle' | 'running' | 'done' | 'error' | 'stopped';
+  error?: string;
+}
+
+export interface AiConfig {
+  provider: 'heuristic' | 'gemini' | 'openai' | 'anthropic' | 'custom';
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+}
+
+export interface ElementSnapshot {
+  ref: string;
+  tag: string;
+  role?: string;
+  name?: string;
+  type?: string;
+  value?: string;
+  placeholder?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  inViewport?: boolean;
+}
+
+export interface PageSnapshot {
+  url: string;
+  title: string;
+  lang?: string;
+  landmarks: string[];
+  elements: ElementSnapshot[];
+  headings: string[];
+  textSample: string;
+}
 
 function makeEnvelopeSchema<T extends string, P extends z.ZodTypeAny>(type: T, payload: P) {
   return z.object({
@@ -108,6 +157,42 @@ export const BG_TO_OFFSCREEN_TYPES = ['offscreen/speak', 'offscreen/stop'] as co
 
 export type BgToOffscreenMessage = z.infer<typeof BgToOffscreenSchema>;
 
+export const AgentChatSchema = makeEnvelopeSchema(
+  'agent/chat',
+  z.object({
+    tabId: z.number().int().nonnegative(),
+    text: z.string().min(1).max(5000),
+    conversationId: z.string().optional(),
+  })
+);
+
+export const AgentGetHistorySchema = makeEnvelopeSchema(
+  'agent/getHistory',
+  z.object({ conversationId: z.string().optional() })
+);
+
+export const AgentClearHistorySchema = makeEnvelopeSchema(
+  'agent/clearHistory',
+  z.object({ conversationId: z.string().optional() })
+);
+
+export const AgentStopSchema = makeEnvelopeSchema(
+  'agent/stop',
+  z.object({ runId: z.string().optional() })
+);
+
+export const AiGetConfigSchema = makeEnvelopeSchema('ai/getConfig', z.object({}));
+
+export const AiSetConfigSchema = makeEnvelopeSchema(
+  'ai/setConfig',
+  z.object({
+    provider: z.enum(['heuristic', 'gemini', 'openai', 'anthropic', 'custom']),
+    apiKey: z.string().max(300).optional(),
+    model: z.string().max(100).optional(),
+    baseUrl: z.string().max(300).optional(),
+  })
+);
+
 export const UiToBgSchema = z.discriminatedUnion('type', [
   SystemPingSchema,
   TabPingContentSchema,
@@ -122,6 +207,12 @@ export const UiToBgSchema = z.discriminatedUnion('type', [
   TtsReadPageSchema,
   TtsSpeakSchema,
   TtsStopSchema,
+  AgentChatSchema,
+  AgentGetHistorySchema,
+  AgentClearHistorySchema,
+  AgentStopSchema,
+  AiGetConfigSchema,
+  AiSetConfigSchema,
 ]);
 
 export type UiToBgMessage = z.infer<typeof UiToBgSchema>;
@@ -134,12 +225,25 @@ export const AdaptApplySchema = makeEnvelopeSchema(
 );
 export const AdaptRevertSchema = makeEnvelopeSchema('adapt/revert', z.object({}));
 export const ReadingExtractSchema = makeEnvelopeSchema('reading/extract', z.object({}));
+export const SnapshotRequestSchema = makeEnvelopeSchema(
+  'snapshot/request',
+  z.object({
+    mode: z.enum(['interactive', 'content', 'form']).default('interactive').optional(),
+    viewportOnly: z.boolean().default(false).optional(),
+  })
+);
+export const ToolExecSchema = makeEnvelopeSchema(
+  'tool/exec',
+  z.object({ call: ToolCallSchema })
+);
 
 export const BgToContentSchema = z.discriminatedUnion('type', [
   ContentPingSchema,
   AdaptApplySchema,
   AdaptRevertSchema,
   ReadingExtractSchema,
+  SnapshotRequestSchema,
+  ToolExecSchema,
 ]);
 
 /** Every literal type handled by the content script's lite parser (messages-lite.ts). */
@@ -148,6 +252,8 @@ export const BG_TO_CONTENT_TYPES = [
   'adapt/apply',
   'adapt/revert',
   'reading/extract',
+  'snapshot/request',
+  'tool/exec',
 ] as const;
 
 export type BgToContentMessage = z.infer<typeof BgToContentSchema>;

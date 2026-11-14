@@ -1,7 +1,9 @@
 import { createEnvelope } from '../../shared/envelope';
 import type { PingResponse } from '../../shared/messages';
 import { parseBgToContent } from '../../shared/messages-lite';
+import { executeTool } from './actions';
 import { adaptationEngine } from './adapt/engine';
+import { buildPageSnapshot } from './snapshot';
 
 /** Guards against double bootstrap when injected on demand after page load. */
 interface TederashWindow extends Window {
@@ -114,6 +116,29 @@ if (!tederashWindow.__tederashContentInjected) {
           sendResponse({ ok: false, error: 'Unable to read this page.' });
         }
         return false;
+      }
+      case 'snapshot/request': {
+        try {
+          const snapshot = buildPageSnapshot(msg.payload);
+          sendResponse({ ok: true, snapshot });
+        } catch (err) {
+          sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return false;
+      }
+      case 'tool/exec': {
+        executeTool(msg.payload.call)
+          .then((res) => sendResponse(res))
+          .catch((err) =>
+            sendResponse({
+              ok: false,
+              error: {
+                code: 'EXEC_ERROR',
+                message: err instanceof Error ? err.message : String(err),
+              },
+            })
+          );
+        return true; // asynchronous response
       }
     }
   });

@@ -109,6 +109,27 @@ export function parseBgToContent(raw: unknown): LiteParseResult<BgToContentMessa
     case 'reading/extract':
       return { success: true, data: raw as BgToContentMessage };
 
+    case 'snapshot/request': {
+      const mode = raw.payload.mode;
+      if (mode !== undefined && mode !== 'interactive' && mode !== 'content' && mode !== 'form') {
+        return { success: false };
+      }
+      const viewportOnly = raw.payload.viewportOnly;
+      if (viewportOnly !== undefined && typeof viewportOnly !== 'boolean') {
+        return { success: false };
+      }
+      return { success: true, data: raw as BgToContentMessage };
+    }
+
+    case 'tool/exec': {
+      const call = raw.payload.call;
+      if (call !== undefined) {
+        if (!isRecord(call)) return { success: false };
+        if (typeof call.name !== 'string' || !isRecord(call.args)) return { success: false };
+      }
+      return { success: true, data: raw as BgToContentMessage };
+    }
+
     case 'adapt/apply': {
       const effective = raw.payload.effective;
       if (!isRecord(effective)) return { success: false };

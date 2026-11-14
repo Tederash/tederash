@@ -317,6 +317,13 @@ export function PopupView() {
           </button>
           <button
             type="button"
+            onClick={() => openSidePanel(tabId)}
+            className="min-h-[2.75rem] px-1 font-semibold text-accent underline hover:text-fg"
+          >
+            Assistant
+          </button>
+          <button
+            type="button"
             onClick={() => openOnboarding()}
             className="min-h-[2.75rem] px-1 underline hover:text-fg"
           >
@@ -344,6 +351,21 @@ function openDashboard(): void {
     void chrome.tabs.create({ url: chrome.runtime.getURL('options.html') });
   } else if (typeof window !== 'undefined') {
     window.open('/options', '_blank', 'noopener');
+  }
+}
+
+function openSidePanel(tabId?: number): void {
+  if (
+    typeof chrome !== 'undefined' &&
+    chrome.sidePanel &&
+    typeof chrome.sidePanel.open === 'function' &&
+    tabId !== undefined
+  ) {
+    void chrome.sidePanel.open({ tabId });
+  } else if (typeof chrome !== 'undefined' && chrome.runtime?.getURL && chrome.tabs?.create) {
+    void chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel.html') });
+  } else if (typeof window !== 'undefined') {
+    window.open('/sidepanel', '_blank', 'noopener');
   }
 }
 

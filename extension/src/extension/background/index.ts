@@ -7,6 +7,13 @@ import {
   type TtsResponse,
   type VaultGetResponse,
 } from '../../shared/messages';
+import {
+  clearSessionHistory,
+  getSessionHistory,
+  runAgentTask,
+  stopSession,
+} from './agent/runner';
+import { getAiConfig, setAiConfig } from './llm';
 import { storageService } from './storage/service';
 
 function isAllowedOrigin(url?: string): string | undefined {
@@ -178,13 +185,7 @@ async function sendAdaptToTab(tabId: number, origin?: string): Promise<void> {
 
 async function handleUiMessage(
   raw: unknown
-): Promise<
-  | PingResponse
-  | SettingsGetResponse
-  | TtsResponse
-  | VaultGetResponse
-  | { ok: false; error: string }
-> {
+): Promise<any> {
   const parsed = UiToBgSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: 'Invalid UI message envelope' };
@@ -308,6 +309,39 @@ async function handleUiMessage(
         }
       }
       return { ok: true };
+    }
+
+    case 'agent/chat': {
+      const res = await runAgentTask(
+        msg.payload.tabId,
+        msg.payload.text,
+        msg.payload.conversationId
+      );
+      return { ok: true, ...res };
+    }
+
+    case 'agent/getHistory': {
+      const messages = getSessionHistory(msg.payload.conversationId);
+      return { ok: true, messages };
+    }
+
+    case 'agent/clearHistory': {
+      clearSessionHistory(msg.payload.conversationId);
+      return { ok: true };
+    }
+
+    case 'agent/stop': {
+      const stopped = stopSession(msg.payload.runId);
+      return { ok: true, stopped };
+    }
+
+    case 'ai/getConfig': {
+      return { ok: true, config: getAiConfig() };
+    }
+
+    case 'ai/setConfig': {
+      setAiConfig(msg.payload);
+      return { ok: true, config: getAiConfig() };
     }
   }
 }

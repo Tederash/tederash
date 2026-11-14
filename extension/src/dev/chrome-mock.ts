@@ -60,7 +60,7 @@ function devSpeak(text: string, rate: number, pitch: number): TtsResponse {
 
 export async function handleDevMockMessage(
   raw: unknown
-): Promise<PingResponse | SettingsGetResponse | TtsResponse | VaultGetResponse | { ok: false; error: string }> {
+): Promise<any> {
   const parsed = UiToBgSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: 'Invalid UI message envelope' };
@@ -151,6 +151,33 @@ export async function handleDevMockMessage(
       }
       return { ok: true };
     }
+    case 'agent/chat': {
+      return {
+        ok: true,
+        conversationId: msg.payload.conversationId || 'dev_conv',
+        messages: [
+          {
+            id: `msg_${Date.now()}`,
+            role: 'assistant',
+            content: `Dev mode preview: received "${msg.payload.text}". In a real browser tab, Tederash observes the page and executes actions.`,
+            timestamp: Date.now(),
+          },
+        ],
+        status: 'done',
+      };
+    }
+    case 'agent/getHistory':
+      return { ok: true, messages: [] };
+    case 'agent/clearHistory':
+      return { ok: true };
+    case 'agent/stop':
+      return { ok: true, stopped: true };
+    case 'ai/getConfig':
+      return { ok: true, config: { provider: 'heuristic' } };
+    case 'ai/setConfig':
+      return { ok: true, config: msg.payload };
+    default:
+      return { ok: false, error: 'Unhandled mock message type' };
   }
 }
 
