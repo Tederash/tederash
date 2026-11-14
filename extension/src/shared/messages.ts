@@ -9,6 +9,26 @@ import { ToolCallSchema } from './tools';
 
 export const MessageVersionSchema = z.literal(1);
 
+export interface ToolCallItem {
+  id: string;
+  step?: number;
+  tool: string;
+  arguments: Record<string, any>;
+  rationale: string;
+  status?: 'PENDING' | 'SUCCESS' | 'ERROR';
+  summary?: string;
+  timestamp: number;
+}
+
+export type AgentStreamEvent =
+  | { type: 'start'; conversationId: string }
+  | { type: 'thought'; rationale: string; activeVerb: string }
+  | { type: 'tool_call'; toolCall: ToolCallItem }
+  | { type: 'tool_result'; id: string; tool: string; status: 'SUCCESS' | 'ERROR'; summary: string }
+  | { type: 'token'; token: string }
+  | { type: 'done'; conversationId: string; messages: ChatMessage[]; status: 'idle' | 'running' | 'done' | 'error' | 'stopped' }
+  | { type: 'error'; error: string };
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'step';
@@ -17,6 +37,8 @@ export interface ChatMessage {
   toolCall?: { name: string; args: Record<string, unknown> };
   toolResult?: { ok: boolean; data?: unknown; error?: { message: string } };
   status?: 'pending' | 'running' | 'success' | 'error';
+  toolCalls?: ToolCallItem[];
+  activeVerb?: string;
 }
 
 export interface AgentChatResponse {

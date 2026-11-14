@@ -50,4 +50,39 @@ describe('HeuristicLlmProvider', () => {
     const readCall = res.toolCalls?.find((tc) => tc.name === 'read_text');
     expect(readCall).toBeDefined();
   });
+
+  it('maps form field queries to tederash_get_tree on turn 1', async () => {
+    const res = await provider.generate({
+      systemPrompt: 'test',
+      messages: [{ role: 'user', content: 'what fields does this form need?' }],
+      tools: TOOL_SPECS,
+    });
+
+    expect(res.toolCalls).toBeDefined();
+    expect(res.toolCalls?.[0]?.name).toBe('tederash_get_tree');
+  });
+
+  it('synthesizes markdown table answering required fields when tree data is returned on turn 2', async () => {
+    const tree = [
+      { component: 'input', id: 'fullName', label: 'Full Name', required: true },
+      { component: 'input', id: 'email', label: 'Email Address', required: true },
+      { component: 'input', id: 'password', label: 'Password', required: true },
+      { component: 'select', id: 'role', label: 'Role / Profession', required: false },
+    ];
+
+    const res = await provider.generate({
+      systemPrompt: 'test',
+      messages: [
+        { role: 'user', content: 'what fields does this form need?' },
+        { role: 'tool', content: JSON.stringify(tree) },
+      ],
+      tools: TOOL_SPECS,
+    });
+
+    expect(res.content).toBeDefined();
+    expect(res.content).toContain('Full Name');
+    expect(res.content).toContain('Email Address');
+    expect(res.content).toContain('Password');
+    expect(res.content).toContain('Required');
+  });
 });

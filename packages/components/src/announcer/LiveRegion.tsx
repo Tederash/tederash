@@ -26,7 +26,9 @@ export const TederashLiveRegion = React.forwardRef<
   const [activeBanner, setActiveBanner] = React.useState<Announcement | null>(null);
 
   React.useEffect(() => {
-    return runtime.onAnnounce((announcement) => {
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+
+    const unsubscribe = runtime.onAnnounce((announcement) => {
       if (announcement.priority === "assertive") {
         setAssertiveMessage(announcement.message);
       } else {
@@ -55,13 +57,19 @@ export const TederashLiveRegion = React.forwardRef<
       if (showVisualBanner) {
         setActiveBanner(announcement);
         const timer = setTimeout(() => {
+          if (typeof window === "undefined") return;
           setActiveBanner((current) =>
             current?.id === announcement.id ? null : current
           );
         }, 4000);
-        return () => clearTimeout(timer);
+        timers.push(timer);
       }
     });
+
+    return () => {
+      unsubscribe();
+      timers.forEach(clearTimeout);
+    };
   }, [runtime, showVisualBanner]);
 
   return (
