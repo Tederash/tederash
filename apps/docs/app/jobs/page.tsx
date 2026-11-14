@@ -31,6 +31,7 @@ import {
   Brain,
   Languages,
 } from "lucide-react";
+import { AccessibilityOnboarding } from "../../components/jobs/AccessibilityOnboarding";
 
 export default function JobApplicationPage() {
   const { profile, adaptations, setProfile, announce } = useAccessibility();
@@ -208,6 +209,9 @@ export default function JobApplicationPage() {
         </div>
       </div>
 
+      {/* Accessible Orientation & Onboarding Guide for Blind & Deaf Candidates */}
+      <AccessibilityOnboarding />
+
       {/* The Single Job Listing Header & Details Card */}
       <section
         aria-labelledby="job-title-heading"
@@ -379,8 +383,9 @@ export default function JobApplicationPage() {
       ) : (
         /* The Actual Job Application Form */
         <section
+          id="application-form"
           aria-labelledby="form-heading"
-          className="p-6 sm:p-8 rounded-xl border border-border bg-card shadow-sm flex flex-col gap-8"
+          className="p-6 sm:p-8 rounded-xl border border-border bg-card shadow-sm flex flex-col gap-8 scroll-mt-12"
         >
           <div className="flex flex-col gap-1 pb-4 border-b border-border">
             <h2
