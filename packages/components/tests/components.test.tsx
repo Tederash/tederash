@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import "./setup/dom-polyfills";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import {
   AccessibilityProvider,
   createAccessibilityRuntime,
@@ -314,7 +315,14 @@ describe("AccessibleCheckbox Component", () => {
     const checkbox = screen.getByRole("checkbox", { name: /i agree to the terms/i });
     expect(checkbox.getAttribute("aria-checked")).toBe("true");
 
-    fireEvent.keyDown(checkbox, { key: " " });
+    // Per WAI-ARIA, Enter must not toggle a checkbox
+    const enterNotPrevented = fireEvent.keyDown(checkbox, { key: "Enter" });
+    expect(enterNotPrevented).toBe(false);
+    expect(handleChange).not.toHaveBeenCalled();
+
+    // Space activates the native <button>, which browsers dispatch as a click
+    // (jsdom does not synthesize that click, so we dispatch it directly).
+    fireEvent.click(checkbox);
     expect(handleChange).toHaveBeenCalledWith(false);
   });
 
@@ -369,7 +377,6 @@ describe("AccessibleCheckbox Component", () => {
     expect(checkbox.getAttribute("aria-disabled")).toBe("true");
 
     fireEvent.click(checkbox);
-    fireEvent.keyDown(checkbox, { key: " " });
     expect(handleChange).not.toHaveBeenCalled();
   });
 
@@ -385,7 +392,8 @@ describe("AccessibleCheckbox Component", () => {
 
     const checkbox = screen.getByRole("checkbox", { name: /indeterminate parent/i });
     expect(checkbox.getAttribute("aria-checked")).toBe("mixed");
-    expect(checkbox.textContent).toContain("—");
+    expect(checkbox.getAttribute("data-state")).toBe("indeterminate");
+    expect(checkbox.querySelector('[data-slot="checkbox-indicator"] svg')).toBeTruthy();
   });
 
   it("exposes error message with role='alert' and aria-invalid", () => {
@@ -413,6 +421,38 @@ describe("AccessibleCheckbox Component", () => {
     );
 
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it("manages its own state when uncontrolled", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleCheckbox label="Subscribe" defaultChecked={false} />
+      </AccessibilityProvider>
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /subscribe/i });
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(checkbox);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
+    // Clicking the visible label text also toggles
+    fireEvent.click(screen.getByText("Subscribe"));
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("submits its value with the surrounding form when named", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <form data-testid="prefs-form">
+          <AccessibleCheckbox label="Newsletter" name="newsletter" value="yes" />
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const form = screen.getByTestId("prefs-form") as HTMLFormElement;
+    expect(new FormData(form).get("newsletter")).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /newsletter/i }));
+    expect(new FormData(form).get("newsletter")).toBe("yes");
   });
 });
 
@@ -467,7 +507,7 @@ describe("AccessibleSelect Component", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("navigates options via keyboard ArrowDown/ArrowUp and selects with Enter", () => {
+  it("navigates options via keyboard ArrowDown/ArrowUp and selects with Enter", async () => {
     const handleChange = vi.fn();
     render(
       <AccessibilityProvider persistence="none">
@@ -482,17 +522,30 @@ describe("AccessibleSelect Component", () => {
 
     const trigger = screen.getByRole("combobox", { name: /country/i });
 
-    // Open via ArrowDown (focuses first option: index 0)
+    // Open via ArrowDown; focus moves into the listbox onto the first option
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const [first] = screen.getAllByRole("option");
+    // Radix moves focus once the popper has been positioned (async in jsdom)
+    await waitFor(() => expect(document.activeElement).toBe(first));
 
-    // Move to next option (index 1: Ethiopia)
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const ethiopia = screen.getByRole("option", { name: "Ethiopia" });
+
+    // Move to next option (Ethiopia); Radix moves focus on the next tick
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(ethiopia));
+
+    // ArrowUp moves back
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+    await waitFor(() => expect(document.activeElement).toBe(first));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(ethiopia));
 
     // Commit selection via Enter
-    fireEvent.keyDown(trigger, { key: "Enter" });
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
     expect(handleChange).toHaveBeenCalledWith("et");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.textContent).toContain("Ethiopia");
   });
 
   it("closes dropdown on Escape key", () => {
@@ -571,6 +624,82 @@ describe("AccessibleSelect Component", () => {
     );
 
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it("shows the localized placeholder and the selected label in the trigger", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect label="Country" options={options} />
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("combobox", { name: /country/i });
+    expect(trigger.textContent).toContain("Select an option");
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText("Canada"));
+    expect(trigger.textContent).toContain("Canada");
+    expect(trigger.textContent).not.toContain("Select an option");
+  });
+
+  it("does not select disabled options and renders option descriptions", () => {
+    const handleChange = vi.fn();
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect
+          label="Plan"
+          onChange={handleChange}
+          options={[
+            { value: "free", label: "Free", description: "Basic features" },
+            { value: "pro", label: "Pro", disabled: true },
+          ]}
+        />
+      </AccessibilityProvider>
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: /plan/i }));
+    expect(screen.getByText("Basic features")).toBeTruthy();
+
+    const pro = screen.getByRole("option", { name: "Pro" });
+    expect(pro.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(pro);
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
+  it("returns focus to the trigger after closing with Escape", async () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <AccessibleSelect label="Country" options={options} />
+      </AccessibilityProvider>
+    );
+
+    const trigger = screen.getByRole("combobox", { name: /country/i });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const [first] = screen.getAllByRole("option");
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("submits the selected value with the surrounding form when named", () => {
+    render(
+      <AccessibilityProvider persistence="none">
+        <form data-testid="country-form">
+          <AccessibleSelect label="Country" name="country" options={options} defaultValue="us" />
+        </form>
+      </AccessibilityProvider>
+    );
+
+    const form = screen.getByTestId("country-form") as HTMLFormElement;
+    expect(new FormData(form).get("country")).toBe("us");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /country/i }));
+    // Query by role: the aria-hidden native <select> Radix renders for forms
+    // contains matching <option> text but is excluded from the a11y tree.
+    fireEvent.click(screen.getByRole("option", { name: "Ethiopia" }));
+    expect(new FormData(form).get("country")).toBe("et");
   });
 });
 

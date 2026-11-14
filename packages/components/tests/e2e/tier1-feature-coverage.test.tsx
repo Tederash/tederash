@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { screen, fireEvent, act } from "@testing-library/react";
+import { screen, fireEvent, act, waitFor } from "@testing-library/react";
 import "./setup/test-globals";
 import {
   renderWithA11y,
@@ -374,11 +374,12 @@ describe("Tier 1: Feature Coverage (36 Happy-Path Tests across 6 Equivalence Cla
       expect(checkbox.getAttribute("aria-checked")).toBe("false");
       expect(checkbox.getAttribute("data-target-size")).toBe("extra-large");
 
-      fireEvent.keyDown(checkbox, { key: " " });
+      // Space activates the native <button>; browsers dispatch that as a click
+      fireEvent.click(checkbox);
       expect(onCheckedChange).toHaveBeenCalledWith(true);
     });
 
-    it("E2E-T1-CP-07: AccessibleSelect Keyboard Navigation", () => {
+    it("E2E-T1-CP-07: AccessibleSelect Keyboard Navigation", async () => {
       const options = [
         { value: "us", label: "United States" },
         { value: "et", label: "Ethiopia" },
@@ -404,10 +405,14 @@ describe("Tier 1: Feature Coverage (36 Happy-Path Tests across 6 Equivalence Cla
 
       const listbox = screen.getByRole("listbox");
       expect(listbox).toBeTruthy();
+      const [firstOption] = screen.getAllByRole("option");
+      await waitFor(() => expect(document.activeElement).toBe(firstOption));
 
-      // Press ArrowDown to move to Ethiopia (index 1), then Enter to select
-      fireEvent.keyDown(trigger, { key: "ArrowDown" });
-      fireEvent.keyDown(trigger, { key: "Enter" });
+      // Focus is inside the listbox: ArrowDown to Ethiopia, then Enter to select
+      fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+      const ethiopia = screen.getByRole("option", { name: "Ethiopia" });
+      await waitFor(() => expect(document.activeElement).toBe(ethiopia));
+      fireEvent.keyDown(document.activeElement!, { key: "Enter" });
 
       expect(onChange).toHaveBeenCalledWith("et");
       expect(trigger.getAttribute("aria-expanded")).toBe("false");

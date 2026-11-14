@@ -1,70 +1,65 @@
 import * as React from "react";
-import { CheckIcon } from "lucide-react";
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import { CheckIcon, MinusIcon } from "lucide-react";
 import { cn } from "./utils";
 
 export interface CheckboxProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
+  extends Omit<
+    React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+    "checked" | "defaultChecked" | "onCheckedChange"
+  > {
+  /** Controlled checked state (omit for uncontrolled usage with `defaultChecked`) */
   checked?: boolean;
+  /** Initial checked state for uncontrolled usage */
+  defaultChecked?: boolean;
+  /** Renders the mixed state (`aria-checked="mixed"`); takes precedence over `checked` */
   indeterminate?: boolean;
+  /** Fired with the next boolean state when the user toggles the checkbox */
   onCheckedChange?: (checked: boolean) => void;
 }
 
-export const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
+/**
+ * Checkbox built on `@radix-ui/react-checkbox`. Radix provides the
+ * WAI-ARIA checkbox semantics (role, aria-checked incl. "mixed", Space to
+ * toggle via native button activation, Enter suppressed) and a native
+ * bubble input for form submission when rendered inside a `<form>`.
+ */
+export const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  CheckboxProps
+>(
   (
-    {
-      className,
-      checked = false,
-      indeterminate = false,
-      onCheckedChange,
-      disabled,
-      children,
-      ...props
-    },
+    { className, checked, indeterminate = false, onCheckedChange, ...props },
     ref
   ) => {
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (disabled) return;
-      onCheckedChange?.(!checked);
-      props.onClick?.(e);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (disabled) return;
-      if (e.key === " ") {
-        e.preventDefault();
-        onCheckedChange?.(!checked);
-      }
-      props.onKeyDown?.(e);
-    };
+    const radixChecked: CheckboxPrimitive.CheckedState | undefined =
+      indeterminate ? "indeterminate" : checked;
 
     return (
-      <button
-        type="button"
-        role="checkbox"
+      <CheckboxPrimitive.Root
         ref={ref}
-        aria-checked={indeterminate ? "mixed" : checked}
-        data-state={indeterminate ? "indeterminate" : checked ? "checked" : "unchecked"}
-        disabled={disabled}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
+        checked={radixChecked}
+        onCheckedChange={(next) => onCheckedChange?.(next === true)}
         className={cn(
-          "peer border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-sm border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-          checked || indeterminate
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-background",
+          "peer border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-sm border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+          "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary",
+          "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground data-[state=indeterminate]:border-primary",
           "inline-flex items-center justify-center",
           className
         )}
         {...props}
       >
-        {children ?? (
-          indeterminate ? (
-            <span aria-hidden="true" className="font-bold flex items-center justify-center leading-none">—</span>
-          ) : checked ? (
-            <CheckIcon className="size-3.5 stroke-[3]" />
-          ) : null
-        )}
-      </button>
+        <CheckboxPrimitive.Indicator
+          data-slot="checkbox-indicator"
+          className="flex items-center justify-center text-current"
+        >
+          {indeterminate ? (
+            <MinusIcon className="size-3.5 stroke-[3]" aria-hidden="true" />
+          ) : (
+            <CheckIcon className="size-3.5 stroke-[3]" aria-hidden="true" />
+          )}
+        </CheckboxPrimitive.Indicator>
+      </CheckboxPrimitive.Root>
     );
   }
 );
