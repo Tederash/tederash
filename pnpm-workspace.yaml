@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "apps/*"
+  - "extension"
 
 overrides:
   "nextra@4.6.1>zod": 4.1.12

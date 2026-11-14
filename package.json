@@ -5,7 +5,9 @@
   "description": "Adaptive Accessibility Framework & React Component SDK",
   "scripts": {
     "build": "pnpm --filter \"./packages/*\" run build && pnpm --filter docs run build",
+    "build:ext": "pnpm --filter tederash build",
     "dev": "pnpm --filter docs run dev",
+    "dev:ext": "pnpm --filter tederash dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "pnpm -r run lint",

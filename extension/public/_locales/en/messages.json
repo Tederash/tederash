@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Tederash",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Personalized web accessibility assistant with voice control, guided forms, and safe page adaptations.",
+    "description": "Extension description"
+  }
+}
