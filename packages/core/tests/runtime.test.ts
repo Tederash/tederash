@@ -213,3 +213,17 @@ describe("Runtime server snapshot identity", () => {
     expect(runtime.getServerState?.()).toBe(runtime.getState());
   });
 });
+
+describe("Announcement spoken flag", () => {
+  it("passes spoken: false through to listeners and omits it otherwise", () => {
+    const runtime = createAccessibilityRuntime({ persistence: "none" });
+    const received: Array<{ message: string; spoken?: boolean }> = [];
+    runtime.onAnnounce((a) => received.push(a));
+
+    runtime.announce({ message: "quiet", spoken: false });
+    runtime.announce({ message: "normal" });
+
+    expect(received[0].spoken).toBe(false);
+    expect("spoken" in received[1]).toBe(false);
+  });
+});

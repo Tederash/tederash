@@ -173,7 +173,8 @@ function useFieldSpeech(options: FieldSpeechOptions) {
         : format === "tel"
         ? "announcements.listeningTel"
         : "announcements.listening";
-    announce({ message: t(listeningKey), priority: "polite", category: "info" });
+    // Not read aloud: the microphone opens now and would transcribe the speech output.
+    announce({ message: t(listeningKey), priority: "polite", category: "info", spoken: false });
     recognition.startListening({
       lang: adaptations.language,
       interimResults: true,

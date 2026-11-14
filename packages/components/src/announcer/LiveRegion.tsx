@@ -36,6 +36,7 @@ export const TederashLiveRegion = React.forwardRef<
       // Spoken readout via Web Speech API when speechOutput is enabled in profile
       if (
         profile.speech?.speechOutput &&
+        announcement.spoken !== false &&
         typeof window !== "undefined" &&
         "speechSynthesis" in window
       ) {

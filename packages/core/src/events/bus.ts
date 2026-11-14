@@ -31,6 +31,7 @@ export class AccessibilityEventBus {
       priority,
       category: options.category,
       timestamp: now,
+      ...(options.spoken === false ? { spoken: false } : {}),
     };
 
     this.lastAnnouncement = announcement;

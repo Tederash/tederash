@@ -486,6 +486,26 @@ describe("Field speech: email and phone fields", () => {
   });
 });
 
+describe("Field speech: spoken announcements", () => {
+  it("does not read the 'listening' cue aloud as the mic opens, but still sends it to screen readers", () => {
+    const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
+    const { getPoliteAnnouncement } = renderWithA11y(<AccessibleInput label="Name" speechInput />, {
+      defaultProfile: VOICE_ASSIST_PRESET,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Dictate into Name" }));
+    expect(getPoliteAnnouncement()).toContain("Listening. Speak now.");
+    expect(speakSpy).not.toHaveBeenCalled();
+
+    // Later announcements (after the mic closes) are still spoken
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("Abebe"));
+    fireEvent.click(screen.getByRole("button", { name: "Stop dictating" }));
+    const spoken = speakSpy.mock.calls.map((c) => (c[0] as unknown as { text: string }).text);
+    expect(spoken.some((text) => text.startsWith("Voice input heard: Abebe."))).toBe(true);
+    speakSpy.mockRestore();
+  });
+});
+
 describe("Field speech: read aloud", () => {
   it("reads label, required state, instructions and error with the profile language and rate", async () => {
     const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
