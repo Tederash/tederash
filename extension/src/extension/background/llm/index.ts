@@ -3,11 +3,22 @@ import { DirectLlmProvider } from './direct';
 import { HeuristicLlmProvider } from './heuristic';
 import type { LlmProvider } from './types';
 
-let cachedProvider: LlmProvider | null = null;
+const defaultGroqKey =
+  typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
+
 let currentConfig: AiConfig = {
   provider: 'groq',
   model: 'llama-3.3-70b-versatile',
+  apiKey: defaultGroqKey,
 };
+
+let cachedProvider: LlmProvider | null = defaultGroqKey
+  ? new DirectLlmProvider({
+      provider: 'groq',
+      apiKey: defaultGroqKey,
+      model: 'llama-3.3-70b-versatile',
+    })
+  : null;
 
 export function setAiConfig(config: AiConfig): LlmProvider {
   currentConfig = config;

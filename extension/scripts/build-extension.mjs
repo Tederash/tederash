@@ -8,6 +8,28 @@ const isWatch = process.argv.includes('--watch');
 // Minify by default; explicit dev mode (or watch) keeps readable output.
 const isProd = !isWatch && process.env.NODE_ENV !== 'development';
 
+function loadEnv() {
+  const envPath = path.join(ROOT, '.env');
+  const env = {};
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+        env[key] = val;
+      }
+    }
+  }
+  return env;
+}
+
+const envVars = loadEnv();
+const groqKey = envVars.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
+
 async function buildAll() {
   if (!fs.existsSync(OUT_DIR)) {
     fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -21,6 +43,7 @@ async function buildAll() {
     logLevel: 'info',
     define: {
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      'process.env.GROQ_API_KEY': JSON.stringify(groqKey),
     },
   };
 

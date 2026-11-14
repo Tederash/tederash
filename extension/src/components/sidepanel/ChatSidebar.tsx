@@ -3,6 +3,9 @@ import { createEnvelope } from '../../shared/envelope';
 import type { AiConfig, ChatMessage } from '../../shared/messages';
 import { Button } from '../ui/Button';
 
+const envGroqKey =
+  typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
+
 export function ChatSidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -12,8 +15,9 @@ export function ChatSidebar() {
   const [aiConfig, setAiConfigState] = useState<AiConfig>({
     provider: 'groq',
     model: 'llama-3.3-70b-versatile',
+    apiKey: envGroqKey,
   });
-  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState(envGroqKey);
   const [modelInput, setModelInput] = useState('llama-3.3-70b-versatile');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -30,10 +34,10 @@ export function ChatSidebar() {
   useEffect(() => {
     async function init() {
       try {
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+        if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
           const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
           const currentTab = tabs[0];
-          if (currentTab && currentTab.id !== undefined) {
+          if (currentTab?.id !== undefined) {
             setActiveTabInfo({
               id: currentTab.id,
               title: currentTab.title,
@@ -42,7 +46,7 @@ export function ChatSidebar() {
           }
         }
 
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
           // Load conversation history
           const historyRes = (await chrome.runtime.sendMessage(
             createEnvelope('agent/getHistory', {})
@@ -57,8 +61,8 @@ export function ChatSidebar() {
           )) as { ok: boolean; config?: AiConfig };
           if (configRes?.ok && configRes.config) {
             setAiConfigState(configRes.config);
-            setApiKeyInput(configRes.config.apiKey || '');
-            setModelInput(configRes.config.model || '');
+            setApiKeyInput(configRes.config.apiKey || envGroqKey);
+            setModelInput(configRes.config.model || 'llama-3.3-70b-versatile');
           }
         }
       } catch {
@@ -76,9 +80,11 @@ export function ChatSidebar() {
       setInput('');
     }
 
+    const effectiveKey = aiConfig.apiKey || envGroqKey;
+
     if (
       (aiConfig.provider === 'groq' || aiConfig.provider === 'openai') &&
-      (!aiConfig.apiKey || !aiConfig.apiKey.trim())
+      (!effectiveKey || !effectiveKey.trim())
     ) {
       setMessages((prev) => [
         ...prev,
@@ -91,7 +97,7 @@ export function ChatSidebar() {
         {
           id: `asst_${Date.now()}`,
           role: 'assistant',
-          content: `⚙️ **${aiConfig.provider.toUpperCase()} API key required.** Click **⚙️ Model** in the top header, paste your API key, and click **Save Config**.\n\n*(Tip: Switch to **Built-in Deterministic** to test actions without any API key).*`,
+          content: `API key required for ${aiConfig.provider.toUpperCase()}. Please configure your key in settings or add GROQ_API_KEY in .env.`,
           timestamp: Date.now(),
           status: 'error',
         },
@@ -113,7 +119,7 @@ export function ChatSidebar() {
     setIsRunning(true);
 
     try {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         const response = (await chrome.runtime.sendMessage(
           createEnvelope('agent/chat', {
             tabId,
@@ -148,7 +154,7 @@ export function ChatSidebar() {
             },
           ]);
           setIsRunning(false);
-        }, 800);
+        }, 600);
         return;
       }
     } catch (err) {
@@ -171,7 +177,7 @@ export function ChatSidebar() {
   const handleStop = async () => {
     if (!isRunning) return;
     try {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         await chrome.runtime.sendMessage(createEnvelope('agent/stop', {}));
       }
     } finally {
@@ -181,7 +187,7 @@ export function ChatSidebar() {
 
   const handleClearHistory = async () => {
     try {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         await chrome.runtime.sendMessage(createEnvelope('agent/clearHistory', {}));
       }
       setMessages([]);
@@ -192,7 +198,7 @@ export function ChatSidebar() {
 
   const handleSaveConfig = async () => {
     try {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         const res = (await chrome.runtime.sendMessage(
           createEnvelope('ai/setConfig', {
             provider: aiConfig.provider,
@@ -221,44 +227,44 @@ export function ChatSidebar() {
     'Summarize this page',
     'Increase text size & contrast',
     'Read the main content aloud',
-    'Find the search or login bar',
+    'Find search or navigation bar',
     'Scroll down',
   ];
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-bg text-fg font-sans">
+    <div className="flex flex-col h-screen max-h-screen bg-bg text-fg font-sans antialiased select-none">
       {/* Header */}
-      <header className="p-3 border-b border-border bg-surface flex items-center justify-between gap-2 shrink-0">
+      <header className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between gap-3 shrink-0">
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-sm tracking-tight text-fg">Tederash Assistant</span>
+            <h1 className="font-semibold text-sm tracking-tight text-fg">Tederash</h1>
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-accent/15 text-accent border border-accent/20 truncate"
+              className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-surface-elevated text-fg-muted border border-border shrink-0"
               title={`Provider: ${aiConfig.provider} (${aiConfig.model || 'default'})`}
             >
               {aiConfig.provider === 'groq'
-                ? 'GROQ (Llama 3.3)'
+                ? 'groq/llama-3.3'
                 : aiConfig.provider === 'heuristic'
-                  ? 'Built-in (Fast)'
-                  : aiConfig.provider.toUpperCase()}
+                  ? 'deterministic'
+                  : aiConfig.provider}
             </span>
           </div>
           {activeTabInfo.title && (
-            <span className="text-xs text-fg-muted truncate" title={activeTabInfo.url}>
+            <span className="text-xs text-fg-muted truncate mt-0.5" title={activeTabInfo.url}>
               {activeTabInfo.title}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}
-            aria-label="AI Settings"
+            aria-label="Settings"
             title="Configure AI model & API key"
-            className="p-1.5 text-fg-muted hover:text-fg rounded hover:bg-surface-elevated transition-colors text-xs"
+            className="px-2.5 py-1 text-xs font-medium text-fg-muted hover:text-fg rounded-md border border-border hover:bg-surface-elevated transition-colors"
           >
-            ⚙️ Model
+            Settings
           </button>
           {messages.length > 0 && (
             <button
@@ -266,9 +272,9 @@ export function ChatSidebar() {
               onClick={handleClearHistory}
               aria-label="Clear chat conversation"
               title="Clear chat history"
-              className="p-1.5 text-fg-muted hover:text-danger rounded hover:bg-surface-elevated transition-colors text-xs"
+              className="px-2.5 py-1 text-xs font-medium text-fg-muted hover:text-danger rounded-md border border-border hover:bg-surface-elevated transition-colors"
             >
-              🗑️ Clear
+              Clear
             </button>
           )}
         </div>
@@ -278,14 +284,18 @@ export function ChatSidebar() {
       {showSettings && (
         <section
           aria-label="AI Provider Settings"
-          className="p-3 border-b border-border bg-surface-elevated text-sm flex flex-col gap-2 shrink-0 animate-in fade-in"
+          className="p-4 border-b border-border bg-surface-elevated text-sm flex flex-col gap-3 shrink-0"
         >
-          <div className="font-semibold text-xs text-fg uppercase tracking-wider">
-            AI Provider Configuration
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-xs text-fg">AI Configuration</span>
+            {envGroqKey && (
+              <span className="text-[11px] text-success font-mono">.env key detected</span>
+            )}
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="ai-provider" className="text-xs text-fg-muted">
-              Provider Engine:
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="ai-provider" className="text-xs font-medium text-fg-muted">
+              Provider
             </label>
             <select
               id="ai-provider"
@@ -301,64 +311,49 @@ export function ChatSidebar() {
                   setModelInput('llama-3.3-70b-versatile');
                 }
               }}
-              className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+              className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="groq">Groq (Llama 3.3 70B - Recommended)</option>
               <option value="heuristic">Built-in Deterministic (No Key Needed)</option>
               <option value="gemini">Google Gemini (OpenAI-compatible)</option>
-              <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
-              <option value="custom">Custom / Local LLM (Ollama / Proxy)</option>
+              <option value="openai">OpenAI (GPT-4o)</option>
+              <option value="custom">Custom Endpoint / Local LLM</option>
             </select>
           </div>
 
-          {aiConfig.provider === 'groq' && (
-            <p className="text-[11px] text-fg-muted">
-              Groq provides sub-second tool-calling inference. Get a free API key at{' '}
-              <a
-                href="https://console.groq.com/keys"
-                target="_blank"
-                rel="noreferrer"
-                className="text-accent underline"
-              >
-                console.groq.com
-              </a>
-              .
-            </p>
-          )}
-
           {aiConfig.provider !== 'heuristic' && (
             <>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="ai-apikey" className="text-xs text-fg-muted">
-                  {aiConfig.provider === 'groq' ? 'Groq API Key (gsk_...):' : 'API Key:'}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="ai-apikey" className="text-xs font-medium text-fg-muted">
+                  API Key
                 </label>
                 <input
                   id="ai-apikey"
                   type="password"
-                  placeholder={aiConfig.provider === 'groq' ? 'gsk_...' : 'Enter your API key'}
+                  placeholder={
+                    envGroqKey && aiConfig.provider === 'groq'
+                      ? '•••••••• (Loaded from .env)'
+                      : aiConfig.provider === 'groq'
+                        ? 'gsk_...'
+                        : 'API Key'
+                  }
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
-                  className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="ai-model" className="text-xs text-fg-muted">
-                  Model Override (optional):
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="ai-model" className="text-xs font-medium text-fg-muted">
+                  Model
                 </label>
                 <input
                   id="ai-model"
                   type="text"
-                  placeholder={
-                    aiConfig.provider === 'groq'
-                      ? 'llama-3.3-70b-versatile'
-                      : aiConfig.provider === 'gemini'
-                        ? 'gemini-1.5-flash'
-                        : 'gpt-4o-mini'
-                  }
+                  placeholder="llama-3.3-70b-versatile"
                   value={modelInput}
                   onChange={(e) => setModelInput(e.target.value)}
-                  className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
             </>
@@ -369,7 +364,7 @@ export function ChatSidebar() {
               Cancel
             </Button>
             <Button size="compact" variant="primary" onClick={handleSaveConfig}>
-              Save Config
+              Save
             </Button>
           </div>
         </section>
@@ -381,25 +376,27 @@ export function ChatSidebar() {
         role="log"
         aria-live="polite"
         aria-label="Conversation history"
-        className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0"
+        className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 select-text"
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center my-auto text-center gap-3 p-4">
-            <div className="text-3xl">✨</div>
-            <h2 className="font-bold text-base text-fg">How can I help you today?</h2>
-            <p className="text-xs text-fg-muted max-w-[280px]">
-              I can inspect this page, adapt text size and contrast, read sections aloud, or guide you
-              through actions.
+            <div className="w-10 h-10 rounded-full border border-border bg-surface-elevated flex items-center justify-center text-sm font-mono font-medium text-fg">
+              AI
+            </div>
+            <h2 className="font-semibold text-sm text-fg tracking-tight">How can I assist you with this page?</h2>
+            <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed">
+              Ask questions about the content, adapt visual contrast, or navigate and interact.
             </p>
-            <div className="flex flex-wrap gap-1.5 justify-center mt-2">
+            <div className="flex flex-col gap-1.5 w-full max-w-[280px] mt-2">
               {suggestions.map((sug) => (
                 <button
                   key={sug}
                   type="button"
                   onClick={() => handleSend(sug)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors text-left"
+                  className="text-xs px-3 py-2 rounded-md border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors text-left flex items-center justify-between"
                 >
-                  {sug}
+                  <span>{sug}</span>
+                  <span className="text-fg-muted text-[10px]">↵</span>
                 </button>
               ))}
             </div>
@@ -415,23 +412,23 @@ export function ChatSidebar() {
               }`}
             >
               {m.role === 'user' ? (
-                <div className="p-3 rounded-2xl rounded-tr-sm bg-accent text-accent-fg text-sm leading-relaxed shadow-sm">
+                <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
                   {m.content}
                 </div>
               ) : m.role === 'step' ? (
                 <div
-                  className={`text-xs px-2.5 py-1.5 rounded border my-0.5 flex items-center gap-2 max-w-full ${
+                  className={`text-xs px-2.5 py-1.5 rounded-md border my-0.5 font-mono flex items-center gap-2 max-w-full ${
                     m.status === 'error'
                       ? 'border-danger/30 bg-danger/10 text-danger'
-                      : 'border-border bg-surface text-fg-muted'
+                      : 'border-border bg-surface-elevated text-fg-muted'
                   }`}
                 >
-                  <span className="shrink-0">{m.status === 'error' ? '⚠️' : '⚡'}</span>
+                  <span className="text-[10px] uppercase font-bold text-fg-muted">Action</span>
                   <span className="truncate">{m.content}</span>
                 </div>
               ) : (
                 <div
-                  className={`p-3 rounded-2xl rounded-tl-sm text-sm leading-relaxed border shadow-sm ${
+                  className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs ${
                     m.status === 'error'
                       ? 'border-danger/40 bg-danger/10 text-danger'
                       : 'border-border bg-surface text-fg'
@@ -440,7 +437,7 @@ export function ChatSidebar() {
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 </div>
               )}
-              <span className="text-[10px] text-fg-muted px-1 mt-0.5">
+              <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
                 {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -448,9 +445,9 @@ export function ChatSidebar() {
         )}
 
         {isRunning && (
-          <div className="self-start flex items-center gap-2 text-xs text-fg-muted p-2 rounded-lg bg-surface border border-border animate-pulse">
-            <span className="inline-block w-2 h-2 rounded-full bg-accent animate-ping" />
-            <span>Observing page & reasoning…</span>
+          <div className="self-start flex items-center gap-2 text-xs font-mono text-fg-muted px-3 py-2 rounded-md bg-surface-elevated border border-border">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+            <span>Reasoning & executing…</span>
           </div>
         )}
       </div>
@@ -462,9 +459,9 @@ export function ChatSidebar() {
             e.preventDefault();
             void handleSend();
           }}
-          className="flex items-end gap-2"
+          className="flex flex-col gap-2"
         >
-          <div className="flex-1 relative">
+          <div className="relative">
             <textarea
               ref={inputRef}
               rows={2}
@@ -472,34 +469,38 @@ export function ChatSidebar() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isRunning}
-              placeholder="Ask Tederash or type a command... (Enter to send)"
-              aria-label="Message prompt for accessibility assistant"
-              className="w-full p-2.5 rounded-lg border border-border bg-bg text-fg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+              placeholder="Ask Tederash or type an action... (Press Enter to send)"
+              aria-label="Message prompt for assistant"
+              className="w-full px-3 py-2 rounded-md border border-border bg-surface text-fg placeholder:text-fg-muted text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
             />
           </div>
 
-          {isRunning ? (
-            <Button
-              type="button"
-              variant="danger"
-              size="default"
-              onClick={handleStop}
-              aria-label="Stop running task"
-              title="Stop task (Esc)"
-            >
-              Stop
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              variant="primary"
-              size="default"
-              disabled={!input.trim()}
-              aria-label="Send message"
-            >
-              Send
-            </Button>
-          )}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-fg-muted font-mono">
+              Enter to send · Shift+Enter for newline
+            </span>
+            {isRunning ? (
+              <Button
+                type="button"
+                variant="danger"
+                size="compact"
+                onClick={handleStop}
+                aria-label="Stop running task"
+              >
+                Stop
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                variant="primary"
+                size="compact"
+                disabled={!input.trim()}
+                aria-label="Send message"
+              >
+                Send
+              </Button>
+            )}
+          </div>
         </form>
       </footer>
     </div>
