@@ -2,6 +2,7 @@
   "name": "tederash",
   "version": "0.1.0",
   "description": "Tederash — Personalized web accessibility assistant Chrome extension",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
