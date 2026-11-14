@@ -1,4 +1,5 @@
 import * as React from "react";
+import { runTederashInteraction } from "../bridge/interactions";
 import {
   DeepPartial,
   PersistenceAdapter,
@@ -179,6 +180,16 @@ export function TederashProvider({
             const priority = detail.payload?.priority || "polite";
             runtime.announce({ message: msg, priority });
             respond(true, { announced: true, message: msg, priority });
+            break;
+          }
+          case "tederash:interact": {
+            const { id, action, value } = detail.payload ?? {};
+            if (typeof id !== "string" || !["fill", "choose", "setChecked"].includes(action)) {
+              respond(false, undefined, "Missing id or action in payload");
+              return;
+            }
+            const result = runTederashInteraction(id, action, value);
+            respond(result.ok, result, result.error);
             break;
           }
           default:

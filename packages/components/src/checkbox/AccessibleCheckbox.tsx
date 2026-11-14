@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useAccessibility } from "@tederash/react";
+import { useAccessibility, useTederashInteraction } from "@tederash/react";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
@@ -86,6 +86,12 @@ export const TederashCheckbox = React.forwardRef<
       }
       onCheckedChange?.(nextChecked);
     };
+
+    // Lets an assistant (the browser extension) check or uncheck through React itself.
+    useTederashInteraction(inputId, {
+      setChecked: (next) => handleCheckedChange(next),
+      isDisabled: () => Boolean(disabled),
+    });
 
     const activeDescription =
       adaptations.simplifiedLanguage && simplifiedDescription

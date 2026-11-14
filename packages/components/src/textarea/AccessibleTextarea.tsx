@@ -1,10 +1,10 @@
 import * as React from "react";
-import { useAccessibility } from "@tederash/react";
+import { useAccessibility, useTederashInteraction } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
 import { Textarea, type TextareaProps } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
-import { FieldSpeech, isFieldSpeechWanted, useMergedRef } from "../speech/FieldSpeech";
+import { FieldSpeech, isFieldSpeechWanted, setFieldValue, useMergedRef } from "../speech/FieldSpeech";
 
 export interface TederashTextareaProps
   extends Omit<TextareaProps, "size"> {
@@ -113,6 +113,15 @@ export const TederashTextarea = React.forwardRef<
 
     const fieldRef = React.useRef<HTMLTextAreaElement | null>(null);
     const mergedRef = useMergedRef(ref, fieldRef);
+
+    // Lets an assistant (the browser extension) fill this field through React itself.
+    useTederashInteraction(textareaId, {
+      fill: (value) => {
+        const el = fieldRef.current;
+        if (el && !(el instanceof HTMLInputElement && el.type === "password")) setFieldValue(el, value);
+      },
+      isDisabled: () => Boolean(fieldRef.current?.disabled || fieldRef.current?.readOnly),
+    });
     const speechProps = {
       fieldRef,
       fieldId: textareaId,

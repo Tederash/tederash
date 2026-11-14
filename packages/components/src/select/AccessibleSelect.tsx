@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useAccessibility } from "@tederash/react";
+import { matchTederashOption, useAccessibility, useTederashInteraction } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
 import { cn } from "../ui/utils";
 import { Label } from "../ui/label";
@@ -99,6 +99,17 @@ export const TederashSelect = React.forwardRef<
       }
       onChange?.(next);
     };
+
+    // Lets an assistant (the browser extension) choose an option through React itself.
+    useTederashInteraction(selectId, {
+      choose: (wanted) => {
+        const match = matchTederashOption(options, wanted);
+        if (!match) return false;
+        handleValueChange(match.value);
+        return true;
+      },
+      isDisabled: () => Boolean(disabled),
+    });
 
     const activeDescription =
       adaptations.simplifiedLanguage && simplifiedDescription

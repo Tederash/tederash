@@ -185,3 +185,51 @@ describe('model tool output', () => {
     ).toMatchObject({ ok: false, code: 'AMBIGUOUS', candidates: [{ handle: 'fld:a' }] });
   });
 });
+
+describe('Tederash bridge path', () => {
+  function respondAsPage(handler: (payload: any) => boolean) {
+    const calls: any[] = [];
+    const listener = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type !== 'tederash:interact') return;
+      calls.push(detail.payload);
+      const ok = handler(detail.payload);
+      window.dispatchEvent(new CustomEvent('tederash:response', { detail: { id: detail.id, ok } }));
+    };
+    window.addEventListener('tederash:request', listener);
+    return { calls, stop: () => window.removeEventListener('tederash:request', listener) };
+  }
+
+  beforeEach(() => {
+    document.documentElement.setAttribute('data-tederash-root', 'true');
+    document.body.innerHTML = `
+      <label for="n">Full Legal Name</label><input id="n" data-tederash-id="name-1">
+      <label><input type="checkbox" id="t" data-tederash-id="terms-1"> I agree</label>`;
+  });
+
+  it('asks the page component first (fill / setChecked) and verifies the result', async () => {
+    const page = respondAsPage((p) => {
+      const el = document.querySelector<HTMLInputElement>(`[data-tederash-id="${p.id}"]`)!;
+      if (p.action === 'fill') el.value = p.value;
+      if (p.action === 'setChecked') el.checked = p.value;
+      return true;
+    });
+    expect((await fill({ target: 'Full Name', value: 'Abebe Bikila' })).ok).toBe(true);
+    expect((await setChecked({ target: 'I agree', checked: true })).ok).toBe(true);
+    expect(page.calls).toEqual([
+      { id: 'name-1', action: 'fill', value: 'Abebe Bikila' },
+      { id: 'terms-1', action: 'setChecked', value: true },
+    ]);
+    expect((document.getElementById('t') as HTMLInputElement).checked).toBe(true);
+    page.stop();
+  });
+
+  it('falls back to the DOM path when the component refuses', async () => {
+    const page = respondAsPage(() => false);
+    expect((await fill({ target: 'Full Name', value: 'Abebe Bikila' })).ok).toBe(true);
+    expect((document.getElementById('n') as HTMLInputElement).value).toBe('Abebe Bikila');
+    expect(page.calls).toHaveLength(1);
+    page.stop();
+    document.documentElement.removeAttribute('data-tederash-root');
+  });
+});

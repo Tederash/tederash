@@ -10,7 +10,8 @@ export type TederashBridgeRequestType =
   | "tederash:set_profile"
   | "tederash:update_pref"
   | "tederash:reset_profile"
-  | "tederash:announce";
+  | "tederash:announce"
+  | "tederash:interact";
 
 export interface TederashBridgeRequestDetail {
   id: string;

@@ -17,6 +17,7 @@ import {
   resolveTarget,
 } from './resolver';
 import { getAccessibleName } from './snapshot';
+import { sendBridgeRequest } from './tederash-bridge';
 
 /**
  * Target-based interactions with React/controlled-component guarantees:
@@ -92,6 +93,22 @@ export function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement | HTML
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+const BRIDGE_TIMEOUT_MS = 800;
+
+/**
+ * Tederash path: ask the page's own React components to change state
+ * (`tederash:interact`). Returns false when the page has no Tederash runtime, the
+ * component is not registered, or it refused; callers then use the DOM path.
+ */
+async function viaBridge(el: HTMLElement, action: 'fill' | 'choose' | 'setChecked', value: string | boolean): Promise<boolean> {
+  const id = el.getAttribute('data-tederash-id');
+  if (!id || !document.documentElement.hasAttribute('data-tederash-root')) return false;
+  const res = await sendBridgeRequest('tederash:interact', { id, action, value }, BRIDGE_TIMEOUT_MS);
+  if (!res.ok) return false;
+  await nextFrames();
+  return true;
+}
+
 function describeField(el: HTMLElement): string {
   return cleanLabel(el.getAttribute('data-tederash-label') || getAccessibleName(el)) || 'field';
 }
@@ -145,11 +162,14 @@ export async function fill(args: FillArgs): Promise<ToolResult> {
   if (blocked) return blocked;
 
   revealAndFocus(el);
-  if (el.isContentEditable) {
+  const input = el as HTMLInputElement | HTMLTextAreaElement;
+  const bridged = !el.isContentEditable && (await viaBridge(el, 'fill', args.value));
+  if (bridged && input.value === args.value.trim()) {
+    // Done through the component itself.
+  } else if (el.isContentEditable) {
     document.getSelection()?.selectAllChildren(el);
     document.execCommand('insertText', false, args.value);
   } else {
-    const input = el as HTMLInputElement | HTMLTextAreaElement;
     setNativeValue(input, args.value);
     await nextFrames();
     if (input.value !== args.value) {
@@ -170,7 +190,8 @@ export async function fill(args: FillArgs): Promise<ToolResult> {
   if (error) {
     return fail('VALIDATION_ERROR', `"${label}" was set to "${args.value}" but shows an error: ${error}`);
   }
-  return ok(`${label} = "${args.value}"`, { handle: res.entry.info.handle, label, value: args.value });
+  const finalValue = el.isContentEditable ? args.value : input.value;
+  return ok(`${label} = "${finalValue}"`, { handle: res.entry.info.handle, label, value: finalValue });
 }
 
 function matchOption<T>(items: T[], text: (t: T) => string, wanted: string): T | undefined {
@@ -199,6 +220,11 @@ export async function choose(args: ChooseArgs): Promise<ToolResult> {
   const label = info.label;
   const blocked = blockedState(el, label);
   if (blocked) return blocked;
+
+  if (info.kind === 'combobox' && (await viaBridge(el, 'choose', args.option))) {
+    const shown = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+    return ok(`${label} = "${shown || args.option}"`);
+  }
 
   if (el instanceof HTMLSelectElement) {
     const option = matchOption(Array.from(el.options), (o) => o.textContent ?? o.value, args.option);
@@ -254,8 +280,10 @@ export async function setChecked(args: SetCheckedArgs): Promise<ToolResult> {
     el instanceof HTMLInputElement ? el.checked : el.getAttribute('aria-checked') === 'true' || el.getAttribute('data-state') === 'checked';
   if (read() === args.checked) return ok(`"${info.label}" was already ${args.checked ? 'checked' : 'unchecked'}.`);
   revealAndFocus(el);
-  pointerActivate(el);
-  await nextFrames();
+  if (!(await viaBridge(el, 'setChecked', args.checked)) || read() !== args.checked) {
+    pointerActivate(el);
+    await nextFrames();
+  }
   return read() === args.checked
     ? ok(`"${info.label}" ${args.checked ? 'checked' : 'unchecked'}.`)
     : fail('VALUE_REJECTED', `"${info.label}" did not change.`);
