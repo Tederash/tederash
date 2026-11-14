@@ -128,6 +128,8 @@ export const TederashDialog = React.forwardRef<
           // explicitly clear it otherwise so no dangling reference is emitted.
           {...(description ? {} : { "aria-describedby": undefined })}
           data-slot="accessible-dialog"
+          data-tederash-component="dialog"
+          data-tederash-open={String(open)}
           data-target-size={adaptations.targetSize}
           data-high-contrast={String(adaptations.highContrast)}
           className={cn(

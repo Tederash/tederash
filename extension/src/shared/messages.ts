@@ -73,6 +73,10 @@ export const TabPingContentSchema = makeEnvelopeSchema(
   'tab/pingContent',
   z.object({ tabId: z.number().int().nonnegative() })
 );
+export const TabCheckTederashSchema = makeEnvelopeSchema(
+  'tab/checkTederash',
+  z.object({ tabId: z.number().int().nonnegative().optional() })
+);
 export const SettingsGetSchema = makeEnvelopeSchema(
   'settings/get',
   z.object({ origin: z.string().optional(), tabId: z.number().int().nonnegative().optional() })
@@ -196,6 +200,7 @@ export const AiSetConfigSchema = makeEnvelopeSchema(
 export const UiToBgSchema = z.discriminatedUnion('type', [
   SystemPingSchema,
   TabPingContentSchema,
+  TabCheckTederashSchema,
   SettingsGetSchema,
   SettingsUpdateSchema,
   SettingsSetProfileSchema,
@@ -298,6 +303,21 @@ export interface PingResponse {
   runtime: 'background' | 'content';
   ts: number;
   url?: string;
+  isTederash?: boolean;
+  tederashVersion?: string;
+  tederashProfile?: string;
+  tederashLocale?: string;
+}
+
+export interface TabCheckTederashResponse {
+  ok: boolean;
+  isTederash: boolean;
+  tederashVersion?: string;
+  tederashProfile?: string;
+  tederashLocale?: string;
+  url?: string;
+  tabId?: number;
+  error?: string;
 }
 
 export { createEnvelope } from './envelope';

@@ -67,6 +67,45 @@ export const FinishArgsSchema = z.object({
 });
 export type FinishArgs = z.infer<typeof FinishArgsSchema>;
 
+export const TederashDetectArgsSchema = z.object({});
+export type TederashDetectArgs = z.infer<typeof TederashDetectArgsSchema>;
+
+export const TederashGetTreeArgsSchema = z.object({});
+export type TederashGetTreeArgs = z.infer<typeof TederashGetTreeArgsSchema>;
+
+export const TederashSetProfileArgsSchema = z.object({
+  profileId: z.string().min(1).max(50),
+});
+export type TederashSetProfileArgs = z.infer<typeof TederashSetProfileArgsSchema>;
+
+export const TederashUpdatePrefArgsSchema = z.object({
+  fontScale: z.number().min(0.8).max(2.5).optional(),
+  highContrast: z.boolean().optional(),
+  targetSize: z.enum(['normal', 'large', 'extra-large']).optional(),
+  simplifiedLanguage: z.boolean().optional(),
+  showInstructions: z.boolean().optional(),
+  reduceMotion: z.boolean().optional(),
+});
+export type TederashUpdatePrefArgs = z.infer<typeof TederashUpdatePrefArgsSchema>;
+
+export const TederashAnnounceArgsSchema = z.object({
+  message: z.string().min(1).max(1000),
+  priority: z.enum(['polite', 'assertive']).default('polite').optional(),
+});
+export type TederashAnnounceArgs = z.infer<typeof TederashAnnounceArgsSchema>;
+
+export const TederashInteractArgsSchema = z.object({
+  componentId: z.string().min(1).max(100),
+  action: z.enum(['click', 'focus', 'fill', 'toggle', 'select']),
+  value: z.string().max(2000).optional(),
+});
+export type TederashInteractArgs = z.infer<typeof TederashInteractArgsSchema>;
+
+export const TederashExplainFieldArgsSchema = z.object({
+  componentId: z.string().min(1).max(100),
+});
+export type TederashExplainFieldArgs = z.infer<typeof TederashExplainFieldArgsSchema>;
+
 export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('observe_page'), args: ObservePageArgsSchema }),
   z.object({ name: z.literal('find_elements'), args: FindElementsArgsSchema }),
@@ -77,6 +116,13 @@ export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('set_adaptation'), args: SetAdaptationArgsSchema }),
   z.object({ name: z.literal('say'), args: SayArgsSchema }),
   z.object({ name: z.literal('finish'), args: FinishArgsSchema }),
+  z.object({ name: z.literal('tederash_detect'), args: TederashDetectArgsSchema }),
+  z.object({ name: z.literal('tederash_get_tree'), args: TederashGetTreeArgsSchema }),
+  z.object({ name: z.literal('tederash_set_profile'), args: TederashSetProfileArgsSchema }),
+  z.object({ name: z.literal('tederash_update_pref'), args: TederashUpdatePrefArgsSchema }),
+  z.object({ name: z.literal('tederash_announce'), args: TederashAnnounceArgsSchema }),
+  z.object({ name: z.literal('tederash_interact'), args: TederashInteractArgsSchema }),
+  z.object({ name: z.literal('tederash_explain_field'), args: TederashExplainFieldArgsSchema }),
 ]);
 export type ToolCall = z.infer<typeof ToolCallSchema>;
 export type ToolName = ToolCall['name'];
@@ -216,6 +262,85 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         summary: { type: 'string', description: 'Clear summary of what was accomplished or observed.' },
         status: { type: 'string', enum: ['success', 'partial', 'failed'] },
+      },
+    },
+  },
+  {
+    name: 'tederash_detect',
+    description: 'Check if the active page runs Tederash runtime and inspect its version and active profile.',
+    risk: 'none',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'tederash_get_tree',
+    description: 'Get all semantic Tederash UI components on the page (buttons, inputs, select, dialogs, checkboxes, textareas) with their current state, errors, and IDs.',
+    risk: 'none',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'tederash_set_profile',
+    description: 'Switch the accessibility profile dynamically (e.g., standard, low-vision, motor-assist, cognitive-assist, keyboard-only).',
+    risk: 'low',
+    parameters: {
+      type: 'object',
+      required: ['profileId'],
+      properties: {
+        profileId: { type: 'string', description: 'ID of the profile to activate (e.g. low-vision, motor-assist, cognitive-assist, standard).' },
+      },
+    },
+  },
+  {
+    name: 'tederash_update_pref',
+    description: 'Update specific accessibility preferences on the active page (font scale, contrast, target sizes, simplified language).',
+    risk: 'low',
+    parameters: {
+      type: 'object',
+      properties: {
+        fontScale: { type: 'number', description: 'Font scale multiplier (0.8 to 2.5).' },
+        highContrast: { type: 'boolean', description: 'Enable high-contrast borders and text.' },
+        targetSize: { type: 'string', enum: ['normal', 'large', 'extra-large'] },
+        simplifiedLanguage: { type: 'boolean', description: 'Simplify instructions and descriptions.' },
+        showInstructions: { type: 'boolean', description: 'Display guided instructional helpers.' },
+        reduceMotion: { type: 'boolean', description: 'Disable motion and transitions.' },
+      },
+    },
+  },
+  {
+    name: 'tederash_announce',
+    description: 'Trigger an accessible announcement on the page via the Tederash LiveRegion.',
+    risk: 'none',
+    parameters: {
+      type: 'object',
+      required: ['message'],
+      properties: {
+        message: { type: 'string', description: 'The text message to announce to screen readers and visual alerts.' },
+        priority: { type: 'string', enum: ['polite', 'assertive'] },
+      },
+    },
+  },
+  {
+    name: 'tederash_interact',
+    description: 'Directly click, focus, fill, toggle, or select a Tederash component using its ID.',
+    risk: 'low',
+    parameters: {
+      type: 'object',
+      required: ['componentId', 'action'],
+      properties: {
+        componentId: { type: 'string', description: 'The data-tederash-id of the target component.' },
+        action: { type: 'string', enum: ['click', 'focus', 'fill', 'toggle', 'select'] },
+        value: { type: 'string', description: 'Value to fill or select (for fill or select actions).' },
+      },
+    },
+  },
+  {
+    name: 'tederash_explain_field',
+    description: 'Retrieve semantic description, requirements, and error details of a Tederash form field to assist the user.',
+    risk: 'none',
+    parameters: {
+      type: 'object',
+      required: ['componentId'],
+      properties: {
+        componentId: { type: 'string', description: 'The data-tederash-id of the field.' },
       },
     },
   },

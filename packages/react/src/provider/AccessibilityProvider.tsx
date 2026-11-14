@@ -11,6 +11,10 @@ import {
   TederashContext,
   TederashContextValue,
 } from "../context/AccessibilityContext";
+import type {
+  TederashBridgeRequestDetail,
+  TederashBridgeResponseDetail,
+} from "../bridge/types";
 
 export interface TederashProviderProps {
   children: React.ReactNode;
@@ -70,6 +74,12 @@ export function TederashProvider({
     const root = document.documentElement;
     const { cssVariables, dataAttributes } = state.adaptations;
 
+    // Stamp root handshake markers for the Tederash Extension & tools
+    root.setAttribute("data-tederash-root", "true");
+    root.setAttribute("data-tederash-version", "0.1.0");
+    root.setAttribute("data-a11y-profile", state.profile.id);
+    root.setAttribute("data-a11y-locale", state.profile.speech?.language || "en");
+
     // Apply CSS variables
     for (const [key, value] of Object.entries(cssVariables)) {
       root.style.setProperty(key, value);
@@ -79,7 +89,111 @@ export function TederashProvider({
     for (const [attr, val] of Object.entries(dataAttributes)) {
       root.setAttribute(attr, val);
     }
-  }, [state.adaptations, applyStylesToRoot]);
+
+    return () => {
+      // Cleanup handshake markers when unmounting
+      root.removeAttribute("data-tederash-root");
+      root.removeAttribute("data-tederash-version");
+    };
+  }, [state.adaptations, state.profile.id, state.profile.speech?.language, applyStylesToRoot]);
+
+  // Real-time state broadcasting to window for assistive tools and extensions
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent("tederash:state_change", {
+          detail: {
+            profile: state.profile,
+            adaptations: state.adaptations,
+          },
+        })
+      );
+    } catch {
+      // Ignore if event dispatch fails in restricted contexts
+    }
+  }, [state.profile, state.adaptations]);
+
+  // Window bridge listener for deterministic external control (Extension sidepanel / Agent)
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBridgeRequest = (event: Event) => {
+      const customEvent = event as CustomEvent<TederashBridgeRequestDetail>;
+      const detail = customEvent.detail;
+      if (!detail || !detail.id || !detail.type) return;
+
+      const respond = (ok: boolean, data?: any, error?: string) => {
+        const responseDetail: TederashBridgeResponseDetail = {
+          id: detail.id,
+          ok,
+          data,
+          error,
+        };
+        window.dispatchEvent(
+          new CustomEvent("tederash:response", { detail: responseDetail })
+        );
+      };
+
+      try {
+        switch (detail.type) {
+          case "tederash:get_state": {
+            const current = runtime.getState();
+            respond(true, {
+              profile: current.profile,
+              adaptations: current.adaptations,
+              version: "0.1.0",
+            });
+            break;
+          }
+          case "tederash:set_profile": {
+            if (!detail.payload?.profile) {
+              respond(false, undefined, "Missing profile in payload");
+              return;
+            }
+            runtime.setProfile(detail.payload.profile);
+            respond(true, runtime.getState());
+            break;
+          }
+          case "tederash:update_pref": {
+            if (!detail.payload?.patch) {
+              respond(false, undefined, "Missing patch in payload");
+              return;
+            }
+            runtime.updatePreferences(detail.payload.patch);
+            respond(true, runtime.getState());
+            break;
+          }
+          case "tederash:reset_profile": {
+            runtime.resetProfile();
+            respond(true, runtime.getState());
+            break;
+          }
+          case "tederash:announce": {
+            const msg = detail.payload?.message;
+            if (!msg) {
+              respond(false, undefined, "Missing message in payload");
+              return;
+            }
+            const priority = detail.payload?.priority || "polite";
+            runtime.announce({ message: msg, priority });
+            respond(true, { announced: true, message: msg, priority });
+            break;
+          }
+          default:
+            respond(false, undefined, `Unknown bridge request type: ${detail.type}`);
+        }
+      } catch (err) {
+        respond(false, undefined, err instanceof Error ? err.message : String(err));
+      }
+    };
+
+    window.addEventListener("tederash:request", handleBridgeRequest);
+    return () => {
+      window.removeEventListener("tederash:request", handleBridgeRequest);
+    };
+  }, [runtime]);
 
   const contextValue = React.useMemo<TederashContextValue>(() => {
     return {

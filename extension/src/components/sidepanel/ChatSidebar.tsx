@@ -22,6 +22,19 @@ export function ChatSidebar() {
   });
   const [apiKeyInput, setApiKeyInput] = useState(envGroqKey);
   const [modelInput, setModelInput] = useState(envGroqModel);
+  const [tederashState, setTederashState] = useState<{
+    checked: boolean;
+    isTederash: boolean;
+    version?: string;
+    profile?: string;
+    locale?: string;
+    tabTitle?: string;
+    tabUrl?: string;
+    tabId?: number;
+  }>({
+    checked: false,
+    isTederash: false,
+  });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -33,21 +46,71 @@ export function ChatSidebar() {
     }
   }, [messages, isRunning]);
 
-  // Load active tab info, history, and AI config on mount
+  const verifyActiveTab = async (tabIdOverride?: number) => {
+    try {
+      let currentTabId = tabIdOverride;
+      let currentTitle = '';
+      let currentUrl = '';
+
+      if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const t = tabs[0];
+        if (t?.id !== undefined) {
+          currentTabId = currentTabId ?? t.id;
+          currentTitle = t.title || '';
+          currentUrl = t.url || '';
+          setActiveTabInfo({ id: t.id, title: t.title, url: t.url });
+        }
+      }
+
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        const res = (await chrome.runtime.sendMessage(
+          createEnvelope('tab/checkTederash', { tabId: currentTabId })
+        )) as {
+          ok: boolean;
+          isTederash: boolean;
+          tederashVersion?: string;
+          tederashProfile?: string;
+          tederashLocale?: string;
+          url?: string;
+          tabId?: number;
+        };
+
+        if (res?.ok && res.isTederash) {
+          setTederashState({
+            checked: true,
+            isTederash: true,
+            version: res.tederashVersion,
+            profile: res.tederashProfile,
+            locale: res.tederashLocale,
+            tabTitle: currentTitle,
+            tabUrl: currentUrl || res.url,
+            tabId: currentTabId,
+          });
+          return;
+        }
+      }
+
+      setTederashState({
+        checked: true,
+        isTederash: false,
+        tabTitle: currentTitle,
+        tabUrl: currentUrl,
+        tabId: currentTabId,
+      });
+    } catch {
+      setTederashState({
+        checked: true,
+        isTederash: false,
+      });
+    }
+  };
+
+  // Load active tab info, history, AI config, and listen for tab switches
   useEffect(() => {
     async function init() {
       try {
-        if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          const currentTab = tabs[0];
-          if (currentTab?.id !== undefined) {
-            setActiveTabInfo({
-              id: currentTab.id,
-              title: currentTab.title,
-              url: currentTab.url,
-            });
-          }
-        }
+        await verifyActiveTab();
 
         if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
           // Load conversation history
@@ -65,7 +128,7 @@ export function ChatSidebar() {
           if (configRes?.ok && configRes.config) {
             setAiConfigState(configRes.config);
             setApiKeyInput(configRes.config.apiKey || envGroqKey);
-            setModelInput(configRes.config.model || 'llama-3.3-70b-versatile');
+            setModelInput(configRes.config.model || envGroqModel);
           }
         }
       } catch {
@@ -73,6 +136,30 @@ export function ChatSidebar() {
       }
     }
     void init();
+
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      const handleActivated = (activeInfo: { tabId: number }) => {
+        void verifyActiveTab(activeInfo.tabId);
+      };
+
+      const handleUpdated = (
+        tabId: number,
+        changeInfo: { status?: string },
+        tab: { active?: boolean }
+      ) => {
+        if (changeInfo.status === 'complete' && tab.active) {
+          void verifyActiveTab(tabId);
+        }
+      };
+
+      chrome.tabs.onActivated?.addListener(handleActivated as any);
+      chrome.tabs.onUpdated?.addListener(handleUpdated as any);
+
+      return () => {
+        chrome.tabs.onActivated?.removeListener(handleActivated as any);
+        chrome.tabs.onUpdated?.removeListener(handleUpdated as any);
+      };
+    }
   }, []);
 
   const handleSend = async (customText?: string) => {
@@ -227,11 +314,11 @@ export function ChatSidebar() {
   };
 
   const suggestions = [
-    'Summarize this page',
-    'Increase text size & contrast',
-    'Read the main content aloud',
-    'Find search or navigation bar',
-    'Scroll down',
+    'Inspect Tederash form fields',
+    'Switch to low-vision profile',
+    'Simplify instructions and language',
+    'Scan accessibility layout',
+    'Explain required fields',
   ];
 
   return (
@@ -241,16 +328,24 @@ export function ChatSidebar() {
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="font-semibold text-sm tracking-tight text-fg">Tederash</h1>
-            <span
-              className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-surface-elevated text-fg-muted border border-border shrink-0"
-              title={`Provider: ${aiConfig.provider} (${aiConfig.model || 'default'})`}
-            >
-              {aiConfig.provider === 'groq'
-                ? `groq/${(aiConfig.model || envGroqModel).replace(/^.*\//, '')}`
-                : aiConfig.provider === 'heuristic'
-                  ? 'deterministic'
-                  : aiConfig.provider}
-            </span>
+            {tederashState.isTederash ? (
+              <>
+                <span className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
+                  v{tederashState.version || '0.1.0'}
+                </span>
+                {tederashState.profile && (
+                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-fg-muted border border-border">
+                    {tederashState.profile}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-surface-elevated text-fg-muted border border-border font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-fg-muted inline-block" />
+                Inactive
+              </span>
+            )}
           </div>
           {activeTabInfo.title && (
             <span className="text-xs text-fg-muted truncate mt-0.5" title={activeTabInfo.url}>
@@ -269,7 +364,7 @@ export function ChatSidebar() {
           >
             Settings
           </button>
-          {messages.length > 0 && (
+          {tederashState.isTederash && messages.length > 0 && (
             <button
               type="button"
               onClick={handleClearHistory}
@@ -373,139 +468,216 @@ export function ChatSidebar() {
         </section>
       )}
 
-      {/* Message Stream */}
-      <div
-        ref={scrollContainerRef}
-        role="log"
-        aria-live="polite"
-        aria-label="Conversation history"
-        className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 select-text"
-      >
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center my-auto text-center gap-3 p-4">
-            <div className="w-10 h-10 rounded-full border border-border bg-surface-elevated flex items-center justify-center text-sm font-mono font-medium text-fg">
-              AI
-            </div>
-            <h2 className="font-semibold text-sm text-fg tracking-tight">How can I assist you with this page?</h2>
-            <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed">
-              Ask questions about the content, adapt visual contrast, or navigate and interact.
-            </p>
-            <div className="flex flex-col gap-1.5 w-full max-w-[280px] mt-2">
-              {suggestions.map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  onClick={() => handleSend(sug)}
-                  className="text-xs px-3 py-2 rounded-md border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors text-left flex items-center justify-between"
-                >
-                  <span>{sug}</span>
-                  <span className="text-fg-muted text-[10px]">↵</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex flex-col max-w-[88%] ${
-                m.role === 'user'
-                  ? 'self-end items-end'
-                  : 'self-start items-start'
-              }`}
+      {/* Conditional Rendering: Locked Inactive View vs. Active Agent Interface */}
+      {!tederashState.isTederash ? (
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center text-center gap-4 select-text">
+          <div className="w-12 h-12 rounded-full border border-border bg-surface-elevated flex items-center justify-center text-fg-muted shadow-xs">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
             >
-              {m.role === 'user' ? (
-                <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
-                  {m.content}
-                </div>
-              ) : m.role === 'step' ? (
-                <div
-                  className={`text-xs px-2.5 py-1.5 rounded-md border my-0.5 font-mono flex items-center gap-2 max-w-full ${
-                    m.status === 'error'
-                      ? 'border-danger/30 bg-danger/10 text-danger'
-                      : 'border-border bg-surface-elevated text-fg-muted'
-                  }`}
-                >
-                  <span className="text-[10px] uppercase font-bold text-fg-muted">Action</span>
-                  <span className="truncate">{m.content}</span>
-                </div>
-              ) : (
-                <div
-                  className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
-                    m.status === 'error'
-                      ? 'border-danger/40 bg-danger/10 text-danger'
-                      : 'border-border bg-surface text-fg'
-                  }`}
-                >
-                  <MarkdownRenderer content={m.content} />
-                </div>
-              )}
-              <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
-                {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <h2 className="font-semibold text-base text-fg tracking-tight">
+              Tederash Assistant Inactive
+            </h2>
+            <p className="text-xs text-fg-muted max-w-[300px] leading-relaxed">
+              The assistant only operates on web applications built using the{' '}
+              <strong>Tederash Component Library</strong>.
+            </p>
+          </div>
+
+          <div className="w-full max-w-[320px] p-3 rounded-lg border border-border bg-surface-elevated text-left flex flex-col gap-1.5 shadow-xs">
+            <div className="flex items-center justify-between text-[11px] font-mono text-fg-muted">
+              <span>ACTIVE TAB</span>
+              <span className="text-danger font-medium">NOT DETECTED</span>
             </div>
-          ))
-        )}
-
-        {isRunning && (
-          <div className="self-start flex items-center gap-2 text-xs font-mono text-fg-muted px-3 py-2 rounded-md bg-surface-elevated border border-border">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
-            <span>Reasoning & executing…</span>
-          </div>
-        )}
-      </div>
-
-      {/* Input Tray */}
-      <footer className="p-3 border-t border-border bg-surface shrink-0 flex flex-col gap-2">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSend();
-          }}
-          className="flex flex-col gap-2"
-        >
-          <div className="relative">
-            <textarea
-              ref={inputRef}
-              rows={2}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={isRunning}
-              placeholder="Ask Tederash or type an action... (Press Enter to send)"
-              aria-label="Message prompt for assistant"
-              className="w-full px-3 py-2 rounded-md border border-border bg-surface text-fg placeholder:text-fg-muted text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-            />
+            <p
+              className="text-xs text-fg font-medium truncate"
+              title={tederashState.tabUrl || activeTabInfo.url}
+            >
+              {tederashState.tabTitle || activeTabInfo.title || 'Internal / Non-Tederash Tab'}
+            </p>
+            <p className="text-[11px] text-fg-muted truncate font-mono">
+              {tederashState.tabUrl || activeTabInfo.url || 'No URL available'}
+            </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-fg-muted font-mono">
-              Enter to send · Shift+Enter for newline
-            </span>
-            {isRunning ? (
-              <Button
-                type="button"
-                variant="danger"
-                size="compact"
-                onClick={handleStop}
-                aria-label="Stop running task"
-              >
-                Stop
-              </Button>
+          <div className="w-full max-w-[320px] text-left text-xs bg-surface p-3.5 rounded-lg border border-border flex flex-col gap-2">
+            <span className="font-medium text-fg text-xs">How to activate:</span>
+            <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed text-fg-muted">
+              <li>
+                Navigate to an application built with <code>@tederash/components</code>.
+              </li>
+              <li>
+                Ensure <code>AccessibilityProvider</code> is mounted at the root.
+              </li>
+              <li>
+                Or test against the documentation site at <code>localhost:3000</code>.
+              </li>
+            </ul>
+          </div>
+
+          <Button
+            variant="secondary"
+            size="compact"
+            onClick={() => void verifyActiveTab()}
+            className="mt-2"
+          >
+            Check Tab Again
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* Message Stream */}
+          <div
+            ref={scrollContainerRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation history"
+            className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 select-text"
+          >
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center my-auto text-center gap-3 p-4">
+                <div className="w-10 h-10 rounded-full border border-border bg-surface-elevated flex items-center justify-center text-sm font-mono font-medium text-fg">
+                  AI
+                </div>
+                <h2 className="font-semibold text-sm text-fg tracking-tight">
+                  Tederash Assistant Active
+                </h2>
+                <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed">
+                  Ask questions, adapt visual contrast, inspect accessible form fields, or navigate.
+                </p>
+                <div className="flex flex-col gap-1.5 w-full max-w-[280px] mt-2">
+                  {suggestions.map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => handleSend(sug)}
+                      className="text-xs px-3 py-2 rounded-md border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors text-left flex items-center justify-between"
+                    >
+                      <span>{sug}</span>
+                      <span className="text-fg-muted text-[10px]">↵</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <Button
-                type="submit"
-                variant="primary"
-                size="compact"
-                disabled={!input.trim()}
-                aria-label="Send message"
-              >
-                Send
-              </Button>
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col max-w-[88%] ${
+                    m.role === 'user' ? 'self-end items-end' : 'self-start items-start'
+                  }`}
+                >
+                  {m.role === 'user' ? (
+                    <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
+                      {m.content}
+                    </div>
+                  ) : m.role === 'step' ? (
+                    <div
+                      className={`text-xs px-2.5 py-1.5 rounded-md border my-0.5 font-mono flex items-center gap-2 max-w-full ${
+                        m.status === 'error'
+                          ? 'border-danger/30 bg-danger/10 text-danger'
+                          : 'border-border bg-surface-elevated text-fg-muted'
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase font-bold text-fg-muted">Action</span>
+                      <span className="truncate">{m.content}</span>
+                    </div>
+                  ) : (
+                    <div
+                      className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
+                        m.status === 'error'
+                          ? 'border-danger/40 bg-danger/10 text-danger'
+                          : 'border-border bg-surface text-fg'
+                      }`}
+                    >
+                      <MarkdownRenderer content={m.content} />
+                    </div>
+                  )}
+                  <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
+                    {new Date(m.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              ))
+            )}
+
+            {isRunning && (
+              <div className="self-start flex items-center gap-2 text-xs font-mono text-fg-muted px-3 py-2 rounded-md bg-surface-elevated border border-border">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+                <span>Reasoning & executing…</span>
+              </div>
             )}
           </div>
-        </form>
-      </footer>
+
+          {/* Input Tray */}
+          <footer className="p-3 border-t border-border bg-surface shrink-0 flex flex-col gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSend();
+              }}
+              className="flex flex-col gap-2"
+            >
+              <div className="relative">
+                <textarea
+                  ref={inputRef}
+                  rows={2}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={isRunning}
+                  placeholder="Ask Tederash or type an action... (Press Enter to send)"
+                  aria-label="Message prompt for assistant"
+                  className="w-full px-3 py-2 rounded-md border border-border bg-surface text-fg placeholder:text-fg-muted text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-fg-muted font-mono">
+                  Enter to send · Shift+Enter for newline
+                </span>
+                {isRunning ? (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="compact"
+                    onClick={handleStop}
+                    aria-label="Stop running task"
+                  >
+                    Stop
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="compact"
+                    disabled={!input.trim()}
+                    aria-label="Send message"
+                  >
+                    Send
+                  </Button>
+                )}
+              </div>
+            </form>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

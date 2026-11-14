@@ -4,6 +4,7 @@ import { parseBgToContent } from '../../shared/messages-lite';
 import { executeTool } from './actions';
 import { adaptationEngine } from './adapt/engine';
 import { buildPageSnapshot } from './snapshot';
+import { detectTederashInPage } from './tederash-bridge';
 
 /** Guards against double bootstrap when injected on demand after page load. */
 interface TederashWindow extends Window {
@@ -90,11 +91,16 @@ if (!tederashWindow.__tederashContentInjected) {
     const msg = parsed.data;
     switch (msg.type) {
       case 'content/ping': {
+        const tederash = detectTederashInPage();
         const response: PingResponse = {
           ok: true,
           runtime: 'content',
           ts: Date.now(),
           url: window.location.href,
+          isTederash: tederash.isTederash,
+          tederashVersion: tederash.version,
+          tederashProfile: tederash.profile,
+          tederashLocale: tederash.locale,
         };
         sendResponse(response);
         return false;

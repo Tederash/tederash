@@ -204,6 +204,50 @@ async function handleUiMessage(
       return res;
     }
 
+    case 'tab/checkTederash': {
+      let targetTabId = msg.payload.tabId;
+      if (targetTabId === undefined && typeof chrome.tabs?.query === 'function') {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        targetTabId = tabs[0]?.id;
+      }
+
+      if (targetTabId === undefined) {
+        return { ok: false, isTederash: false, error: 'No active tab found' };
+      }
+
+      try {
+        const ping = (await chrome.tabs.sendMessage(
+          targetTabId,
+          createEnvelope('content/ping', {})
+        )) as PingResponse;
+
+        if (ping?.ok && ping.isTederash) {
+          return {
+            ok: true,
+            isTederash: true,
+            tederashVersion: ping.tederashVersion,
+            tederashProfile: ping.tederashProfile,
+            tederashLocale: ping.tederashLocale,
+            url: ping.url,
+            tabId: targetTabId,
+          };
+        }
+        return {
+          ok: true,
+          isTederash: false,
+          tabId: targetTabId,
+          url: ping?.url,
+        };
+      } catch (err) {
+        return {
+          ok: true,
+          isTederash: false,
+          tabId: targetTabId,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
     case 'settings/get':
       return buildSettingsResponse(msg.payload.origin, msg.payload.tabId);
 

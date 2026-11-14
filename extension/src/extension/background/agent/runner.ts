@@ -103,6 +103,20 @@ function formatStepDescription(call: ToolCall, result: ToolResult): string {
       return (call.args as any).text;
     case 'finish':
       return (call.args as any).summary;
+    case 'tederash_detect':
+      return result.ok ? 'Verified Tederash runtime active on page.' : 'Tederash runtime check failed.';
+    case 'tederash_get_tree':
+      return result.ok ? 'Retrieved Tederash accessible component tree.' : 'Could not query Tederash components.';
+    case 'tederash_set_profile':
+      return `Switched accessibility profile to "${(call.args as any).profileId}".`;
+    case 'tederash_update_pref':
+      return 'Updated Tederash preferences on page.';
+    case 'tederash_announce':
+      return `Announced: "${(call.args as any).message}".`;
+    case 'tederash_interact':
+      return `Interacted with [${(call.args as any).componentId}] (${(call.args as any).action}).`;
+    case 'tederash_explain_field':
+      return `Inspected field [${(call.args as any).componentId}].`;
     default:
       return `Executed action: ${(call as any).name}`;
   }
@@ -178,8 +192,9 @@ export async function runAgentTask(
     timestamp: Date.now(),
   });
 
-  // Pre-flight check: verify tab reachability to prevent blind retry loops on restricted pages
+  // Pre-flight check: verify tab reachability and Tederash runtime support
   let isTabReachable = false;
+  let isTederashSupported = false;
   try {
     if (typeof chrome !== 'undefined' && chrome.tabs?.sendMessage) {
       const ping = (await chrome.tabs.sendMessage(
@@ -188,19 +203,21 @@ export async function runAgentTask(
       )) as PingResponse;
       if (ping?.ok && ping.runtime === 'content') {
         isTabReachable = true;
+        isTederashSupported = Boolean(ping.isTederash);
       }
     }
   } catch {
     isTabReachable = false;
   }
 
-  if (!isTabReachable) {
+  if (!isTabReachable || !isTederashSupported) {
     session.status = 'done';
     session.messages.push({
       id: `asst_${Date.now()}`,
       role: 'assistant',
-      content:
-        '⚠️ **Cannot communicate with this tab.**\n\n- Extensions cannot interact with internal browser pages like `chrome://extensions` or the Chrome Web Store.\n- If you are on a normal website, please **refresh the page (F5)** to allow the assistant to connect.',
+      content: !isTabReachable
+        ? '⚠️ **Cannot communicate with this tab.**\n\n- Extensions cannot interact with internal browser pages like `chrome://extensions` or the Chrome Web Store.\n- If you are on a normal website, please **refresh the page (F5)** to allow the assistant to connect.'
+        : '⚠️ **Tederash Runtime Not Detected.**\n\nThe Tederash Assistant only operates on web applications built using the **Tederash Component Library** (`@tederash/components`).\n\nPlease navigate to a web application that implements Tederash to use the assistant.',
       timestamp: Date.now(),
       status: 'error',
     });
@@ -342,6 +359,83 @@ export async function runAgentTask(
           summary: z.string().describe('Final summary of actions taken and outcome'),
         }),
         execute: async (args: { summary: string }) => executeContentTool(tabId, session, 'finish', args),
+      }),
+      tederash_detect: tool({
+        description: 'Check if the page runs the Tederash accessibility runtime and view its version and active profile',
+        inputSchema: z.object({}),
+        execute: async () => executeContentTool(tabId, session, 'tederash_detect', {}),
+      }),
+      tederash_get_tree: tool({
+        description:
+          'Get semantic tree of all Tederash components on page (buttons, inputs, selects, dialogs, checkboxes) with their IDs, labels, values, required status, and errors',
+        inputSchema: z.object({}),
+        execute: async () => executeContentTool(tabId, session, 'tederash_get_tree', {}),
+      }),
+      tederash_set_profile: tool({
+        description:
+          'Switch the accessibility profile dynamically (standard, low-vision, motor-assist, cognitive-assist, keyboard-only)',
+        inputSchema: z.object({
+          profileId: z
+            .string()
+            .describe(
+              'ID of accessibility profile to set (e.g. low-vision, motor-assist, cognitive-assist, standard)'
+            ),
+        }),
+        execute: async (args: { profileId: string }) =>
+          executeContentTool(tabId, session, 'tederash_set_profile', args),
+      }),
+      tederash_update_pref: tool({
+        description:
+          'Update specific accessibility preferences on the page (fontScale, highContrast, targetSize, simplifiedLanguage, showInstructions, reduceMotion)',
+        inputSchema: z.object({
+          fontScale: z.number().optional().describe('Font scale factor (e.g. 1.35)'),
+          highContrast: z.boolean().optional().describe('Enable high-contrast borders and text'),
+          targetSize: z.enum(['normal', 'large', 'extra-large']).optional().describe('Touch target sizing'),
+          simplifiedLanguage: z.boolean().optional().describe('Enable simplified plain language'),
+          showInstructions: z.boolean().optional().describe('Display persistent instructional helpers'),
+          reduceMotion: z.boolean().optional().describe('Disable motion and animations'),
+        }),
+        execute: async (args: {
+          fontScale?: number;
+          highContrast?: boolean;
+          targetSize?: 'normal' | 'large' | 'extra-large';
+          simplifiedLanguage?: boolean;
+          showInstructions?: boolean;
+          reduceMotion?: boolean;
+        }) => executeContentTool(tabId, session, 'tederash_update_pref', args),
+      }),
+      tederash_announce: tool({
+        description:
+          'Broadcast an accessible announcement via the Tederash LiveRegion for screen readers and visible alerts',
+        inputSchema: z.object({
+          message: z.string().describe('Message to announce'),
+          priority: z.enum(['polite', 'assertive']).optional().describe('Announcement priority'),
+        }),
+        execute: async (args: { message: string; priority?: 'polite' | 'assertive' }) =>
+          executeContentTool(tabId, session, 'tederash_announce', args),
+      }),
+      tederash_interact: tool({
+        description:
+          'Interact directly with a Tederash component (click, focus, fill text, toggle, or select)',
+        inputSchema: z.object({
+          componentId: z.string().describe('The data-tederash-id of the target component'),
+          action: z.enum(['click', 'focus', 'fill', 'toggle', 'select']).describe('Interaction action to perform'),
+          value: z.string().optional().describe('Value to fill into input or select'),
+        }),
+        execute: async (args: {
+          componentId: string;
+          action: 'click' | 'focus' | 'fill' | 'toggle' | 'select';
+          value?: string;
+        }) => executeContentTool(tabId, session, 'tederash_interact', args),
+      }),
+      tederash_explain_field: tool({
+        description:
+          'Retrieve semantic instructions, requirements, and error details of a Tederash form field to guide the user',
+        inputSchema: z.object({
+          componentId: z.string().describe('The data-tederash-id of the field'),
+        }),
+        execute: async (args: { componentId: string }) =>
+          executeContentTool(tabId, session, 'tederash_explain_field', args),
       }),
     };
 

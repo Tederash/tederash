@@ -7,6 +7,7 @@ export * from "./hooks/useAnnounce";
 export * from "./hooks/useSpeechSynthesis";
 export * from "./hooks/useSpeechRecognition";
 export * from "./hooks/useLocale";
+export * from "./bridge/types";
 
 // Re-export core for consumer convenience
 export * from "@tederash/core";
