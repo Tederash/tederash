@@ -208,23 +208,27 @@ Ensure each component passes the following attributes to its primary DOM node:
 | **`tederash_announce`** | `z.object({ message: z.string(), priority: z.enum(['polite', 'assertive']).optional() })` | Bridge `runtime/announce` | `{ ok: true, announced: true }` |
 | **`tederash_finish`** | `z.object({ summary: z.string() })` | Background Agent Runner | Concludes task turn |
 
-#### 4.2 System Prompt Enhancement
-Update `SYSTEM_PROMPT` in `runner.ts`:
-- Guides the agent to execute `tederash_detect` at startup.
-- If Tederash is present, exclusively use `tederash_*` tools for fast, zero-hallucination execution.
-- If Tederash is absent, gracefully explain that the site does not use Tederash components and offer visual adjustments.
+#### 4.2 System Prompt & Activation Gate
+- **Strict Tederash Gating**: The extension does not activate or open the agent if the active tab does not support Tederash.
+- If the sidepanel is opened or if the user switches to a non-Tederash tab, the agent interface is locked/disabled with an inactive notice:
+  > *"Tederash Assistant is inactive on this page. Navigate to a web application built with Tederash components (e.g., localhost:3000) to activate the assistant."*
+- The agent loop will not execute and cannot be triggered on non-Tederash or generic web pages.
 
 ---
 
 ### Phase 5: Assistant Sidebar UI Handshake & State Visualizer
-**Goal**: Make connection status obvious and give the user one-click accessibility shortcuts.
+**Goal**: Make connection status obvious and gate the assistant strictly to Tederash pages.
 
-#### 5.1 Connection Status Pill
+#### 5.1 Connection Status & Inactive Tab Gating
 In `ChatSidebar.tsx`:
 - When active tab has `data-tederash-root`:
-  - Show a green dot + badge: `Tederash App (v0.1.0) · [Active Profile]`.
-- When on generic / restricted page:
-  - Show neutral pill: `Generic Web` or `Restricted (chrome://)`.
+  - Show green indicator + badge: `Tederash App (v0.1.0) · [Active Profile]`.
+  - Chat input and assistant agent are fully active.
+- When on generic or non-Tederash page:
+  - Agent interface is completely locked and input disabled.
+  - Show clean inactive view:
+    > **Tederash Not Detected**  
+    > The assistant is disabled because this page was not built using Tederash components. Open a Tederash-powered page (e.g. localhost:3000) to activate.
 
 #### 5.2 Contextual Quick-Action Buttons
 When Tederash is detected on a form:

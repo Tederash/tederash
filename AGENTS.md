@@ -922,9 +922,10 @@ The browser extension orchestrates its agent loop using **Vercel AI SDK** (`ai` 
 ### 10.4 Agent Orchestration & Execution Rules
 
 1. **Pre-flight Ping Mandatory**: Before invoking `generateText`, the background worker must send `content/ping`. If unreachable, terminate immediately with actionable user guidance instead of burning LLM tokens.
-2. **Policy Engine Gate**: Every tool execution must call `evaluatePolicy(call)` before contacting the content script. Actions that violate user safety, exfiltrate sensitive data, or bypass confirmation are blocked deterministically.
-3. **Structured Tool Calling**: Use Vercel AI SDK's `tool({ inputSchema, execute })` with `stopWhen: isStepCount(6)` to manage agent multi-step turns deterministically.
-4. **Markdown Formatting**: All assistant conversational output must render through `MarkdownRenderer` with clean typography matching the component library documentation.
+2. **Strict Tederash Tab Gating**: The extension does not activate or run the agent if the active tab does not support Tederash. On non-Tederash or internal browser pages, the assistant UI displays a locked/disabled state, and the agent loop is completely blocked from executing.
+3. **Policy Engine Gate**: Every tool execution must call `evaluatePolicy(call)` before contacting the content script. Actions that violate user safety, exfiltrate sensitive data, or bypass confirmation are blocked deterministically.
+4. **Structured Tool Calling**: Use Vercel AI SDK's `tool({ inputSchema, execute })` with `stopWhen: isStepCount(6)` to manage agent multi-step turns deterministically.
+5. **Markdown Formatting**: All assistant conversational output must render through `MarkdownRenderer` with clean typography matching the component library documentation.
 
 ---
 
