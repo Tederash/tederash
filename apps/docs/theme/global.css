@@ -162,3 +162,27 @@ html[data-a11y-locale="am"] body {
   font-family: var(--a11y-font-family, inherit);
   line-height: var(--a11y-line-height, inherit);
 }
+
+/* ------------------------------------------------------------------ */
+/* Landing page code blocks (Shiki, dual theme)                       */
+/* ------------------------------------------------------------------ */
+
+.landing-code pre.shiki {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  white-space: pre;
+}
+
+.landing-code pre.shiki code {
+  display: block;
+  font-family: inherit;
+}
+
+.landing-code .shiki span {
+  color: var(--shiki-light);
+}
+
+.dark .landing-code .shiki span {
+  color: var(--shiki-dark);
+}
