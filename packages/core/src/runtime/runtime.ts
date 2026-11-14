@@ -37,26 +37,27 @@ export function createTederashRuntime(
     persistence = new LocalStorageAdapter(config.storageKey);
   }
 
-  // Initial profile resolution: check persistence first, fallback to defaults
-  let initialProfile: TederashProfile = resolveProfile(
-    baseDefault,
-    appDefaults
-  );
+  // Snapshot from defaults only (what a server render produces, since
+  // persisted preferences are unavailable there).
+  const defaultsProfile = sanitizeProfile(resolveProfile(baseDefault, appDefaults));
+  const serverState: TederashRuntimeState = {
+    profile: defaultsProfile,
+    adaptations: resolveAdaptations(defaultsProfile),
+  };
 
+  // Initial state: persisted preferences when present, otherwise the very same
+  // defaults snapshot object, so hydration triggers no extra re-render.
+  let currentState: TederashRuntimeState = serverState;
   if (persistence) {
     const saved = persistence.load();
     if (saved && validateProfile(saved).valid) {
-      initialProfile = resolveProfile(baseDefault, appDefaults, saved);
+      const restored = sanitizeProfile(resolveProfile(baseDefault, appDefaults, saved));
+      currentState = { profile: restored, adaptations: resolveAdaptations(restored) };
     }
   }
 
-  let currentProfile: TederashProfile = sanitizeProfile(initialProfile);
-  let currentAdaptations = resolveAdaptations(currentProfile);
-
-  let currentState: TederashRuntimeState = {
-    profile: currentProfile,
-    adaptations: currentAdaptations,
-  };
+  let currentProfile: TederashProfile = currentState.profile;
+  let currentAdaptations = currentState.adaptations;
 
   const listeners: Set<TederashRuntimeListener> = new Set();
   const eventBus = new AccessibilityEventBus();
@@ -89,6 +90,10 @@ export function createTederashRuntime(
 
     getState() {
       return currentState;
+    },
+
+    getServerState() {
+      return serverState;
     },
 
     setProfile(profile) {

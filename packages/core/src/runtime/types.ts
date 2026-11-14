@@ -40,6 +40,14 @@ export interface TederashRuntime {
   /** Retrieve the complete runtime state */
   getState(): TederashRuntimeState;
 
+  /**
+   * State resolved from the default/app profiles only, ignoring persisted
+   * preferences. Stable across calls. Used as the server snapshot so the
+   * first client render during hydration matches server-rendered markup;
+   * the persisted profile is applied immediately afterwards.
+   */
+  getServerState?(): TederashRuntimeState;
+
   /** Replace the active profile with a new one */
   setProfile(profile: TederashProfile | Partial<TederashProfile>): void;
 

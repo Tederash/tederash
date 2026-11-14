@@ -186,3 +186,30 @@ describe("Accessibility Runtime (Framework-Independent)", () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Runtime server snapshot", () => {
+  const savedProfile = { ...DEFAULT_PROFILE, id: "saved", motor: { targetSize: "extra-large" as const } };
+  const adapter = { load: () => savedProfile, save: vi.fn(), clear: vi.fn() };
+
+  it("getServerState ignores persisted preferences while getState applies them", () => {
+    const runtime = createAccessibilityRuntime({ persistence: adapter });
+
+    expect(runtime.getState().adaptations.targetSize).toBe("extra-large");
+    expect(runtime.getServerState?.().adaptations.targetSize).toBe("normal");
+    expect(runtime.getServerState?.().profile.id).toBe(DEFAULT_PROFILE.id);
+  });
+
+  it("returns a stable server snapshot across calls and profile changes", () => {
+    const runtime = createAccessibilityRuntime({ persistence: adapter });
+    const first = runtime.getServerState?.();
+    runtime.updatePreferences({ visual: { fontScale: 1.5 } });
+    expect(runtime.getServerState?.()).toBe(first);
+  });
+});
+
+describe("Runtime server snapshot identity", () => {
+  it("shares one snapshot object with getState when nothing is persisted (no extra hydration render)", () => {
+    const runtime = createAccessibilityRuntime({ persistence: "none" });
+    expect(runtime.getServerState?.()).toBe(runtime.getState());
+  });
+});

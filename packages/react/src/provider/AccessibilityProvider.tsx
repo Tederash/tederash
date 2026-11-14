@@ -52,11 +52,13 @@ export function TederashProvider({
 
   const runtime = externalRuntime ?? internalRuntime;
 
-  // Subscribe using useSyncExternalStore
+  // Subscribe using useSyncExternalStore. During hydration React uses the
+  // server snapshot (defaults, no persisted preferences) so markup matches the
+  // server render, then re-renders with the persisted profile.
   const state = React.useSyncExternalStore(
     runtime.subscribe,
     () => runtime.getState(),
-    () => runtime.getState()
+    () => runtime.getServerState?.() ?? runtime.getState()
   );
 
   // Apply CSS variables and data attributes to document.documentElement
