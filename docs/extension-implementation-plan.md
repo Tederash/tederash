@@ -20,7 +20,9 @@ This plan aligns the ongoing development of the extension with [`extension/AGENT
 | **P0 Build Pipeline** | **DONE** | Next.js static export (`out/next/`), postbuild CSP verification (0 inline scripts), esbuild bundling of `background.js`, `content.js`, `offscreen.js`, and `main-world.js`, manifest generator. |
 | **P0 Messaging & Storage** | **DONE** | Typed versioned envelopes (`extension/src/shared/envelope.ts`), Zod-validated message contracts (`extension/src/shared/messages.ts`), `StorageService` with schema migrations. |
 | **P1 Adaptation Engine** | **DONE** | Reversible CSS injection (`extension/src/extension/content/adapt/engine.ts`), Mutation Ledger (`extension/src/extension/content/adapt/ledger.ts`), resolution hierarchy (Defaults → Global → Profile → Site → Session). |
-| **UI Surfaces** | **DONE** | Popup (`PopupView.tsx`), Onboarding 6-step flow (`onboarding.tsx`), Options Dashboard 8-tab shell (`options.tsx`), Side Panel shell (`sidepanel.tsx`). |
+| **UI Surfaces** | **DONE** | Popup (`PopupView.tsx`), Onboarding 6-step flow (`onboarding.tsx`), Options Dashboard 8-tab shell (`options.tsx`), Side Panel Chat Sidebar (`sidepanel.tsx`, `ChatSidebar.tsx`). |
+| **AI Agent Loop & Chat Sidebar** | **DONE** | Observe-Plan-Act-Verify agent runner with conversation history in Side Panel (`runner.ts`), pluggable LLM provider (`direct.ts` supporting OpenAI/Gemini + deterministic `heuristic.ts`), DOM perception snapshot builder (`snapshot.ts`), and action executor (`actions.ts`). |
+| **Deterministic Policy Engine** | **DONE** | Evaluates risk tiers (`none`, `low`, `consequential`, `destructive`, `blocked`) ensuring consequential/destructive actions are guarded. |
 
 ---
 
@@ -29,12 +31,12 @@ This plan aligns the ongoing development of the extension with [`extension/AGENT
 ```mermaid
 flowchart TD
     P0["P0: Foundations & Build<br/>(COMPLETE)"] --> P1["P1: Adaptation Core<br/>(COMPLETE)"]
-    P1 --> P2["P2: Reading Engine & TTS<br/>(NEXT PRIORITY)"]
-    P2 --> P3["P3: Page Understanding<br/>Snapshot & Element Registry"]
-    P3 --> P4["P4: Voice Interaction<br/>STT & Command Router"]
-    P4 --> P5["P5: Policy Engine &<br/>Form Assistant"]
-    P5 --> P6["P6: Agentic Loop<br/>Tool-Calling AI"]
-    P6 --> P7["P7: Cognitive Aids &<br/>Assistant UI Polish"]
+    P1 --> P6["P6: Agentic Loop & Chat Sidebar<br/>(COMPLETE)"]
+    P6 --> P2["P2: Reading Engine & TTS Integration<br/>(NEXT PRIORITY)"]
+    P2 --> P3["P3: Advanced Page Understanding<br/>Shadow DOM & Cross-Frame"]
+    P3 --> P4["P4: Voice Interaction<br/>STT & Speech Command Router"]
+    P4 --> P5["P5: Guided Forms & Local Vault"]
+    P5 --> P7["P7: Cognitive Aids & Polish"]
     P7 --> P8["P8: Hardening, Evals &<br/>WCAG 2.2 AA Audit"]
 ```
 
