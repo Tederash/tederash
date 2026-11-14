@@ -1,5 +1,12 @@
 import * as React from "react";
-import { useAccessibility, useSpeechRecognition, useSpeechSynthesis } from "@tederash/react";
+import {
+  dictationFormatForInputType,
+  rankDictationCandidates,
+  useAccessibility,
+  useSpeechRecognition,
+  useSpeechSynthesis,
+  type DictationFormat,
+} from "@tederash/react";
 import { Mic, Square, Volume2, VolumeX } from "lucide-react";
 import { useLocalization } from "../localization/useLocalization";
 import { Button } from "../ui/button";
@@ -48,18 +55,15 @@ export interface FieldSpeechOptions {
 }
 
 /**
- * Appends dictated text to a field without discarding what the user already
- * typed, then dispatches a native `input` event so React `onChange` handlers
- * (controlled or uncontrolled) observe the change exactly like typing.
+ * Replaces the field's value with the reviewed dictation, then dispatches a
+ * native `input` event so React `onChange` handlers (controlled or
+ * uncontrolled) observe the change exactly like typing. Only called after
+ * the user explicitly confirms in the review panel. Respects `maxLength`.
  */
-export function appendToField(el: TextField, text: string): void {
-  const addition = text.trim();
-  if (!addition) return;
-  const current = el.value;
-  const separator = current && !/\s$/.test(current) ? " " : "";
-  let next = current + separator + addition;
+export function setFieldValue(el: TextField, text: string): void {
+  let next = text.trim();
   if (el.maxLength > 0) next = next.slice(0, el.maxLength);
-  if (next === current) return;
+  if (next === el.value) return;
 
   const proto =
     el instanceof HTMLTextAreaElement
@@ -119,15 +123,13 @@ function useFieldSpeech(options: FieldSpeechOptions) {
   // directly. When a session ends with text, the user reviews it (edit, pick
   // an alternative match, retry or discard) and explicitly inserts it.
   const [reviewResolved, setReviewResolved] = React.useState(true);
+  // Structured fields (email, tel) convert spoken symbols / spelled letters and
+  // rank plausible values first; prose fields keep the engine's order.
+  const format: DictationFormat = dictationFormatForInputType(inputType);
   const candidates = React.useMemo(() => {
     const list = alternatives.length > 0 ? alternatives : transcript ? [transcript] : [];
-    const unique: string[] = [];
-    for (const raw of list) {
-      const text = raw.trim();
-      if (text && !unique.some((u) => u.toLowerCase() === text.toLowerCase())) unique.push(text);
-    }
-    return unique;
-  }, [alternatives, transcript]);
+    return rankDictationCandidates(list, format);
+  }, [alternatives, transcript, format]);
   const reviewOpen =
     canDictate && !recognition.isListening && !reviewResolved && candidates.length > 0;
 
@@ -165,7 +167,13 @@ function useFieldSpeech(options: FieldSpeechOptions) {
   const startDictation = () => {
     recognition.resetTranscript();
     setReviewResolved(false);
-    announce({ message: t("announcements.listening"), priority: "polite", category: "info" });
+    const listeningKey =
+      format === "email"
+        ? "announcements.listeningEmail"
+        : format === "tel"
+        ? "announcements.listeningTel"
+        : "announcements.listening";
+    announce({ message: t(listeningKey), priority: "polite", category: "info" });
     recognition.startListening({
       lang: adaptations.language,
       interimResults: true,
@@ -185,9 +193,12 @@ function useFieldSpeech(options: FieldSpeechOptions) {
     const el = fieldRef.current;
     setReviewResolved(true);
     if (!el || !text.trim()) return;
-    appendToField(el, text);
+    const replaced = el.value.trim() !== "";
+    setFieldValue(el, text);
     announce({
-      message: t("announcements.dictationInserted", { field: fieldName }),
+      message: t(replaced ? "announcements.dictationReplaced" : "announcements.dictationInserted", {
+        field: fieldName,
+      }),
       priority: "polite",
       category: "success",
     });
@@ -231,6 +242,15 @@ function useFieldSpeech(options: FieldSpeechOptions) {
     dictationError: recognition.error,
     isSpeaking: synthesis.isSpeaking,
     micRef,
+    format,
+    tip:
+      format === "email"
+        ? t("labels.dictationTipEmail")
+        : format === "tel"
+        ? t("labels.dictationTipTel")
+        : t("labels.dictationTipText"),
+    /** Whether confirming will overwrite text already in the field */
+    fieldHasText: () => (fieldRef.current?.value.trim() ?? "") !== "",
     reviewOpen,
     candidates,
     toggleDictation,
@@ -376,6 +396,7 @@ function FieldSpeechStatus({ speech }: { speech: FieldSpeechState }) {
       >
         {t("announcements.listening")}
         {speech.interimTranscript ? ` “${speech.interimTranscript}”` : ""}
+        {speech.tip && <span className="block not-italic">{speech.tip}</span>}
       </p>
     );
   }
@@ -399,6 +420,8 @@ function DictationReview({ speech }: { speech: FieldSpeechState }) {
   const classes = useSpeechControlClasses();
   const { candidates } = speech;
   const [draft, setDraft] = React.useState(candidates[0] ?? "");
+  // Captured when the panel opens: confirming will overwrite existing text.
+  const [replaces] = React.useState(() => speech.fieldHasText());
   const draftRef = React.useRef<HTMLInputElement>(null);
   const baseId = React.useId();
   const headingId = `${baseId}-heard`;
@@ -428,6 +451,12 @@ function DictationReview({ speech }: { speech: FieldSpeechState }) {
       </p>
       <p id={hintId} className="text-xs text-muted-foreground">
         {t("labels.dictationEditHint")}
+        {replaces && (
+          <span data-slot="dictation-replace-hint" className="block mt-1 font-medium text-foreground">
+            {t("labels.dictationReplaceHint")}
+          </span>
+        )}
+        {speech.tip && <span className="block mt-1">{speech.tip}</span>}
       </p>
       <Input
         ref={draftRef}
@@ -486,7 +515,7 @@ function DictationReview({ speech }: { speech: FieldSpeechState }) {
           data-slot="dictation-insert"
           onClick={insert}
         >
-          {t("labels.insertDictation")}
+          {t(replaces ? "labels.replaceDictation" : "labels.insertDictation")}
         </Button>
         <Button
           type="button"

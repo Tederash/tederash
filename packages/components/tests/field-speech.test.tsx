@@ -75,6 +75,7 @@ describe("Field speech: voice dictation", () => {
     expect(document.activeElement).toBe(draft);
     expect(getPoliteAnnouncement()).toContain("Voice input heard: Abebe Kebede.");
 
+    expect(document.querySelector('[data-slot="dictation-replace-hint"]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Insert" }));
     expect(input.value).toBe("Abebe Kebede");
     expect(screen.getByTestId("echo").textContent).toBe("Abebe Kebede");
@@ -83,21 +84,27 @@ describe("Field speech: voice dictation", () => {
     expect(getPoliteAnnouncement()).toContain("Inserted into Full name.");
   });
 
-  it("appends reviewed text to existing text instead of overwriting it", () => {
-    renderWithA11y(<AccessibleInput label="City" defaultValue="Addis" speechInput />, {
-      defaultProfile: DICTATION_PROFILE,
-    });
+  it("replaces existing text only after an explicit, clearly labelled confirmation", () => {
+    const { getPoliteAnnouncement } = renderWithA11y(
+      <AccessibleInput label="City" defaultValue="Addis" speechInput />,
+      { defaultProfile: DICTATION_PROFILE }
+    );
 
     const input = screen.getByLabelText("City") as HTMLInputElement;
     fireEvent.click(screen.getByRole("button", { name: "Dictate into City" }));
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("Addis"));
     act(() => MockSpeechRecognition.lastInstance?.simulateResult("Ababa"));
-    act(() => MockSpeechRecognition.lastInstance?.simulateResult("Ethiopia"));
     fireEvent.click(screen.getByRole("button", { name: "Stop dictating" }));
-    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
 
-    expect(input.value).toBe("Addis Ababa Ethiopia");
+    // Button and hint make the overwrite explicit
+    expect(screen.queryByRole("button", { name: "Insert" })).toBeNull();
+    expect(screen.getByText("This will replace the text already in the field.")).toBeTruthy();
+    expect(input.value).toBe("Addis");
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    expect(input.value).toBe("Addis Ababa");
+    expect(getPoliteAnnouncement()).toContain("Replaced the text in City.");
   });
-
   it("shows interim text visually without changing the field value", () => {
     renderWithA11y(<ControlledInput />, { defaultProfile: DICTATION_PROFILE });
 
@@ -357,6 +364,125 @@ describe("Field speech: review before insert", () => {
     expect(screen.getByRole("group", { name: "የድምፅ ግቤት የሰማው" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "አስገባ" }));
     expect((screen.getByLabelText("ስም") as HTMLInputElement).value).toBe("አበበ ቢቂላ");
+  });
+});
+
+describe("Field speech: email and phone fields", () => {
+  const draft = () => screen.getByRole("textbox", { name: "Voice input heard" }) as HTMLInputElement;
+  const dictate = (label: string) =>
+    fireEvent.click(screen.getByRole("button", { name: `Dictate into ${label}` }));
+  const stop = () => fireEvent.click(screen.getByRole("button", { name: "Stop dictating" }));
+
+  it("converts spoken symbols and moves invalid addresses below valid ones", () => {
+    renderWithA11y(<AccessibleInput label="Email" type="email" speechInput />, {
+      defaultProfile: DICTATION_PROFILE,
+    });
+    dictate("Email");
+    // Engine's best guess is not a valid address; it must drop below valid ones,
+    // which keep the engine's own order.
+    sendAlternatives(["hey look gmail.com", "henok at gmail dot com", "hey look at gmail.com"]);
+    stop();
+
+    expect(draft().value).toBe("henok@gmail.com");
+    const options = screen
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("data-slot") === "dictation-alternative")
+      .map((b) => b.textContent);
+    expect(options).toEqual(["henok@gmail.com", "heylook@gmail.com", "heylookgmail.com"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("henok@gmail.com");
+  });
+
+  it("joins letters spelled one at a time", () => {
+    renderWithA11y(<AccessibleInput label="Email" type="email" speechInput />, {
+      defaultProfile: DICTATION_PROFILE,
+    });
+    dictate("Email");
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("h e n o k at gmail dot com"));
+    stop();
+    expect(draft().value).toBe("henok@gmail.com");
+  });
+
+  it("replaces a partially typed address with the reviewed one", () => {
+    renderWithA11y(<AccessibleInput label="Email" type="email" defaultValue="henok" speechInput />, {
+      defaultProfile: DICTATION_PROFILE,
+    });
+    dictate("Email");
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("henok at gmail dot com"));
+    stop();
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("henok@gmail.com");
+  });
+  it("gives email-specific guidance when listening and in the review", () => {
+    const { getPoliteAnnouncement } = renderWithA11y(
+      <AccessibleInput label="Email" type="email" speechInput />,
+      { defaultProfile: DICTATION_PROFILE }
+    );
+    dictate("Email");
+    expect(getPoliteAnnouncement()).toContain("Say the email address.");
+    expect(document.querySelector('[data-slot="dictation-status"]')?.textContent).toContain(
+      "Spell unusual names letter by letter"
+    );
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("henok at gmail dot com"));
+    stop();
+    expect(screen.getByRole("group", { name: "Voice input heard" }).textContent).toContain(
+      "Tip: say “at” for @"
+    );
+  });
+
+  it("converts spoken digits for phone fields", () => {
+    const { getPoliteAnnouncement } = renderWithA11y(
+      <AccessibleInput label="Phone" type="tel" speechInput />,
+      { defaultProfile: DICTATION_PROFILE }
+    );
+    dictate("Phone");
+    expect(getPoliteAnnouncement()).toContain("one digit at a time");
+    act(() =>
+      MockSpeechRecognition.lastInstance?.simulateResult(
+        "plus two five one nine one one double two three four five six"
+      )
+    );
+    stop();
+    expect(draft().value).toBe("+251911223456");
+  });
+
+  it("keeps prose words (no symbol conversion) and shows the spelling tip", () => {
+    renderWithA11y(<AccessibleTextarea label="Note" speechInput />, {
+      defaultProfile: DICTATION_PROFILE,
+    });
+    dictate("Note");
+    expect(document.querySelector('[data-slot="dictation-status"]')?.textContent).toContain(
+      "spell unusual names letter by letter"
+    );
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("meet me at five dot thirty"));
+    stop();
+    expect(draft().value).toBe("meet me at five dot thirty");
+    const review = screen.getByRole("group", { name: "Voice input heard" }).textContent ?? "";
+    expect(review).toContain("Tip: spell unusual names letter by letter");
+    expect(review).not.toContain("“at” for @");
+  });
+
+  it("joins letters spelled one at a time in name and prose fields", () => {
+    renderWithA11y(
+      <>
+        <AccessibleInput label="Full name" speechInput />
+        <AccessibleTextarea label="About" speechInput />
+      </>,
+      { defaultProfile: DICTATION_PROFILE }
+    );
+
+    dictate("Full name");
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("Abebe B I K I L A"));
+    stop();
+    expect(draft().value).toBe("Abebe Bikila");
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+    expect((screen.getByLabelText("Full name") as HTMLInputElement).value).toBe("Abebe Bikila");
+
+    dictate("About");
+    act(() => MockSpeechRecognition.lastInstance?.simulateResult("my name is h e n o k and I am a runner"));
+    stop();
+    expect(draft().value).toBe("my name is henok and I am a runner");
   });
 });
 

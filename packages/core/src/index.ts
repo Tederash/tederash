@@ -22,6 +22,7 @@ export * from "./speech/types";
 export * from "./speech/capabilities";
 export * from "./speech/synthesis";
 export * from "./speech/recognition";
+export * from "./speech/normalize";
 
 // Localization (English / Amharic)
 export * from "./localization/types";
