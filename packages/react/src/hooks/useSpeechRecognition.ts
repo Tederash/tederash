@@ -17,6 +17,12 @@ export interface UseSpeechRecognitionResult {
   abortListening: () => void;
   /** Confirmed final transcript accumulated across the session */
   transcript: string;
+  /**
+   * Alternative readings of the whole `transcript`, best first (first entry
+   * equals `transcript`). Contains more than one entry only when the engine
+   * returned alternatives (request them with `maxAlternatives`).
+   */
+  alternatives: string[];
   /** Unconfirmed in-progress transcript */
   interimTranscript: string;
   /** Whether a dictation session is active */
@@ -37,6 +43,8 @@ export function useSpeechRecognition(
   options: UseSpeechRecognitionOptions = {}
 ): UseSpeechRecognitionResult {
   const [transcript, setTranscript] = React.useState("");
+  const [alternatives, setAlternatives] = React.useState<string[]>([]);
+  const transcriptRef = React.useRef("");
   const [interimTranscript, setInterimTranscript] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -47,9 +55,12 @@ export function useSpeechRecognition(
       defaultOptions: options,
       onResult: (result) => {
         if (result.isFinal) {
-          setTranscript((prev) =>
-            prev ? `${prev} ${result.transcript}` : result.transcript
-          );
+          const prev = transcriptRef.current;
+          const join = (chunk: string) => (prev ? `${prev} ${chunk}` : chunk);
+          const next = join(result.transcript);
+          transcriptRef.current = next;
+          setTranscript(next);
+          setAlternatives((result.alternatives ?? [result.transcript]).map(join));
           setInterimTranscript("");
         } else {
           setInterimTranscript(result.transcript);
@@ -90,7 +101,9 @@ export function useSpeechRecognition(
   }, [controller]);
 
   const resetTranscript = React.useCallback(() => {
+    transcriptRef.current = "";
     setTranscript("");
+    setAlternatives([]);
     setInterimTranscript("");
     setError(null);
   }, []);
@@ -100,6 +113,7 @@ export function useSpeechRecognition(
     stopListening,
     abortListening,
     transcript,
+    alternatives,
     interimTranscript,
     isListening,
     isSupported,

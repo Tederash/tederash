@@ -43,6 +43,8 @@ export function InputDemo() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <TederashInput
           label="Full Legal Name"
+          speechInput
+          speechOutput
           value={val1}
           onChange={(e) => setVal1(e.target.value)}
           description="Enter your given and family name as shown on legal identity documents."
@@ -52,6 +54,8 @@ export function InputDemo() {
 
         <TederashInput
           label="Corporate Email Address"
+          speechInput
+          speechOutput
           type="email"
           value={val2}
           onChange={(e) => {

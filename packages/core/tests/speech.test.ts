@@ -319,6 +319,60 @@ describe("Speech recognition controller", () => {
     });
   });
 
+  it("requests maxAlternatives and reports alternative readings of final results", () => {
+    const onResult = vi.fn();
+    const controller = createSpeechRecognitionController({ onResult });
+    controller.start({ maxAlternatives: 3 });
+
+    const instance = lastRecognition() as MockSpeechRecognition & { maxAlternatives?: number };
+    expect(instance.maxAlternatives).toBe(3);
+
+    instance.onresult?.({
+      resultIndex: 0,
+      results: [
+        {
+          0: { transcript: "a baby bikila" },
+          1: { transcript: "Abebe Bikila" },
+          2: { transcript: "A Baby Bikila" }, // case-only duplicate is dropped
+          isFinal: true,
+          length: 3,
+        },
+      ],
+    });
+
+    expect(onResult).toHaveBeenCalledWith({
+      transcript: "a baby bikila",
+      isFinal: true,
+      alternatives: ["a baby bikila", "Abebe Bikila"],
+    });
+  });
+
+  it("combines per-segment alternatives across multiple final segments", () => {
+    const onResult = vi.fn();
+    const controller = createSpeechRecognitionController({ onResult });
+    controller.start({ maxAlternatives: 2 });
+
+    lastRecognition().onresult?.({
+      resultIndex: 0,
+      results: [
+        { 0: { transcript: "my name is" }, isFinal: true, length: 1 },
+        { 0: { transcript: "a baby" }, 1: { transcript: "Abebe" }, isFinal: true, length: 2 },
+      ],
+    });
+
+    expect(onResult).toHaveBeenCalledWith(
+      expect.objectContaining({ alternatives: ["my name is a baby", "my name is Abebe"] })
+    );
+  });
+
+  it("omits alternatives when the engine returns a single candidate", () => {
+    const onResult = vi.fn();
+    const controller = createSpeechRecognitionController({ onResult });
+    controller.start();
+    lastRecognition().onresult?.(makeResultEvent([{ transcript: "hello", isFinal: true }]));
+    expect(onResult).toHaveBeenCalledWith({ transcript: "hello", isFinal: true });
+  });
+
   it("calls onEnd when a session ends", () => {
     const onEnd = vi.fn();
     const controller = createSpeechRecognitionController({ onEnd });

@@ -52,12 +52,14 @@ export function useSpeechSynthesis(
     loadVoices();
     const synth = (window as unknown as {
       speechSynthesis: {
-        addEventListener: (t: string, l: () => void) => void;
-        removeEventListener: (t: string, l: () => void) => void;
+        addEventListener?: (t: string, l: () => void) => void;
+        removeEventListener?: (t: string, l: () => void) => void;
       };
     }).speechSynthesis;
+    // Some engines/polyfills expose speechSynthesis without EventTarget methods.
+    if (typeof synth?.addEventListener !== "function") return;
     synth.addEventListener("voiceschanged", loadVoices);
-    return () => synth.removeEventListener("voiceschanged", loadVoices);
+    return () => synth.removeEventListener?.("voiceschanged", loadVoices);
   }, [controller, isSupported]);
 
   // Cancel ongoing speech on unmount

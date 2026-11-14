@@ -43,6 +43,8 @@ export function TextareaDemo() {
         <TederashTextarea
           id="ta-feedback"
           label="Accessibility Feedback & Suggestions"
+          speechInput
+          speechOutput
           value={msg1}
           onChange={(e) => setMsg1(e.target.value)}
           maxLength={140}
@@ -56,6 +58,8 @@ export function TextareaDemo() {
         <TederashTextarea
           id="ta-issue"
           label="Validation Report"
+          speechInput
+          speechOutput
           value={msg2}
           onChange={(e) => setMsg2(e.target.value)}
           description="Detailed stack trace or error log."

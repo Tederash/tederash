@@ -4,6 +4,7 @@ import { useLocalization } from "../localization/useLocalization";
 import { Textarea, type TextareaProps } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
+import { FieldSpeech, isFieldSpeechWanted, useMergedRef } from "../speech/FieldSpeech";
 
 export interface TederashTextareaProps
   extends Omit<TextareaProps, "size"> {
@@ -21,6 +22,17 @@ export interface TederashTextareaProps
   maxLength?: number;
   /** Whether to show a live character counter */
   showCharacterCount?: boolean;
+  /**
+   * Opt this field in to voice dictation. The mic button appears only when the
+   * user's profile also enables `speech.speechInput`.
+   */
+  speechInput?: boolean;
+  /**
+   * Opt this field in to read-aloud (label, instructions and error). The
+   * speaker button appears only when the user's profile also enables
+   * `speech.speechOutput`.
+   */
+  speechOutput?: boolean;
 }
 
 export type AccessibleTextareaProps = TederashTextareaProps;
@@ -45,6 +57,8 @@ export const TederashTextarea = React.forwardRef<
       value,
       defaultValue,
       onChange,
+      speechInput,
+      speechOutput,
       ...props
     },
     ref
@@ -97,6 +111,22 @@ export const TederashTextarea = React.forwardRef<
     const ariaDescribedBy =
       describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
 
+    const fieldRef = React.useRef<HTMLTextAreaElement | null>(null);
+    const mergedRef = useMergedRef(ref, fieldRef);
+    const speechProps = {
+      fieldRef,
+      fieldId: textareaId,
+      label,
+      description: activeDescription,
+      error,
+      required,
+      disabled,
+      readOnly: props.readOnly,
+      speechInput,
+      speechOutput,
+    };
+    const speechWanted = isFieldSpeechWanted(adaptations, speechInput, speechOutput);
+
     // Adaptive sizing
     const isExtraLarge =
       adaptations.targetSize === "extra-large" ||
@@ -119,6 +149,32 @@ export const TederashTextarea = React.forwardRef<
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
         : "";
+
+    const field = (
+        <Textarea
+          ref={mergedRef}
+          id={textareaId}
+          data-slot="accessible-textarea"
+          data-target-size={adaptations.targetSize}
+          data-high-contrast={String(adaptations.highContrast)}
+          aria-invalid={Boolean(error)}
+          aria-required={required}
+          aria-describedby={ariaDescribedBy}
+          disabled={disabled}
+          maxLength={maxLength}
+          value={value}
+          defaultValue={defaultValue}
+          onChange={handleChange}
+          className={cn(
+            adaptiveSizeClasses,
+            contrastClasses,
+            focusClasses,
+            "flex-1 min-w-0",
+            className
+          )}
+          {...props}
+        />
+    );
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
@@ -156,28 +212,11 @@ export const TederashTextarea = React.forwardRef<
           </p>
         )}
 
-        <Textarea
-          ref={ref}
-          id={textareaId}
-          data-slot="accessible-textarea"
-          data-target-size={adaptations.targetSize}
-          data-high-contrast={String(adaptations.highContrast)}
-          aria-invalid={Boolean(error)}
-          aria-required={required}
-          aria-describedby={ariaDescribedBy}
-          disabled={disabled}
-          maxLength={maxLength}
-          value={value}
-          defaultValue={defaultValue}
-          onChange={handleChange}
-          className={cn(
-            adaptiveSizeClasses,
-            contrastClasses,
-            focusClasses,
-            className
-          )}
-          {...props}
-        />
+        {/* Stable row: the field never remounts when speech is toggled */}
+        <div data-slot="field-row" className="flex flex-wrap items-start gap-x-2 gap-y-1">
+          {field}
+          {speechWanted && <FieldSpeech {...speechProps} />}
+        </div>
 
         <div className="flex items-center justify-between text-xs gap-2">
           {/* Error message */}

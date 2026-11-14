@@ -3,6 +3,7 @@ import { useAccessibility } from "@tederash/react";
 import { Input, type InputProps } from "../ui/input";
 import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
+import { FieldSpeech, isFieldSpeechWanted, useMergedRef } from "../speech/FieldSpeech";
 
 export interface TederashInputProps
   extends Omit<InputProps, "size"> {
@@ -16,6 +17,18 @@ export interface TederashInputProps
   error?: string;
   /** Hide label visually while preserving accessible name for screen readers */
   visuallyHideLabel?: boolean;
+  /**
+   * Opt this field in to voice dictation. The mic button appears only when the
+   * user's profile also enables `speech.speechInput`. Never offered for
+   * password and other non-text types.
+   */
+  speechInput?: boolean;
+  /**
+   * Opt this field in to read-aloud (label, instructions and error). The
+   * speaker button appears only when the user's profile also enables
+   * `speech.speechOutput`.
+   */
+  speechOutput?: boolean;
 }
 
 export type AccessibleInputProps = TederashInputProps;
@@ -35,6 +48,8 @@ export const TederashInput = React.forwardRef<
       className,
       required,
       disabled,
+      speechInput,
+      speechOutput,
       ...props
     },
     ref
@@ -56,6 +71,23 @@ export const TederashInput = React.forwardRef<
     if (activeDescription) describedByParts.push(descriptionId);
     if (error) describedByParts.push(errorId);
     const ariaDescribedBy = describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
+
+    const fieldRef = React.useRef<HTMLInputElement | null>(null);
+    const mergedRef = useMergedRef(ref, fieldRef);
+    const speechProps = {
+      fieldRef,
+      fieldId: inputId,
+      label,
+      description: activeDescription,
+      error,
+      required,
+      disabled,
+      readOnly: props.readOnly,
+      inputType: props.type,
+      speechInput,
+      speechOutput,
+    };
+    const speechWanted = isFieldSpeechWanted(adaptations, speechInput, speechOutput);
 
     // Adaptive sizing
     const isExtraLarge =
@@ -79,6 +111,26 @@ export const TederashInput = React.forwardRef<
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none"
         : "";
+
+    const field = (
+      <Input
+        ref={mergedRef}
+        id={inputId}
+        data-slot="tederash-input"
+        aria-invalid={Boolean(error)}
+        aria-required={required}
+        aria-describedby={ariaDescribedBy}
+        disabled={disabled}
+        className={cn(
+          adaptiveSizeClasses,
+          contrastClasses,
+          focusClasses,
+          "flex-1 min-w-0",
+          className
+        )}
+        {...props}
+      />
+    );
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
@@ -115,22 +167,11 @@ export const TederashInput = React.forwardRef<
           </p>
         )}
 
-        <Input
-          ref={ref}
-          id={inputId}
-          data-slot="tederash-input"
-          aria-invalid={Boolean(error)}
-          aria-required={required}
-          aria-describedby={ariaDescribedBy}
-          disabled={disabled}
-          className={cn(
-            adaptiveSizeClasses,
-            contrastClasses,
-            focusClasses,
-            className
-          )}
-          {...props}
-        />
+        {/* Stable row: the field never remounts when speech is toggled */}
+        <div data-slot="field-row" className="flex flex-wrap items-start gap-x-2 gap-y-1">
+          {field}
+          {speechWanted && <FieldSpeech {...speechProps} />}
+        </div>
 
         {/* Error message */}
         {error && (

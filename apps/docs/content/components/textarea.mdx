@@ -57,9 +57,30 @@ export function FeedbackExample() {
 | `disabled` | `boolean` | `false` | Disables interaction and applies accessible muted styling. |
 | `id` | `string` | `useId()` | Explicit HTML id for input and label linkage. |
 | `className` | `string` | `""` | Additional CSS class names. |
+| `speechInput` | `boolean` | `false` | Opts this field in to voice dictation. The microphone button appears only when the user's profile also enables `speech.speechInput` (e.g. the **Voice Assistance** preset). Never shown for `password`, number/date-like types, or disabled/read-only fields. |
+| `speechOutput` | `boolean` | `false` | Opts this field in to read-aloud of its label, required state, current instructions and error. The speaker button appears only when the user's profile also enables `speech.speechOutput`. |
 
 ## Runtime Adaptations
 
 - **Character Count Accessibility**: The live character counter is linked via `aria-describedby` so assistive technology users are aware of the remaining quota.
 - **Cognitive Mode**: Swaps verbose technical text for plain language instructions when `profile.cognitive.simplifiedLanguage` is active.
 - **Target & Focus**: Focus ring contrast expands under keyboard navigation and low-vision profiles.
+
+## Voice Dictation & Read-Aloud
+
+Two switches must both be on for a button to appear:
+
+1. **The developer opts the field in** with `speechInput` and/or `speechOutput`.
+2. **The user's profile enables the feature** (`speech.speechInput` / `speech.speechOutput`). The built-in **Voice Assistance** preset (`VOICE_ASSIST_PRESET`) turns both on. Users can also enable them on top of another preset with `updatePreferences({ speech: { speechInput: true } })`.
+
+```tsx
+<TederashInput label="Full name" speechInput speechOutput />
+```
+
+Buttons are also hidden when the browser lacks the Web Speech API, and the speech hooks are only mounted while a feature is actually on.
+
+- **Review before insert**: dictated text never goes straight into the field. When listening stops, a panel shows what was heard in an editable box, plus up to four other matches the engine considered (useful for names like "Abebe Bikila" that recognizers often mishear). The user can edit, pick a match, **Insert** (or press <kbd>Enter</kbd>), **Try again**, or **Discard** (<kbd>Escape</kbd>). Focus moves into the panel when it opens and returns to the field after inserting.
+- **Appends, never overwrites**: inserted text is added after what the user already typed and is sent through the normal `onChange` path, so controlled and uncontrolled fields both work. `maxLength` is respected.
+- **Language and rate** come from `profile.speech.language` (e.g. `am-ET`) and `profile.speech.speechRate`. Browser support for Amharic recognition and synthesis varies, so test on your target devices.
+- **Feedback**: start, the heard text, insertion, discard and failure are each announced once through the live region. Interim text appears visually under the field but is hidden from screen readers to avoid noise. If recognition fails (no microphone, permission denied, unsupported language), the user is told to type instead.
+- **Privacy**: some browsers (e.g. Chrome) send dictation audio to a cloud speech service. Dictation only starts when the user presses the microphone button.

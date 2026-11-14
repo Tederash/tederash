@@ -140,7 +140,14 @@ export const TederashDialog = React.forwardRef<
             className
           )}
           onEscapeKeyDown={(e) => {
-            if (!closeOnEscape) e.preventDefault();
+            if (!closeOnEscape) {
+              e.preventDefault();
+              return;
+            }
+            // Nested widgets that use Escape themselves (e.g. the dictation
+            // review panel) mark their subtree; let them handle it instead.
+            const target = e.target as Element | null;
+            if (target?.closest?.("[data-escape-scope]")) e.preventDefault();
           }}
           // Backdrop dismissal is handled explicitly by the overlay's onClick so
           // closeOnBackdropClick is honoured deterministically.

@@ -31,6 +31,7 @@ interface RecognitionInstanceLike {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  maxAlternatives?: number;
   start(): void;
   stop(): void;
   abort(): void;
@@ -84,6 +85,30 @@ export function createSpeechRecognitionController(
     return parts.join(" ");
   };
 
+  /**
+   * Builds whole-transcript alternatives from per-segment candidates:
+   * variant k uses each segment's k-th alternative (falling back to its best).
+   */
+  const extractFinalAlternatives = (event: RecognitionEventLike): string[] => {
+    const segments: RecognitionResultItem[] = [];
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result?.isFinal) segments.push(result);
+    }
+    const maxCount = Math.max(0, ...segments.map((s) => s.length ?? 1));
+    const variants: string[] = [];
+    for (let k = 0; k < maxCount; k++) {
+      const text = segments
+        .map((s) => (s[k]?.transcript ?? s[0]?.transcript ?? "").trim())
+        .filter(Boolean)
+        .join(" ");
+      if (text && !variants.some((v) => v.toLowerCase() === text.toLowerCase())) {
+        variants.push(text);
+      }
+    }
+    return variants;
+  };
+
   return {
     start(startOptions) {
       const merged: SpeechRecognitionOptions = {
@@ -115,13 +140,18 @@ export function createSpeechRecognitionController(
       recognition.lang = merged.lang ?? "en-US";
       recognition.continuous = merged.continuous ?? false;
       recognition.interimResults = merged.interimResults ?? true;
+      if (merged.maxAlternatives !== undefined) {
+        recognition.maxAlternatives = Math.max(1, Math.floor(merged.maxAlternatives));
+      }
 
       recognition.onresult = (event) => {
         const finalTranscript = extractTranscript(event, true);
         if (finalTranscript) {
+          const alternatives = extractFinalAlternatives(event);
           const finalResult: SpeechRecognitionResultInfo = {
             transcript: finalTranscript,
             isFinal: true,
+            ...(alternatives.length > 1 ? { alternatives } : {}),
           };
           options.onResult?.(finalResult);
         }

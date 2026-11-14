@@ -34,6 +34,8 @@ export interface SpeechRecognitionOptions {
   continuous?: boolean;
   /** Deliver partial/unconfirmed results while speaking (default true) */
   interimResults?: boolean;
+  /** How many alternative transcriptions to request per result (default 1) */
+  maxAlternatives?: number;
 }
 
 export interface VoiceInfo {
@@ -48,6 +50,12 @@ export interface SpeechRecognitionResultInfo {
   transcript: string;
   /** True when the transcript is final and confirmed */
   isFinal: boolean;
+  /**
+   * Final results only: alternative readings of `transcript`, best first
+   * (the first entry equals `transcript`). Present when the engine returned
+   * more than one candidate.
+   */
+  alternatives?: string[];
 }
 
 export type SpeechRecognitionResultHandler = (result: SpeechRecognitionResultInfo) => void;

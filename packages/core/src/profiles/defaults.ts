@@ -149,6 +149,18 @@ export const KEYBOARD_FIRST_PRESET: TederashProfile = {
   },
 };
 
+export const VOICE_ASSIST_PRESET: TederashProfile = {
+  id: "voice-assist",
+  name: "Voice Assistance",
+  description:
+    "Voice dictation and read-aloud on fields that support them (developers opt fields in with the speechInput / speechOutput props).",
+  version: 1,
+  speech: {
+    speechInput: true,
+    speechOutput: true,
+  },
+};
+
 export const AMHARIC_PRESET: TederashProfile = {
   id: "amharic",
   name: "አማርኛ / Amharic",
@@ -175,6 +187,7 @@ export const TEDERASH_PRESETS: TederashProfile[] = [
   COGNITIVE_ASSIST_PRESET,
   REDUCED_MOTION_PRESET,
   KEYBOARD_FIRST_PRESET,
+  VOICE_ASSIST_PRESET,
   AMHARIC_PRESET,
 ];
 
