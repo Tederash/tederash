@@ -1,4 +1,3 @@
-import { isStepCount, streamText } from 'ai';
 import { createEnvelope } from '../../../shared/envelope';
 import type { ChatMessage, PingResponse } from '../../../shared/messages';
 import type { PageState, ToolResult } from '../../../shared/tools';
@@ -12,11 +11,14 @@ import { formatPageState } from './page-model';
 import { SYSTEM_PROMPT, buildSystemPrompt } from './prompt';
 import { type AgentSession, getOrCreateSession } from './session';
 import type { AgentStreamListener } from './stream';
-import { getAgentTools } from './tools';
+import { type CallModel, createStreamingCallModel, runModelLoop } from './loop';
 
 type TurnResult = { conversationId: string; messages: ChatMessage[]; status: AgentSession['status'] };
 
-const MAX_MODEL_STEPS = 6;
+export interface AgentDeps {
+  /** Override the model step (tests, or alternative providers). */
+  callModel?: CallModel;
+}
 
 async function pingTab(tabId: number): Promise<PingResponse | undefined> {
   try {
@@ -72,7 +74,8 @@ export async function runAgentTaskStream(
   userGoal: string,
   conversationId?: string,
   onEvent?: AgentStreamListener,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
+  deps: AgentDeps = {}
 ): Promise<TurnResult> {
   const session = getOrCreateSession(tabId, conversationId);
   session.status = 'running';
@@ -203,38 +206,25 @@ export async function runAgentTaskStream(
     return finish();
   }
 
-  // LLM orchestration (Groq / OpenAI / Gemini via Chat Completions).
-  let streamError: unknown;
-  try {
-    const tools = getAgentTools({
-      tabId,
-      session,
-      activeAssistantMsg: assistantMsg,
-      onEvent,
-      execute: toolExecutor,
-    });
-
-    const pageState = await readPageState(tabId);
-    session.pageState = pageState;
-
-    const result = streamText({
-      model: createChatModel(aiConfig),
-      system: buildSystemPrompt(pageState ? formatPageState(pageState) : undefined),
-      messages: [...history, { role: 'user', content: userGoal }],
-      tools,
-      stopWhen: isStepCount(MAX_MODEL_STEPS),
-      maxRetries: 1,
-      abortSignal: session.abortController?.signal,
-    });
-
-    // fullStream (not textStream): textStream silently drops provider errors.
-    for await (const part of result.fullStream) {
-      if (part.type === 'text-delta') emitText(part.text);
-      else if (part.type === 'error') streamError = part.error;
-    }
-  } catch (err) {
-    streamError = err;
-  }
+  // LLM orchestration (Groq / OpenAI / Gemini via Chat Completions), one step at a time.
+  const pageState = await readPageState(tabId);
+  session.pageState = pageState;
+  const loop = await runModelLoop({
+    system: buildSystemPrompt(pageState ? formatPageState(pageState) : undefined),
+    history,
+    userGoal,
+    callModel: deps.callModel ?? createStreamingCallModel(createChatModel(aiConfig)),
+    execTool: (name, args) => toolExecutor(name, args),
+    onText: emitText,
+    readPageState: async () => {
+      const next = await readPageState(tabId);
+      if (next) session.pageState = next;
+      return next;
+    },
+    initialPageVersion: pageState?.pageVersion,
+    signal: session.abortController?.signal,
+  });
+  const streamError = loop.error;
 
   if (session.abortController?.signal.aborted) {
     session.status = 'stopped';

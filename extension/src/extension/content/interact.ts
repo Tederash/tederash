@@ -288,5 +288,7 @@ export async function clickTarget(target: string): Promise<ToolResult> {
   pointerActivate(el);
   await wait(150);
   const navigated = location.href !== before.url;
-  return ok(`Clicked "${info.label}"${navigated ? ' (the page changed)' : ''}.`);
+  const result = ok(`Clicked "${info.label}"${navigated ? ' (the page changed)' : ''}.`);
+  if (result.ok && result.outcome) result.outcome.urlChanged = navigated;
+  return result;
 }

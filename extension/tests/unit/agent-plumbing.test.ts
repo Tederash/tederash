@@ -66,7 +66,7 @@ describe('normalizeToolArgs', () => {
 
 describe('agent tool schemas', () => {
   it('accept null for optional parameters (Groq validates against the JSON schema)', () => {
-    const tools = getAgentTools({ tabId: 1, session: {} as any, execute: vi.fn() }) as unknown as Record<
+    const tools = getAgentTools() as unknown as Record<
       string,
       { inputSchema: { safeParse: (v: unknown) => { success: boolean } } }
     >;
@@ -210,12 +210,11 @@ describe('LLM orchestration plumbing', () => {
     await configureKey();
     const { sendMessage } = installChrome();
     await setAiConfig({ provider: 'groq', apiKey: 'gsk_test' });
-    streamTextMock.mockImplementationOnce((opts: any) => ({
-      fullStream: (async function* () {
-        await opts.tools.read_page.execute({ detail: null }, { toolCallId: 'c1', messages: [] });
-        yield { type: 'text-delta', text: 'ok' };
-      })(),
-    }));
+    streamTextMock
+      .mockReturnValueOnce(
+        fakeStream([{ type: 'tool-call', toolCallId: 'c1', toolName: 'read_page', input: { detail: null } }])
+      )
+      .mockReturnValueOnce(fakeStream([{ type: 'text-delta', text: 'ok' }]));
     await runAgentTaskStream(7, 'what does this form ask?');
 
     const execCall = sendMessage.mock.calls.find(
