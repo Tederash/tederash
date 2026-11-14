@@ -106,8 +106,20 @@ export const TederashExplainFieldArgsSchema = z.object({
 });
 export type TederashExplainFieldArgs = z.infer<typeof TederashExplainFieldArgsSchema>;
 
+export const InspectFormArgsSchema = z.object({
+  formSelector: z.string().optional(),
+});
+export type InspectFormArgs = z.infer<typeof InspectFormArgsSchema>;
+
+export const InspectPageArgsSchema = z.object({
+  detail: z.enum(['summary', 'full']).default('summary').optional(),
+});
+export type InspectPageArgs = z.infer<typeof InspectPageArgsSchema>;
+
 export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('observe_page'), args: ObservePageArgsSchema }),
+  z.object({ name: z.literal('inspect_page'), args: InspectPageArgsSchema }),
+  z.object({ name: z.literal('inspect_form'), args: InspectFormArgsSchema }),
   z.object({ name: z.literal('find_elements'), args: FindElementsArgsSchema }),
   z.object({ name: z.literal('click'), args: ClickArgsSchema }),
   z.object({ name: z.literal('fill_field'), args: FillFieldArgsSchema }),
@@ -341,6 +353,28 @@ export const TOOL_SPECS: ToolSpec[] = [
       required: ['componentId'],
       properties: {
         componentId: { type: 'string', description: 'The data-tederash-id of the field.' },
+      },
+    },
+  },
+  {
+    name: 'inspect_form',
+    description: 'Perform deep inspection of forms on the page, extracting all input fields, labels, required attributes, types, placeholders, errors, and submit buttons.',
+    risk: 'none',
+    parameters: {
+      type: 'object',
+      properties: {
+        formSelector: { type: 'string', description: 'Optional selector to target a specific form container.' },
+      },
+    },
+  },
+  {
+    name: 'inspect_page',
+    description: 'Read the comprehensive textual and semantic structure of the page, including title, main headings, readable body text, landmarks, and summary.',
+    risk: 'none',
+    parameters: {
+      type: 'object',
+      properties: {
+        detail: { type: 'string', enum: ['summary', 'full'], description: 'Level of page detail to inspect.' },
       },
     },
   },

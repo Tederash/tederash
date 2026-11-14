@@ -22,6 +22,8 @@ export default async function RootLayout({
     <html
       lang="en"
       dir="ltr"
+      data-tederash-root="true"
+      data-tederash-version="0.1.0"
       suppressHydrationWarning
     >
       <Head

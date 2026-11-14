@@ -55,7 +55,10 @@ export function ChatSidebar() {
       let currentUrl = '';
 
       if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        let tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs || tabs.length === 0 || !tabs[0]?.id) {
+          tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        }
         const t = tabs[0];
         if (t?.id !== undefined) {
           currentTabId = currentTabId ?? t.id;

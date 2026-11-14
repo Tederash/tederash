@@ -15,12 +15,90 @@ export class HeuristicLlmProvider implements LlmProvider {
     const lastToolMsg = [...req.messages].reverse().find((m) => m.role === 'tool');
     const userText = (lastUserMsg?.content || '').toLowerCase().trim();
 
-    // If we just got a tool response from observe_page or read_text, synthesize an answer:
+    // If we just got a tool response, synthesize a clear, helpful answer:
     if (lastToolMsg) {
       try {
         const toolData = JSON.parse(lastToolMsg.content);
 
-        // Tederash component tree inspection response
+        // 1. inspect_form tool response
+        if (toolData && toolData.forms) {
+          const forms = toolData.forms as Array<{
+            name: string;
+            fieldCount: number;
+            fields: Array<{
+              id: string;
+              label: string;
+              type: string;
+              required: boolean;
+              value?: string;
+              error?: string;
+              options?: Array<{ value: string; label: string }>;
+            }>;
+            submitButtons: Array<{ id: string; label: string }>;
+          }>;
+
+          if (forms.length > 0) {
+            let md = '';
+            for (const f of forms) {
+              const reqFields = f.fields.filter((field) => field.required);
+              const optFields = f.fields.filter((field) => !field.required);
+
+              md += `### ${f.name}\n\n`;
+              md += `This form contains **${f.fieldCount} fields** (${reqFields.length} required, ${optFields.length} optional):\n\n`;
+              md += `| Field Label | Input Type | Requirement | ID / Ref |\n`;
+              md += `|---|---|---|---|\n`;
+              for (const field of f.fields) {
+                const reqBadge = field.required ? '🔴 **Required**' : '⚪ Optional';
+                md += `| **${field.label}** | \`${field.type}\` | ${reqBadge} | \`${field.id}\` |\n`;
+              }
+
+              if (reqFields.length > 0) {
+                md += `\n**Required Fields:**\n`;
+                reqFields.forEach((rf, i) => {
+                  md += `${i + 1}. **${rf.label}** (\`${rf.type}\`)\n`;
+                });
+              }
+
+              if (optFields.length > 0) {
+                md += `\n**Optional Fields:**\n`;
+                optFields.forEach((of, i) => {
+                  md += `${i + 1}. **${of.label}** (\`${of.type}\`)\n`;
+                });
+              }
+
+              if (f.submitButtons.length > 0) {
+                md += `\n**Form Actions:** ${f.submitButtons.map((b) => `\`[${b.label}]\``).join(', ')}\n`;
+              }
+            }
+            return { content: md.trim() };
+          }
+        }
+
+        // 2. inspect_page tool response
+        if (toolData && (toolData.headings || toolData.landmarks || toolData.mainText)) {
+          const headings = (toolData.headings as Array<{ level: string; text: string }>) || [];
+          const landmarks = (toolData.landmarks as string[]) || [];
+          const mainText = (toolData.mainText as string) || '';
+          const title = toolData.title || 'Page Content';
+
+          let md = `## ${title}\n\n`;
+          if (mainText) {
+            md += `${mainText.slice(0, 800)}\n\n`;
+          }
+          if (headings.length > 0) {
+            md += `### Key Sections\n`;
+            headings.slice(0, 8).forEach((h) => {
+              md += `- **${h.text}** (${h.level.toUpperCase()})\n`;
+            });
+          }
+          if (landmarks.length > 0) {
+            md += `\n*Landmarks detected:* ${landmarks.join(', ')}\n`;
+          }
+          md += `\nHow would you like to proceed? I can read specific sections, assist with form inputs, or adjust accessibility preferences.`;
+          return { content: md.trim() };
+        }
+
+        // 3. Tederash component tree inspection response
         if (Array.isArray(toolData)) {
           const formControls = toolData.filter(
             (c: any) =>
@@ -29,14 +107,7 @@ export class HeuristicLlmProvider implements LlmProvider {
               c.component === 'textarea' ||
               c.component === 'checkbox'
           );
-          if (
-            formControls.length > 0 &&
-            (userText.includes('field') ||
-              userText.includes('form') ||
-              userText.includes('need') ||
-              userText.includes('require') ||
-              userText.includes('what'))
-          ) {
+          if (formControls.length > 0) {
             const requiredFields = formControls.filter((c: any) => c.required);
             const optionalFields = formControls.filter((c: any) => !c.required);
 
@@ -44,7 +115,7 @@ export class HeuristicLlmProvider implements LlmProvider {
             md += `| Field | Type | Required? | Component ID |\n`;
             md += `|---|---|---|---|\n`;
             for (const f of formControls) {
-              md += `| **${f.label || f.id}** | \`${f.component}\` | ${f.required ? '✅ **Required**' : 'Optional'} | \`${f.id}\` |\n`;
+              md += `| **${f.label || f.id}** | \`${f.component}\` | ${f.required ? '🔴 **Required**' : '⚪ Optional'} | \`${f.id}\` |\n`;
             }
 
             md += `\n### Required Fields:\n`;
@@ -63,11 +134,11 @@ export class HeuristicLlmProvider implements LlmProvider {
           }
 
           return {
-            content: `I retrieved the Tederash accessible component tree with ${toolData.length} components. How would you like me to assist you with them?`,
+            content: `I retrieved the Tederash accessible component hierarchy with ${toolData.length} components. How would you like me to assist you with them?`,
           };
         }
 
-        // Snapshot observation summary
+        // 4. Snapshot observation summary (observe_page)
         if (toolData && toolData.elements) {
           const els = toolData.elements as Array<{
             ref: string;
@@ -77,7 +148,6 @@ export class HeuristicLlmProvider implements LlmProvider {
             type?: string;
           }>;
           const headings = (toolData.headings as string[]) || [];
-          const interactiveCount = els.length;
 
           // Form fields inspection via snapshot
           const inputs = els.filter(
@@ -89,18 +159,20 @@ export class HeuristicLlmProvider implements LlmProvider {
               e.role === 'combobox' ||
               e.role === 'checkbox'
           );
+
           if (
             inputs.length > 0 &&
             (userText.includes('field') ||
               userText.includes('form') ||
               userText.includes('need') ||
-              userText.includes('require'))
+              userText.includes('require') ||
+              userText.includes('input'))
           ) {
             let md = `The form contains **${inputs.length} input field(s)**:\n\n`;
             md += `| Field Name | Type | Ref |\n`;
             md += `|---|---|---|\n`;
             for (const inp of inputs) {
-              md += `| **${inp.name || 'Unnamed input'}** | \`${inp.type || inp.role || inp.tag}\` | \`[${inp.ref}]\` |\n`;
+              md += `| **${inp.name || 'Input'}** | \`${inp.type || inp.role || inp.tag}\` | \`[${inp.ref}]\` |\n`;
             }
             return { content: md.trim() };
           }
@@ -112,26 +184,20 @@ export class HeuristicLlmProvider implements LlmProvider {
             if (matched.length > 0) {
               const list = matched.map((m) => `• [${m.ref}] "${m.name}" (${m.role || m.tag})`).join('\n');
               return {
-                content: `I found ${matched.length} element(s) matching "${query}":\n\n${list}\n\nWould you like me to click one?`,
+                content: `I found ${matched.length} element(s) matching "${query}":\n\n${list}\n\nWould you like me to interact with one of them?`,
               };
             }
           }
 
-          // If user asked to "summarize" or "what is this page":
-          if (userText.includes('summarize') || userText.includes('what is') || userText.includes('explain') || userText.includes('about')) {
-            const headingList = headings.slice(0, 5).map((h) => `• ${h}`).join('\n');
-            const sample = (toolData.textSample as string) || '';
-            return {
-              content: `**Page Summary: ${toolData.title}**\n\n**Key Sections:**\n${headingList || '• General content'}\n\n**Overview:**\n${sample ? `"${sample.slice(0, 250)}…"` : 'Interactive web application.'}\n\n*Interactive elements detected:* ${interactiveCount}. What would you like to do on this page?`,
-            };
-          }
-
+          // Clear overview from headings and text sample
+          const headingList = headings.slice(0, 6).map((h) => `• **${h}**`).join('\n');
+          const sample = (toolData.textSample as string) || '';
           return {
-            content: `I examined the page "${toolData.title}". It has ${interactiveCount} interactive elements and ${headings.length} headings. How can I help you interact with it?`,
+            content: `### ${toolData.title || 'Page Overview'}\n\n${sample ? `"${sample.slice(0, 300)}…"\n\n` : ''}${headingList ? `**Key Page Sections:**\n${headingList}\n\n` : ''}I can help you navigate this page, inspect and fill form inputs, read content aloud, or adjust accessibility preferences. What would you like to do?`,
           };
         }
 
-        // Read text response
+        // 5. Read text response
         if (typeof toolData === 'string' && toolData.length > 0) {
           return {
             content: `**Page Content:**\n\n${toolData.slice(0, 1000)}${toolData.length > 1000 ? '… [truncated]' : ''}\n\nWould you like me to read this aloud or simplify any part of it?`,
@@ -143,23 +209,28 @@ export class HeuristicLlmProvider implements LlmProvider {
     }
 
     // 1. Accessibility font scale preferences
-    if (userText.includes('increase text') || userText.includes('larger text') || userText.includes('bigger font') || userText.includes('zoom text')) {
+    if (
+      userText.includes('increase text') ||
+      userText.includes('larger text') ||
+      userText.includes('bigger font') ||
+      userText.includes('zoom text')
+    ) {
       return {
         toolCalls: [
           {
             name: 'tederash_update_pref',
-            args: { fontScale: 1.35 },
-          },
-          {
-            name: 'say',
-            args: { text: 'Adapted font scale to 135% via Tederash runtime.' },
+            args: { fontScale: 1.25 },
           },
         ],
-        content: 'I have updated the accessibility profile font scale to 135%.',
+        content: 'Increased text font scale to 125% for better readability.',
       };
     }
 
-    if (userText.includes('decrease text') || userText.includes('smaller text') || userText.includes('reset text')) {
+    if (
+      userText.includes('decrease text') ||
+      userText.includes('smaller text') ||
+      userText.includes('reset font')
+    ) {
       return {
         toolCalls: [
           {
@@ -167,12 +238,16 @@ export class HeuristicLlmProvider implements LlmProvider {
             args: { fontScale: 1.0 },
           },
         ],
-        content: 'Reset accessibility font scale to standard 100%.',
+        content: 'Reset text font scale to 100%.',
       };
     }
 
-    // 2. High contrast & themes
-    if (userText.includes('high contrast') || userText.includes('contrast mode')) {
+    // 2. High contrast mode
+    if (
+      userText.includes('high contrast') ||
+      userText.includes('contrast mode') ||
+      userText.includes('contrast theme')
+    ) {
       return {
         toolCalls: [
           {
@@ -180,42 +255,38 @@ export class HeuristicLlmProvider implements LlmProvider {
             args: { highContrast: true },
           },
         ],
-        content: 'Activated high-contrast mode in the Tederash accessibility runtime.',
+        content: 'Enabled high contrast mode with prominent borders and clear focus rings.',
       };
     }
 
-    if (userText.includes('dark mode') || userText.includes('dark theme')) {
+    // 3. Simplified language / cognitive assist
+    if (
+      userText.includes('simplify') ||
+      userText.includes('easier') ||
+      userText.includes('plain language')
+    ) {
       return {
         toolCalls: [
           {
-            name: 'set_adaptation',
-            args: { contrastTheme: 'dark' },
+            name: 'tederash_update_pref',
+            args: { simplifiedLanguage: true, showInstructions: true },
           },
         ],
-        content: 'Switched page presentation to dark theme.',
-      };
-    }
-
-    // 3. Reading ruler
-    if (userText.includes('reading ruler') || userText.includes('ruler')) {
-      return {
-        toolCalls: [
-          {
-            name: 'set_adaptation',
-            args: { readingRuler: true },
-          },
-        ],
-        content: 'Enabled the reading ruler guide to assist visual tracking.',
+        content: 'Enabled simplified plain language and helpful instruction guides.',
       };
     }
 
     // 4. Large targets / touch assist
-    if (userText.includes('large targets') || userText.includes('bigger buttons') || userText.includes('target size')) {
+    if (
+      userText.includes('large targets') ||
+      userText.includes('bigger buttons') ||
+      userText.includes('target size')
+    ) {
       return {
         toolCalls: [
           {
-            name: 'set_adaptation',
-            args: { largeTargets: true },
+            name: 'tederash_update_pref',
+            args: { targetSize: 'large' },
           },
         ],
         content: 'Enlarged all interactive buttons and click targets to ≥44px for easier interaction.',
@@ -283,7 +354,7 @@ export class HeuristicLlmProvider implements LlmProvider {
       };
     }
 
-    // 7. Click action: "click [ref]" or "click [name]"
+    // 7. Click action: "click [ref]"
     const clickRefMatch = userText.match(/click\s+(e\d+)/i);
     const matchedRef = clickRefMatch?.[1];
     if (matchedRef) {
@@ -311,13 +382,14 @@ export class HeuristicLlmProvider implements LlmProvider {
       };
     }
 
-    // 9. Form fields inspection: "what fields does this form need?"
+    // 9. Form fields inspection: "what fields does this form need?" or "explain form"
     if (
       userText.includes('field') ||
       userText.includes('form') ||
       userText.includes('need') ||
       userText.includes('input') ||
-      userText.includes('register')
+      userText.includes('register') ||
+      userText.includes('require')
     ) {
       return {
         toolCalls: [
@@ -329,12 +401,12 @@ export class HeuristicLlmProvider implements LlmProvider {
       };
     }
 
-    // 10. Default: Observe the page to inspect structure
+    // 10. Default: Inspect page structure and content
     return {
       toolCalls: [
         {
-          name: 'observe_page',
-          args: { mode: 'interactive' },
+          name: 'inspect_page',
+          args: { detail: 'summary' },
         },
       ],
     };

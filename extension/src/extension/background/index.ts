@@ -208,7 +208,10 @@ async function handleUiMessage(
     case 'tab/checkTederash': {
       let targetTabId = msg.payload.tabId;
       if (targetTabId === undefined && typeof chrome.tabs?.query === 'function') {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        let tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs || tabs.length === 0 || !tabs[0]?.id) {
+          tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        }
         targetTabId = tabs[0]?.id;
       }
 
@@ -217,10 +220,29 @@ async function handleUiMessage(
       }
 
       try {
-        const ping = (await chrome.tabs.sendMessage(
-          targetTabId,
-          createEnvelope('content/ping', {})
-        )) as PingResponse;
+        let ping: PingResponse | undefined;
+        try {
+          ping = (await chrome.tabs.sendMessage(
+            targetTabId,
+            createEnvelope('content/ping', {})
+          )) as PingResponse;
+        } catch {
+          // If content script is not yet injected into tab, inject it on-the-fly
+          if (typeof chrome.scripting?.executeScript === 'function') {
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: targetTabId },
+                files: ['content.js'],
+              });
+              ping = (await chrome.tabs.sendMessage(
+                targetTabId,
+                createEnvelope('content/ping', {})
+              )) as PingResponse;
+            } catch {
+              // Could not inject content script (e.g. chrome:// or restricted page)
+            }
+          }
+        }
 
         if (ping?.ok && ping.isTederash) {
           return {

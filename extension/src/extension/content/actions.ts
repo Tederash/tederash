@@ -380,7 +380,17 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
           case 'fill': {
             const input = el as HTMLInputElement | HTMLTextAreaElement;
             input.focus();
-            input.value = call.args.value ?? '';
+            const val = call.args.value ?? '';
+            const prototype =
+              input instanceof HTMLTextAreaElement
+                ? window.HTMLTextAreaElement.prototype
+                : window.HTMLInputElement.prototype;
+            const nativeSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+            if (nativeSetter) {
+              nativeSetter.call(input, val);
+            } else {
+              input.value = val;
+            }
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
             break;
@@ -442,6 +452,167 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
           outcome: {
             ok: true,
             message: `Retrieved field metadata for [${call.args.componentId}].`,
+          },
+        };
+      }
+
+      case 'inspect_form': {
+        const root = call.args?.formSelector
+          ? document.querySelector(call.args.formSelector) || document.body
+          : document.body;
+
+        const forms = Array.from(root.querySelectorAll('form'));
+        const formTargets = forms.length > 0 ? forms : [root];
+
+        const inspectedForms = formTargets.map((f, fIdx) => {
+          const formName =
+            f.getAttribute('aria-label') ||
+            f.querySelector('h1, h2, h3, legend')?.textContent?.trim() ||
+            `Form ${fIdx + 1}`;
+
+          const controls = Array.from(
+            f.querySelectorAll(
+              'input, select, textarea, [role="textbox"], [role="combobox"], [role="checkbox"], [data-tederash-component]'
+            )
+          );
+
+          const fields = controls
+            .filter((c) => {
+              if (c instanceof HTMLInputElement && (c.type === 'hidden' || c.type === 'submit'))
+                return false;
+              return true;
+            })
+            .map((c, cIdx) => {
+              const el = c as HTMLElement;
+              const tederashId = el.getAttribute('data-tederash-id');
+              const tederashLabel = el.getAttribute('data-tederash-label');
+              const tederashReq = el.getAttribute('data-tederash-required') === 'true';
+              const tederashErr = el.getAttribute('data-tederash-error');
+
+              let label = tederashLabel || '';
+              if (!label && el.id) {
+                const labelEl = document.querySelector(`label[for="${el.id}"]`);
+                if (labelEl) label = labelEl.textContent?.trim() || '';
+              }
+              if (!label && el instanceof HTMLInputElement && el.labels?.length) {
+                label = Array.from(el.labels)
+                  .map((l) => l.textContent?.trim() || '')
+                  .join(' ');
+              }
+              if (!label) {
+                label =
+                  el.getAttribute('aria-label') ||
+                  el.getAttribute('placeholder') ||
+                  el.getAttribute('name') ||
+                  `Field ${cIdx + 1}`;
+              }
+
+              const type =
+                el.getAttribute('data-tederash-component') ||
+                (el instanceof HTMLInputElement ? el.type : el.tagName.toLowerCase());
+
+              const isRequired =
+                tederashReq ||
+                el.hasAttribute('required') ||
+                el.getAttribute('aria-required') === 'true';
+
+              let value = '';
+              if (
+                el instanceof HTMLInputElement ||
+                el instanceof HTMLTextAreaElement ||
+                el instanceof HTMLSelectElement
+              ) {
+                value = el.type === 'password' ? '••••••••' : el.value;
+              }
+
+              let options: Array<{ value: string; label: string }> | undefined;
+              if (el instanceof HTMLSelectElement) {
+                options = Array.from(el.options).map((opt) => ({
+                  value: opt.value,
+                  label: opt.text.trim(),
+                }));
+              }
+
+              return {
+                id: tederashId || el.id || el.getAttribute('name') || `f_${cIdx}`,
+                label: label.trim(),
+                type,
+                required: isRequired,
+                value: value ? value.slice(0, 100) : undefined,
+                error: tederashErr || el.getAttribute('aria-errormessage') || undefined,
+                options,
+              };
+            });
+
+          const submitButtons = Array.from(
+            f.querySelectorAll(
+              'button[type="submit"], input[type="submit"], button:not([type="button"])'
+            )
+          ).map((btn) => ({
+            id: btn.id || btn.getAttribute('name') || 'submit',
+            label: btn.textContent?.trim() || (btn as HTMLInputElement).value || 'Submit',
+          }));
+
+          return {
+            name: formName,
+            fieldCount: fields.length,
+            fields,
+            submitButtons,
+          };
+        });
+
+        const totalFields = inspectedForms.reduce((sum, f) => sum + f.fieldCount, 0);
+        return {
+          ok: true,
+          data: {
+            forms: inspectedForms,
+            totalFields,
+          },
+          outcome: {
+            ok: true,
+            message: `Inspected form(s) with ${totalFields} fields.`,
+          },
+        };
+      }
+
+      case 'inspect_page': {
+        const title = document.title || 'Untitled Page';
+        const url = window.location.href;
+
+        const headings: Array<{ level: string; text: string }> = [];
+        document.querySelectorAll('h1, h2, h3, [role="heading"]').forEach((h) => {
+          const text = (h.textContent || '').replace(/\s+/g, ' ').trim();
+          if (text) {
+            headings.push({ level: h.tagName.toLowerCase(), text });
+          }
+        });
+
+        const landmarks: string[] = [];
+        document
+          .querySelectorAll('nav, main, header, footer, aside, form, [role="main"]')
+          .forEach((el) => {
+            const role = el.getAttribute('role') || el.tagName.toLowerCase();
+            const name = el.getAttribute('aria-label') || el.id || '';
+            landmarks.push(name ? `${role}(${name})` : role);
+          });
+
+        const mainContainer =
+          document.querySelector('main, article, [role="main"]') || document.body;
+        const cleanText = (mainContainer?.textContent || '').replace(/\s+/g, ' ').trim();
+        const readableContent = cleanText.slice(0, 3000);
+
+        return {
+          ok: true,
+          data: {
+            title,
+            url,
+            headings: headings.slice(0, 10),
+            landmarks: Array.from(new Set(landmarks)).slice(0, 8),
+            readableContent,
+          },
+          outcome: {
+            ok: true,
+            message: `Read page "${title}" with ${headings.length} headings and ${readableContent.length} chars of content.`,
           },
         };
       }

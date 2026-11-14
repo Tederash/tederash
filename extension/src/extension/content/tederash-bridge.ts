@@ -22,12 +22,20 @@ export function detectTederashInPage(): {
     return { isTederash: false };
   }
   const root = document.documentElement;
-  const isTederash = root.hasAttribute('data-tederash-root');
+  const rootEl = root.hasAttribute('data-tederash-root')
+    ? root
+    : document.querySelector('[data-tederash-root]');
+  const hasComponents = Boolean(
+    document.querySelector('[data-tederash-component], [data-tederash-id]')
+  );
+
+  const isTederash = Boolean(rootEl || hasComponents);
+
   return {
     isTederash,
-    version: root.getAttribute('data-tederash-version') || undefined,
-    profile: root.getAttribute('data-a11y-profile') || undefined,
-    locale: root.getAttribute('data-a11y-locale') || undefined,
+    version: rootEl?.getAttribute('data-tederash-version') || '0.1.0',
+    profile: rootEl?.getAttribute('data-a11y-profile') || 'standard',
+    locale: rootEl?.getAttribute('data-a11y-locale') || 'en',
   };
 }
 

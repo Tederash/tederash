@@ -9,19 +9,27 @@ const isWatch = process.argv.includes('--watch');
 const isProd = !isWatch && process.env.NODE_ENV !== 'development';
 
 function loadEnv() {
-  const envPath = path.join(ROOT, '.env');
+  const possiblePaths = [
+    path.join(ROOT, '.env'),
+    path.join(ROOT, 'extension', '.env'),
+    path.resolve(path.dirname(new URL(import.meta.url).pathname), '../.env'),
+    path.resolve(ROOT, '../extension/.env'),
+  ];
   const env = {};
-  if (fs.existsSync(envPath)) {
-    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const idx = trimmed.indexOf('=');
-      if (idx !== -1) {
-        const key = trimmed.slice(0, idx).trim();
-        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
-        env[key] = val;
+  for (const envPath of possiblePaths) {
+    if (fs.existsSync(envPath)) {
+      const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const idx = trimmed.indexOf('=');
+        if (idx !== -1) {
+          const key = trimmed.slice(0, idx).trim();
+          const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+          env[key] = val;
+        }
       }
+      if (env.GROQ_API_KEY) break;
     }
   }
   return env;

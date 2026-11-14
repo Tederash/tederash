@@ -42,7 +42,7 @@
     "webNavigation"
   ],
   "host_permissions": [
-    "https://api.groq.com/*"
+    "<all_urls>"
   ],
   "optional_permissions": ["tabCapture", "notifications"],
   "optional_host_permissions": [

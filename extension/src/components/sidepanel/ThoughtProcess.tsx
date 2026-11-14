@@ -13,14 +13,6 @@ export const ThoughtProcess: React.FC<ThoughtProcessProps> = ({
   toolCalls = [],
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(isInvestigating);
-  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
-
-  const toggleStep = (id: string) => {
-    setExpandedSteps((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
 
   const totalSteps = toolCalls.length;
   const hasThoughts = totalSteps > 0 || isInvestigating;
@@ -117,103 +109,51 @@ export const ThoughtProcess: React.FC<ThoughtProcessProps> = ({
         )}
       </button>
 
-      {/* Chained Thoughts Timeline */}
+      {/* Chained Thoughts Timeline - Just the things done */}
       {isOpen && (
-        <div className="border-l border-border ml-2 pl-3 py-1 space-y-2 mt-1 mb-2 font-sans text-xs">
+        <div className="border-l border-border ml-2 pl-3 py-1 space-y-1.5 mt-1 mb-2 font-sans text-xs">
           {toolCalls.map((tc, idx) => {
             const stepId = tc.id || `step_${idx}`;
-            const isExpanded = !!expandedSteps[stepId];
             const isPending = tc.status === 'PENDING' || !tc.status;
-            const stepTitle = tc.rationale || `Execute ${tc.tool}`;
-            const args = tc.arguments || {};
+            const stepTitle = tc.rationale || `Executed ${tc.tool}`;
 
             return (
-              <div key={stepId} className="relative flex flex-col space-y-1">
-                {/* Step Title Row */}
-                <button
-                  type="button"
-                  onClick={() => toggleStep(stepId)}
-                  className="w-full text-left group cursor-pointer flex items-center justify-between gap-2 p-1.5 -m-1 rounded-md hover:bg-surface-elevated transition-colors bg-transparent border-0"
-                  title="Click to view tool inputs and output"
-                  aria-expanded={isExpanded}
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-fg-muted group-hover:text-fg transition-colors shrink-0">
-                      {isExpanded ? (
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      )}
+              <div
+                key={stepId}
+                className="flex items-center justify-between gap-2 p-1.5 -m-1 rounded-md bg-surface-elevated/40 border border-border/50"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {getToolIcon(tc.tool)}
+                  <span className="text-xs text-fg font-medium truncate">
+                    {stepTitle}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface text-fg-muted border border-border font-normal">
+                    {tc.tool}
+                  </span>
+
+                  {tc.status === 'SUCCESS' && (
+                    <span className="text-[10px] text-success flex items-center gap-0.5" title="Completed">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
                     </span>
-                    {getToolIcon(tc.tool)}
-
-                    {/* Rationale as the title */}
-                    <span className="text-xs text-fg font-medium group-hover:text-fg transition-colors truncate">
-                      {stepTitle}
+                  )}
+                  {tc.status === 'ERROR' && (
+                    <span className="text-[10px] text-danger flex items-center gap-0.5" title="Issue encountered">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
                     </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {/* Tool identifier pill */}
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface-elevated text-fg-muted border border-border font-normal">
-                      {tc.tool}
+                  )}
+                  {isPending && (
+                    <span className="text-[10px] text-accent flex items-center gap-0.5" title="Running">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
                     </span>
-
-                    {/* Status indicator */}
-                    {tc.status === 'SUCCESS' && (
-                      <span className="text-[10px] text-success flex items-center gap-0.5" title="Success">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </span>
-                    )}
-                    {tc.status === 'ERROR' && (
-                      <span className="text-[10px] text-danger flex items-center gap-0.5" title="Execution error">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                      </span>
-                    )}
-                    {isPending && (
-                      <span className="text-[10px] text-accent flex items-center gap-0.5" title="Running">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-                      </span>
-                    )}
-                  </div>
-                </button>
-
-                {/* Sub-Dropdown Details: Arguments and Output */}
-                {isExpanded && (
-                  <div className="mt-1 p-2 rounded-lg bg-surface-elevated border border-border space-y-1.5 text-xs font-sans">
-                    {/* Query / Arguments Section */}
-                    {Object.keys(args).length > 0 && (
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-fg-muted block">
-                          Arguments
-                        </span>
-                        <pre className="p-1.5 bg-surface rounded border border-border font-mono text-[11px] text-fg overflow-x-auto whitespace-pre-wrap">
-                          {JSON.stringify(args, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-
-                    {/* Output Section */}
-                    {tc.summary && (
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-fg-muted block">
-                          Outcome / Summary
-                        </span>
-                        <div className="p-1.5 bg-surface rounded border border-border font-mono text-[11px] text-fg overflow-x-auto whitespace-pre-wrap">
-                          {tc.summary}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
