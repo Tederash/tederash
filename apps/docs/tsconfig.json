@@ -19,7 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@tederash/core": ["../../packages/core/src/index.ts"],
+      "@tederash/react": ["../../packages/react/src/index.ts"],
+      "@tederash/components": ["../../packages/components/src/index.ts"],
+      "@tederash/assistance": ["../../packages/assistance/src/index.ts"]
     }
   },
   "include": [

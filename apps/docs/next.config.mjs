@@ -9,4 +9,10 @@ const withNextra = nextra({
 
 export default withNextra({
   reactStrictMode: true,
+  transpilePackages: [
+    "@tederash/core",
+    "@tederash/react",
+    "@tederash/components",
+    "@tederash/assistance",
+  ],
 });
