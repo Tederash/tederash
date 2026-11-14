@@ -8,6 +8,7 @@ export class HeuristicLlmProvider implements LlmProvider {
   async generate(req: {
     systemPrompt: string;
     messages: LlmMessage[];
+    tools?: any;
     signal?: AbortSignal;
   }): Promise<LlmResponse> {
     const lastUserMsg = [...req.messages].reverse().find((m) => m.role === 'user');

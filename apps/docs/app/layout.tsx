@@ -4,18 +4,10 @@ import { Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 
 import config from "../config";
 import { ClientProviders } from "../components/ClientProviders";
 import { Footer } from "../components/Footer";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--tederash-font-sans",
-  preload: false,
-});
 
 export const metadata: Metadata = config.metadata;
 
@@ -30,7 +22,6 @@ export default async function RootLayout({
     <html
       lang="en"
       dir="ltr"
-      className={inter.variable}
       suppressHydrationWarning
     >
       <Head
@@ -72,6 +63,9 @@ export default async function RootLayout({
                 <div className="flex items-center gap-4 text-xs font-semibold mr-2">
                   <a href="/docs" className="hover:opacity-80 transition-opacity">
                     Documentation
+                  </a>
+                  <a href="/jobs" className="hover:opacity-80 transition-opacity">
+                    Careers & Demo
                   </a>
                   <a href="/subscription" className="hover:opacity-80 transition-opacity">
                     Pricing

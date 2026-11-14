@@ -79,6 +79,7 @@ export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('finish'), args: FinishArgsSchema }),
 ]);
 export type ToolCall = z.infer<typeof ToolCallSchema>;
+export type ToolName = ToolCall['name'];
 
 export interface ActionOutcome {
   ok: boolean;
