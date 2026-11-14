@@ -957,6 +957,39 @@ describe("AccessibleDialog Component", () => {
 
     expect(ref.current).toBe(screen.getByRole("dialog", { name: /ref modal/i }));
   });
+
+  it("returns focus to the element that opened it when closed (no restoreFocusRef)", async () => {
+    function OpenerDemo() {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open settings
+          </button>
+          <AccessibleDialog open={open} onOpenChange={setOpen} title="Settings">
+            <button type="button">Inside</button>
+          </AccessibleDialog>
+        </>
+      );
+    }
+
+    render(
+      <AccessibilityProvider persistence="none">
+        <OpenerDemo />
+      </AccessibilityProvider>
+    );
+
+    const opener = screen.getByRole("button", { name: "Open settings" });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const dialog = screen.getByRole("dialog", { name: "Settings" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
 });
 
 // ============================================================================

@@ -73,6 +73,7 @@ export const TederashDialog = React.forwardRef<
 ) {
   const { adaptations } = useAccessibility();
   const { t } = useLocalization();
+  const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
 
   // Adaptive styles
   const isExtraLarge = adaptations.targetSize === "extra-large";
@@ -145,6 +146,12 @@ export const TederashDialog = React.forwardRef<
           // closeOnBackdropClick is honoured deterministically.
           onPointerDownOutside={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => {
+            // Radix fires this before moving focus, so activeElement is still
+            // the element that opened the dialog.
+            previouslyFocusedRef.current =
+              typeof document !== "undefined"
+                ? (document.activeElement as HTMLElement | null)
+                : null;
             const target = initialFocusRef?.current;
             if (target) {
               e.preventDefault();
@@ -152,7 +159,14 @@ export const TederashDialog = React.forwardRef<
             }
           }}
           onCloseAutoFocus={(e) => {
-            const target = restoreFocusRef?.current;
+            // Radix only restores focus to its own <Dialog.Trigger>, which this
+            // controlled API does not use, so restore to the opener explicitly.
+            const target =
+              restoreFocusRef?.current ??
+              (previouslyFocusedRef.current?.isConnected
+                ? previouslyFocusedRef.current
+                : null);
+            previouslyFocusedRef.current = null;
             if (target) {
               e.preventDefault();
               target.focus();
