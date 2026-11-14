@@ -15,8 +15,7 @@ describe('Tederash Tab Gating & Ecosystem Tools', () => {
       const msg = createEnvelope('tab/checkTederash', { tabId: 42 });
       const parsed = UiToBgSchema.safeParse(msg);
       expect(parsed.success).toBe(true);
-      if (parsed.success) {
-        expect(parsed.data.type).toBe('tab/checkTederash');
+      if (parsed.success && parsed.data.type === 'tab/checkTederash') {
         expect(parsed.data.payload.tabId).toBe(42);
       }
     });

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createEnvelope } from '../../shared/envelope';
-import type { AiConfig, ChatMessage } from '../../shared/messages';
+import type { AgentStreamEvent, AiConfig, ChatMessage } from '../../shared/messages';
 import { Button } from '../ui/Button';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
+import { ThoughtProcess } from './ThoughtProcess';
 
 const envGroqKey =
   typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
@@ -38,6 +39,7 @@ export function ChatSidebar() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const activePortRef = useRef<chrome.runtime.Port | null>(null);
 
   // Auto scroll to bottom when messages update
   useEffect(() => {
@@ -198,16 +200,134 @@ export function ChatSidebar() {
 
     const tabId = activeTabInfo.id ?? 1;
 
-    // Optimistically append user message to UI
+    // Optimistically append user message & live assistant message placeholder
+    const userMsgId = `usr_${Date.now()}`;
+    const asstMsgId = `asst_${Date.now()}`;
+
     const tempUserMsg: ChatMessage = {
-      id: `usr_${Date.now()}`,
+      id: userMsgId,
       role: 'user',
       content: textToSend,
       timestamp: Date.now(),
     };
-    setMessages((prev) => [...prev, tempUserMsg]);
+    const liveAsstMsg: ChatMessage = {
+      id: asstMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      status: 'running',
+      toolCalls: [],
+      activeVerb: 'Analyzing request...',
+    };
+
+    setMessages((prev) => [...prev, tempUserMsg, liveAsstMsg]);
     setIsRunning(true);
 
+    // Prefer Chrome Extension Port streaming for live rationales and token streaming
+    if (typeof chrome !== 'undefined' && typeof chrome.runtime?.connect === 'function') {
+      try {
+        const port = chrome.runtime.connect({ name: 'agent-stream' });
+        activePortRef.current = port;
+
+        port.onMessage.addListener((event: AgentStreamEvent) => {
+          if (event.type === 'tool_call') {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== asstMsgId) return m;
+                const existing = m.toolCalls || [];
+                const idx = existing.findIndex((tc) => tc.id === event.toolCall.id);
+                const updated =
+                  idx >= 0
+                    ? existing.map((tc, i) => (i === idx ? event.toolCall : tc))
+                    : [...existing, event.toolCall];
+                return {
+                  ...m,
+                  toolCalls: updated,
+                  activeVerb: event.toolCall.rationale
+                    ? event.toolCall.rationale.split(' ')[0] + '...'
+                    : m.activeVerb,
+                };
+              })
+            );
+          } else if (event.type === 'thought') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === asstMsgId ? { ...m, activeVerb: event.activeVerb } : m
+              )
+            );
+          } else if (event.type === 'tool_result') {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== asstMsgId) return m;
+                const existing = m.toolCalls || [];
+                const updated = existing.map((tc) =>
+                  tc.id === event.id
+                    ? { ...tc, status: event.status, summary: event.summary }
+                    : tc
+                );
+                return { ...m, toolCalls: updated };
+              })
+            );
+          } else if (event.type === 'token') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === asstMsgId
+                  ? {
+                      ...m,
+                      content: m.content + event.token,
+                      activeVerb: 'Cooking answer...',
+                    }
+                  : m
+              )
+            );
+          } else if (event.type === 'error') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === asstMsgId
+                  ? {
+                      ...m,
+                      status: 'error',
+                      content: m.content || `Error: ${event.error}`,
+                    }
+                  : m
+              )
+            );
+            setIsRunning(false);
+          } else if (event.type === 'done') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === asstMsgId
+                  ? {
+                      ...m,
+                      status: 'success',
+                      content: m.content || 'Task completed.',
+                    }
+                  : m
+              )
+            );
+            setIsRunning(false);
+            activePortRef.current = null;
+            inputRef.current?.focus();
+          }
+        });
+
+        port.onDisconnect.addListener(() => {
+          setIsRunning(false);
+          activePortRef.current = null;
+        });
+
+        port.postMessage({
+          type: 'agent/stream/start',
+          tabId,
+          text: textToSend,
+        });
+        return;
+      } catch (err) {
+        console.warn('Port streaming failed, falling back to unary messaging:', err);
+      }
+    }
+
+    // Unary messaging fallback
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         const response = (await chrome.runtime.sendMessage(
@@ -220,44 +340,48 @@ export function ChatSidebar() {
         if (response?.ok && Array.isArray(response.messages)) {
           setMessages(response.messages);
         } else if (response?.error) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `err_${Date.now()}`,
-              role: 'assistant',
-              content: `Error: ${response.error}`,
-              timestamp: Date.now(),
-              status: 'error',
-            },
-          ]);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === asstMsgId
+                ? {
+                    ...m,
+                    status: 'error',
+                    content: `Error: ${response.error}`,
+                  }
+                : m
+            )
+          );
         }
       } else {
         // Dev fallback simulation
         setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `sim_${Date.now()}`,
-              role: 'assistant',
-              content: `Dev mode response: Analyzed "${textToSend}".`,
-              timestamp: Date.now(),
-            },
-          ]);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === asstMsgId
+                ? {
+                    ...m,
+                    status: 'success',
+                    content: `Dev mode response: Analyzed "${textToSend}".`,
+                  }
+                : m
+            )
+          );
           setIsRunning(false);
         }, 600);
         return;
       }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `err_${Date.now()}`,
-          role: 'assistant',
-          content: `Communication error: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-          status: 'error',
-        },
-      ]);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === asstMsgId
+            ? {
+                ...m,
+                status: 'error',
+                content: `Communication error: ${err instanceof Error ? err.message : String(err)}`,
+              }
+            : m
+        )
+      );
     } finally {
       setIsRunning(false);
       inputRef.current?.focus();
@@ -267,6 +391,10 @@ export function ChatSidebar() {
   const handleStop = async () => {
     if (!isRunning) return;
     try {
+      if (activePortRef.current) {
+        activePortRef.current.disconnect();
+        activePortRef.current = null;
+      }
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         await chrome.runtime.sendMessage(createEnvelope('agent/stop', {}));
       }
@@ -574,19 +702,33 @@ export function ChatSidebar() {
                 </div>
               </div>
             ) : (
-              messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex flex-col max-w-[88%] ${
-                    m.role === 'user' ? 'self-end items-end' : 'self-start items-start'
-                  }`}
-                >
-                  {m.role === 'user' ? (
-                    <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
-                      {m.content}
-                    </div>
-                  ) : m.role === 'step' ? (
+              messages.map((m, idx) => {
+                const isLast = idx === messages.length - 1;
+                const isCurrentInvestigating = isLast && isRunning && m.role === 'assistant';
+
+                if (m.role === 'user') {
+                  return (
                     <div
+                      key={m.id}
+                      className="flex flex-col max-w-[88%] self-end items-end"
+                    >
+                      <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
+                        {m.content}
+                      </div>
+                      <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
+                        {new Date(m.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  );
+                }
+
+                if (m.role === 'step') {
+                  return (
+                    <div
+                      key={m.id}
                       className={`text-xs px-2.5 py-1.5 rounded-md border my-0.5 font-mono flex items-center gap-2 max-w-full ${
                         m.status === 'error'
                           ? 'border-danger/30 bg-danger/10 text-danger'
@@ -596,25 +738,45 @@ export function ChatSidebar() {
                       <span className="text-[10px] uppercase font-bold text-fg-muted">Action</span>
                       <span className="truncate">{m.content}</span>
                     </div>
-                  ) : (
-                    <div
-                      className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
-                        m.status === 'error'
-                          ? 'border-danger/40 bg-danger/10 text-danger'
-                          : 'border-border bg-surface text-fg'
-                      }`}
-                    >
-                      <MarkdownRenderer content={m.content} />
-                    </div>
-                  )}
-                  <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
-                    {new Date(m.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              ))
+                  );
+                }
+
+                return (
+                  <div
+                    key={m.id}
+                    className="flex flex-col w-full max-w-full self-start items-start text-sm py-1"
+                  >
+                    <ThoughtProcess
+                      isInvestigating={isCurrentInvestigating}
+                      activeVerb={m.activeVerb || (isCurrentInvestigating ? 'Thinking...' : undefined)}
+                      toolCalls={m.toolCalls || []}
+                    />
+
+                    {m.content ? (
+                      <div
+                        className={`w-full px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
+                          m.status === 'error'
+                            ? 'border-danger/40 bg-danger/10 text-danger'
+                            : 'border-border bg-surface text-fg'
+                        }`}
+                      >
+                        <MarkdownRenderer content={m.content} />
+                      </div>
+                    ) : isCurrentInvestigating ? null : (
+                      <div className="text-xs font-mono text-fg-muted italic py-1">
+                        No response generated.
+                      </div>
+                    )}
+
+                    <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
+                      {new Date(m.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                );
+              })
             )}
 
             {isRunning && (

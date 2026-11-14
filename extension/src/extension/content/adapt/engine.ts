@@ -59,7 +59,7 @@ export class AdaptationEngine {
     }
 
     const cssLines: string[] = [
-      `html[data-tederash-active="true"] { --tederash-scale: ${adaptation.textScale}; font-size: calc(100% * var(--tederash-scale)) !important; }`,
+      `html[data-tederash-active="true"] { --tederash-scale: ${adaptation.textScale}; }`,
     ];
 
     if (adaptation.focusHighlight) {
@@ -123,40 +123,9 @@ export class AdaptationEngine {
     this.ledger.revert();
   }
 
-  /** Reading ruler: a translucent band that follows the pointer, in our own overlay element. */
-  private updateRuler(enabled: boolean): void {
-    if (enabled) {
-      if (!this.rulerEl) {
-        const el = document.createElement('div');
-        el.id = RULER_ID;
-        el.setAttribute('aria-hidden', 'true');
-        el.setAttribute(
-          'style',
-          [
-            'position: fixed',
-            'left: 0',
-            'right: 0',
-            'top: 0',
-            'height: 84px',
-            'pointer-events: none',
-            'z-index: 2147483646',
-            'background: linear-gradient(to bottom, rgba(37, 99, 235, 0.18), rgba(37, 99, 235, 0.05) 60%, transparent)',
-            'border-bottom: 2px solid rgba(37, 99, 235, 0.55)',
-            'box-shadow: 0 2px 10px rgba(15, 23, 42, 0.25)',
-            'will-change: transform',
-          ].join('; ')
-        );
-        (document.body ?? document.documentElement).appendChild(el);
-        this.rulerEl = el;
-
-        this.rulerHandler = (event: MouseEvent) => {
-          if (this.rulerEl) {
-            this.rulerEl.style.transform = `translateY(${event.clientY - 42}px)`;
-          }
-        };
-        window.addEventListener('mousemove', this.rulerHandler, { passive: true });
-      }
-    } else if (this.rulerEl) {
+  /** Reading ruler deprecated in favour of agentic assistance. */
+  private updateRuler(_enabled: boolean): void {
+    if (this.rulerEl) {
       if (this.rulerHandler) {
         window.removeEventListener('mousemove', this.rulerHandler);
         this.rulerHandler = null;

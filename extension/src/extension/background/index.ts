@@ -11,6 +11,7 @@ import {
   clearSessionHistory,
   getSessionHistory,
   runAgentTask,
+  runAgentTaskStream,
   stopSession,
 } from './agent/runner';
 import { getAiConfig, setAiConfig } from './llm';
@@ -400,9 +401,7 @@ async function handleContentMessage(
   }
 
   const msg = parsed.data;
-  if (msg.type === 'page/ready' && sender.tab?.id !== undefined) {
-    const origin = isAllowedOrigin(msg.payload.url);
-    await sendAdaptToTab(sender.tab.id, origin);
+  if (msg.type === 'page/ready') {
     return { ok: true };
   }
 
@@ -453,3 +452,34 @@ chrome.commands.onCommand.addListener((command) => {
     console.debug('[Tederash SW] Command received:', command);
   }
 });
+
+// Live Event Streaming Port for Sidepanel Assistant
+if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === 'agent-stream') {
+      const abortController = new AbortController();
+      port.onDisconnect.addListener(() => {
+        abortController.abort();
+      });
+
+      port.onMessage.addListener(async (msg: any) => {
+        if (msg?.type === 'agent/stream/start') {
+          const { tabId, text, conversationId } = msg;
+          await runAgentTaskStream(
+            tabId,
+            text,
+            conversationId,
+            (event) => {
+              try {
+                port.postMessage(event);
+              } catch {
+                // Port may have disconnected
+              }
+            },
+            abortController.signal
+          );
+        }
+      });
+    }
+  });
+}

@@ -30,7 +30,9 @@ export const TederashLiveRegion = React.forwardRef<
   showVisualBannerRef.current = showVisualBanner;
 
   React.useEffect(() => {
-    return runtime.onAnnounce((announcement) => {
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+
+    const unsubscribe = runtime.onAnnounce((announcement) => {
       // Read preferences from the runtime at announcement time: a page may
       // change the profile and announce in the same event, before React
       // re-renders (e.g. turning on read-aloud and confirming it aloud).
@@ -64,13 +66,20 @@ export const TederashLiveRegion = React.forwardRef<
       if (showVisualBannerRef.current || visualNotifications) {
         setActiveBanner(announcement);
         const timer = setTimeout(() => {
+          if (typeof window === "undefined") return;
           setActiveBanner((current) =>
             current?.id === announcement.id ? null : current
           );
         }, visualNotifications ? 10000 : 4000);
-        return () => clearTimeout(timer);
+        timers.push(timer);
       }
     });
+
+    return () => {
+      unsubscribe();
+      timers.forEach(clearTimeout);
+    };
+    // showVisualBanner is read through a ref, so the listener is registered once per runtime.
   }, [runtime]);
 
   return (
