@@ -18,6 +18,7 @@ import {
   MousePointerClick,
   Brain,
   Languages,
+  Briefcase,
 } from "lucide-react";
 
 const INSTALL_COMMAND = "pnpm add @tederash/core @tederash/react @tederash/components";
@@ -100,6 +101,14 @@ export function HeroSection() {
           >
             <span>Get Started</span>
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Link>
+
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border border-teal-500/40 bg-teal-500/10 text-teal-800 dark:text-teal-300 hover:bg-teal-500/20 transition-colors focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
+          >
+            <Briefcase className="w-4 h-4" aria-hidden="true" />
+            <span>Job Application Demo</span>
           </Link>
 
           <Link

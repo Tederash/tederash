@@ -64,6 +64,9 @@ export default async function RootLayout({
                   <a href="/docs" className="hover:opacity-80 transition-opacity">
                     Documentation
                   </a>
+                  <a href="/jobs" className="hover:opacity-80 transition-opacity">
+                    Careers & Demo
+                  </a>
                   <a href="/subscription" className="hover:opacity-80 transition-opacity">
                     Pricing
                   </a>

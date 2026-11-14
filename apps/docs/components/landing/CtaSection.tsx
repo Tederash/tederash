@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Github } from "lucide-react";
+import { ArrowRight, BookOpen, Github, Briefcase } from "lucide-react";
 
 export function CtaSection() {
   return (
@@ -23,6 +23,14 @@ export function CtaSection() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold border border-teal-500/40 bg-teal-500/10 text-teal-800 dark:text-teal-300 hover:bg-teal-500/20 transition-colors focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
+          >
+            <Briefcase className="w-4 h-4" aria-hidden="true" />
+            <span>Job Application Demo</span>
+          </Link>
+
           <Link
             href="/docs/quick-start"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
