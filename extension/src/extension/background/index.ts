@@ -366,13 +366,21 @@ async function handleContentMessage(
 }
 
 // Register all MV3 listeners synchronously at the top level
-chrome.runtime.onInstalled.addListener((details) => {
-  void storageService.getState().then(() => {
-    if (details.reason === 'install') {
-      void chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+chrome.runtime.onInstalled.addListener(() => {
+  void storageService.getState();
+  // Enable opening side panel directly when extension toolbar action is clicked
+  if (typeof chrome.sidePanel?.setPanelBehavior === 'function') {
+    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
+});
+
+if (typeof chrome.action?.onClicked?.addListener === 'function') {
+  chrome.action.onClicked.addListener((tab) => {
+    if (tab.id !== undefined && typeof chrome.sidePanel?.open === 'function') {
+      void chrome.sidePanel.open({ tabId: tab.id });
     }
   });
-});
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) {

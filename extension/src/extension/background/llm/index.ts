@@ -4,7 +4,10 @@ import { HeuristicLlmProvider } from './heuristic';
 import type { LlmProvider } from './types';
 
 let cachedProvider: LlmProvider | null = null;
-let currentConfig: AiConfig = { provider: 'heuristic' };
+let currentConfig: AiConfig = {
+  provider: 'groq',
+  model: 'llama-3.3-70b-versatile',
+};
 
 export function setAiConfig(config: AiConfig): LlmProvider {
   currentConfig = config;
@@ -12,7 +15,7 @@ export function setAiConfig(config: AiConfig): LlmProvider {
     cachedProvider = new DirectLlmProvider({
       provider: config.provider,
       apiKey: config.apiKey,
-      model: config.model,
+      model: config.model || (config.provider === 'groq' ? 'llama-3.3-70b-versatile' : undefined),
       baseUrl: config.baseUrl,
     });
   } else {

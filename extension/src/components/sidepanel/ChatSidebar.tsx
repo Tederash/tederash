@@ -9,9 +9,12 @@ export function ChatSidebar() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeTabInfo, setActiveTabInfo] = useState<{ id?: number; title?: string; url?: string }>({});
   const [showSettings, setShowSettings] = useState(false);
-  const [aiConfig, setAiConfigState] = useState<AiConfig>({ provider: 'heuristic' });
+  const [aiConfig, setAiConfigState] = useState<AiConfig>({
+    provider: 'groq',
+    model: 'llama-3.3-70b-versatile',
+  });
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [modelInput, setModelInput] = useState('');
+  const [modelInput, setModelInput] = useState('llama-3.3-70b-versatile');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -71,6 +74,30 @@ export function ChatSidebar() {
 
     if (!customText) {
       setInput('');
+    }
+
+    if (
+      (aiConfig.provider === 'groq' || aiConfig.provider === 'openai') &&
+      (!aiConfig.apiKey || !aiConfig.apiKey.trim())
+    ) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `usr_${Date.now()}`,
+          role: 'user',
+          content: textToSend,
+          timestamp: Date.now(),
+        },
+        {
+          id: `asst_${Date.now()}`,
+          role: 'assistant',
+          content: `⚙️ **${aiConfig.provider.toUpperCase()} API key required.** Click **⚙️ Model** in the top header, paste your API key, and click **Save Config**.\n\n*(Tip: Switch to **Built-in Deterministic** to test actions without any API key).*`,
+          timestamp: Date.now(),
+          status: 'error',
+        },
+      ]);
+      setShowSettings(true);
+      return;
     }
 
     const tabId = activeTabInfo.id ?? 1;
@@ -207,9 +234,13 @@ export function ChatSidebar() {
             <span className="font-bold text-sm tracking-tight text-fg">Tederash Assistant</span>
             <span
               className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-accent/15 text-accent border border-accent/20 truncate"
-              title={`Provider: ${aiConfig.provider}`}
+              title={`Provider: ${aiConfig.provider} (${aiConfig.model || 'default'})`}
             >
-              {aiConfig.provider === 'heuristic' ? 'Built-in (Fast)' : aiConfig.provider.toUpperCase()}
+              {aiConfig.provider === 'groq'
+                ? 'GROQ (Llama 3.3)'
+                : aiConfig.provider === 'heuristic'
+                  ? 'Built-in (Fast)'
+                  : aiConfig.provider.toUpperCase()}
             </span>
           </div>
           {activeTabInfo.title && (
@@ -259,14 +290,20 @@ export function ChatSidebar() {
             <select
               id="ai-provider"
               value={aiConfig.provider}
-              onChange={(e) =>
+              onChange={(e) => {
+                const nextProvider = e.target.value as AiConfig['provider'];
                 setAiConfigState((prev) => ({
                   ...prev,
-                  provider: e.target.value as AiConfig['provider'],
-                }))
-              }
+                  provider: nextProvider,
+                  model: nextProvider === 'groq' ? 'llama-3.3-70b-versatile' : prev.model,
+                }));
+                if (nextProvider === 'groq') {
+                  setModelInput('llama-3.3-70b-versatile');
+                }
+              }}
               className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"
             >
+              <option value="groq">Groq (Llama 3.3 70B - Recommended)</option>
               <option value="heuristic">Built-in Deterministic (No Key Needed)</option>
               <option value="gemini">Google Gemini (OpenAI-compatible)</option>
               <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
@@ -274,16 +311,31 @@ export function ChatSidebar() {
             </select>
           </div>
 
+          {aiConfig.provider === 'groq' && (
+            <p className="text-[11px] text-fg-muted">
+              Groq provides sub-second tool-calling inference. Get a free API key at{' '}
+              <a
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline"
+              >
+                console.groq.com
+              </a>
+              .
+            </p>
+          )}
+
           {aiConfig.provider !== 'heuristic' && (
             <>
               <div className="flex flex-col gap-1">
                 <label htmlFor="ai-apikey" className="text-xs text-fg-muted">
-                  API Key:
+                  {aiConfig.provider === 'groq' ? 'Groq API Key (gsk_...):' : 'API Key:'}
                 </label>
                 <input
                   id="ai-apikey"
                   type="password"
-                  placeholder="Enter your API key"
+                  placeholder={aiConfig.provider === 'groq' ? 'gsk_...' : 'Enter your API key'}
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"
@@ -297,7 +349,13 @@ export function ChatSidebar() {
                 <input
                   id="ai-model"
                   type="text"
-                  placeholder={aiConfig.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini'}
+                  placeholder={
+                    aiConfig.provider === 'groq'
+                      ? 'llama-3.3-70b-versatile'
+                      : aiConfig.provider === 'gemini'
+                        ? 'gemini-1.5-flash'
+                        : 'gpt-4o-mini'
+                  }
                   value={modelInput}
                   onChange={(e) => setModelInput(e.target.value)}
                   className="p-1.5 rounded border border-border bg-bg text-fg text-xs focus:outline-none focus:ring-2 focus:ring-accent"

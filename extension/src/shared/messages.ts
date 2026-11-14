@@ -28,7 +28,7 @@ export interface AgentChatResponse {
 }
 
 export interface AiConfig {
-  provider: 'heuristic' | 'gemini' | 'openai' | 'anthropic' | 'custom';
+  provider: 'groq' | 'heuristic' | 'gemini' | 'openai' | 'anthropic' | 'custom';
   apiKey?: string;
   model?: string;
   baseUrl?: string;
@@ -186,7 +186,7 @@ export const AiGetConfigSchema = makeEnvelopeSchema('ai/getConfig', z.object({})
 export const AiSetConfigSchema = makeEnvelopeSchema(
   'ai/setConfig',
   z.object({
-    provider: z.enum(['heuristic', 'gemini', 'openai', 'anthropic', 'custom']),
+    provider: z.enum(['groq', 'heuristic', 'gemini', 'openai', 'anthropic', 'custom']),
     apiKey: z.string().max(300).optional(),
     model: z.string().max(100).optional(),
     baseUrl: z.string().max(300).optional(),

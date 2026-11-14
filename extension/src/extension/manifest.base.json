@@ -13,10 +13,8 @@
     "192": "icons/icon192.png"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Open Tederash accessibility menu"
+    "default_title": "Open Tederash Assistant"
   },
-  "options_page": "options.html",
   "side_panel": {
     "default_path": "sidepanel.html"
   },
@@ -43,9 +41,11 @@
     "contextMenus",
     "webNavigation"
   ],
+  "host_permissions": [
+    "https://api.groq.com/*"
+  ],
   "optional_permissions": ["tabCapture", "notifications"],
   "optional_host_permissions": [
-    "https://api.groq.com/*",
     "https://api.openai.com/*",
     "https://api.anthropic.com/*"
   ],

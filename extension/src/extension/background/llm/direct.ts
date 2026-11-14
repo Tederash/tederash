@@ -2,7 +2,7 @@ import type { ToolCall, ToolSpec } from '../../../shared/tools';
 import type { LlmMessage, LlmProvider, LlmResponse } from './types';
 
 export interface DirectLlmConfig {
-  provider: 'gemini' | 'openai' | 'anthropic' | 'custom';
+  provider: 'groq' | 'gemini' | 'openai' | 'anthropic' | 'custom';
   apiKey: string;
   model?: string;
   baseUrl?: string;
@@ -16,7 +16,7 @@ export class DirectLlmProvider implements LlmProvider {
   constructor(config: DirectLlmConfig) {
     this.config = config;
     this.id = config.provider;
-    this.name = `${config.provider.toUpperCase()} (${config.model || 'default'})`;
+    this.name = `${config.provider.toUpperCase()} (${config.model || (config.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'default')})`;
   }
 
   async generate(req: {
@@ -30,7 +30,10 @@ export class DirectLlmProvider implements LlmProvider {
     let url = baseUrl;
     let effectiveModel = model;
 
-    if (provider === 'gemini') {
+    if (provider === 'groq') {
+      url = baseUrl || 'https://api.groq.com/openai/v1/chat/completions';
+      effectiveModel = model || 'llama-3.3-70b-versatile';
+    } else if (provider === 'gemini') {
       url =
         baseUrl ||
         `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
@@ -39,8 +42,8 @@ export class DirectLlmProvider implements LlmProvider {
       url = baseUrl || 'https://api.openai.com/v1/chat/completions';
       effectiveModel = model || 'gpt-4o-mini';
     } else if (!url) {
-      url = 'https://api.openai.com/v1/chat/completions';
-      effectiveModel = model || 'gpt-4o-mini';
+      url = 'https://api.groq.com/openai/v1/chat/completions';
+      effectiveModel = model || 'llama-3.3-70b-versatile';
     }
 
     // Format tools for OpenAI function calling

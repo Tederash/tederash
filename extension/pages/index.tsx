@@ -1,13 +1,13 @@
 import Head from 'next/head';
-import { PopupView } from '../src/components/popup/PopupView';
+import { ChatSidebar } from '../src/components/sidepanel/ChatSidebar';
 
 export default function HomePage() {
   return (
     <>
       <Head>
-        <title>Tederash</title>
+        <title>Tederash Assistant</title>
       </Head>
-      <PopupView />
+      <ChatSidebar />
     </>
   );
 }
