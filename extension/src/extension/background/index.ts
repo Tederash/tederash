@@ -8,6 +8,7 @@ import {
   type VaultGetResponse,
 } from '../../shared/messages';
 import { resolveConfirmation } from './agent/confirm';
+import { createBatchedListener } from './agent/stream';
 import { ensureSessionsLoaded } from './agent/session';
 import {
   clearSessionHistory,
@@ -499,13 +500,13 @@ if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
             tabId,
             text,
             conversationId,
-            (event) => {
+            createBatchedListener((event) => {
               try {
                 port.postMessage(event);
               } catch {
                 // Port may have disconnected
               }
-            },
+            }),
             abortController.signal
           );
         }

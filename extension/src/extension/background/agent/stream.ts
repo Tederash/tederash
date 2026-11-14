@@ -132,3 +132,30 @@ export function formatStepSummary(call: ToolCall, result: ToolResult): string {
       return result.outcome?.message || `Completed ${call.name}`;
   }
 }
+
+/**
+ * Wraps a port listener so streamed tokens are sent in ~50ms batches (fewer port
+ * messages and re-renders). Any non-token event flushes pending text first, so
+ * ordering is preserved.
+ */
+export function createBatchedListener(post: AgentStreamListener, intervalMs = 50): AgentStreamListener {
+  let buffer = '';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const flush = () => {
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    if (!buffer) return;
+    const token = buffer;
+    buffer = '';
+    post({ type: 'token', token });
+  };
+  return (event) => {
+    if (event.type === 'token') {
+      buffer += event.token;
+      if (!timer) timer = setTimeout(flush, intervalMs);
+      return;
+    }
+    flush();
+    post(event);
+  };
+}

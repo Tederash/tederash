@@ -172,24 +172,40 @@ describe('LLM orchestration plumbing', () => {
     ]);
   });
 
-  it('surfaces a stream error instead of finishing with an empty "success"', async () => {
+  it('falls back to the smaller Groq model when the primary fails before answering', async () => {
     await configureKey();
-    streamTextMock.mockReturnValueOnce(
-      fakeStream([
-        {
-          type: 'error',
-          error: new Error('Tool call validation failed: parameters for tool inspect_form did not match schema'),
-        },
-      ])
-    );
+    streamTextMock
+      .mockReturnValueOnce(fakeStream([{ type: 'error', error: { statusCode: 429, message: 'Rate limit reached' } }]))
+      .mockReturnValueOnce(fakeStream([{ type: 'text-delta', text: 'It asks for 9 things.' }]));
     const events: AgentStreamEvent[] = [];
     const res = await runAgentTaskStream(7, 'what does this form ask?', undefined, (e) => events.push(e));
 
-    expect(res.status).toBe('error');
+    expect(streamTextMock.mock.calls.map(([o]) => o.model.modelId)).toEqual(['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
+    expect(res.status).toBe('done');
+    expect(res.messages.at(-1)?.content).toBe('It asks for 9 things.');
+    expect(events.some((e) => e.type === 'thought' && e.rationale.includes('Switching to a smaller model'))).toBe(true);
+  });
+
+  it('ends in offline mode, with the reason shown, when every model fails (never an empty "success")', async () => {
+    await configureKey();
+    streamTextMock.mockImplementation(() =>
+      fakeStream([{ type: 'error', error: new Error('Tool call validation failed: did not match schema') }])
+    );
+    const res = await runAgentTaskStream(7, 'scroll down');
     const assistant = res.messages.filter((m) => m.role === 'assistant').at(-1);
-    expect(assistant?.status).toBe('error');
-    expect(assistant?.content).toBe('The AI model sent an invalid action request.');
-    expect(events.some((e) => e.type === 'error')).toBe(true);
+    expect(assistant?.content).toContain('The AI model sent an invalid action request. Using offline mode.');
+    expect(assistant?.content).toContain('Done');
+    expect(res.status).toBe('done');
+    streamTextMock.mockReset();
+  });
+
+  it('goes straight to offline mode on a rejected key', async () => {
+    await configureKey();
+    streamTextMock.mockReturnValue(fakeStream([{ type: 'error', error: { statusCode: 401, message: 'Invalid API Key' } }]));
+    const res = await runAgentTaskStream(7, 'what does this form ask?');
+    expect(streamTextMock).toHaveBeenCalledTimes(1);
+    expect(res.messages.at(-1)?.content).toContain('rejected the API key');
+    streamTextMock.mockReset();
   });
 
   it('keeps partial text and notes the error when the stream fails midway', async () => {

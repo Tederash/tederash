@@ -1,14 +1,14 @@
 import { createEnvelope } from '../../../shared/envelope';
-import type { ChatMessage, PingResponse } from '../../../shared/messages';
+import type { AiConfig, ChatMessage, PingResponse } from '../../../shared/messages';
 import type { PageState, ToolResult } from '../../../shared/tools';
-import { isLlmConfigured, loadAiConfig } from '../llm';
-import { HeuristicLlmProvider } from '../llm/heuristic';
-import { createChatModel } from '../llm/model';
+import { FALLBACK_GROQ_MODEL, isLlmConfigured, loadAiConfig } from '../llm';
+import { createChatModel, resolveModelId } from '../llm/model';
 import { describeProviderError } from './errors';
 import { executeContentTool } from './executor';
 import { toModelHistory } from './history';
 import { formatPageState } from './page-model';
-import { SYSTEM_PROMPT, buildSystemPrompt } from './prompt';
+import { buildSystemPrompt } from './prompt';
+import { createRouterCallModel } from './router';
 import { awaitConfirmation } from './confirm';
 import { type ConfirmFn } from './executor';
 import { type AgentSession, ensureSessionsLoaded, getOrCreateSession, persistSessions } from './session';
@@ -16,6 +16,63 @@ import type { AgentStreamListener } from './stream';
 import { type CallModel, createStreamingCallModel, runModelLoop } from './loop';
 
 type TurnResult = { conversationId: string; messages: ChatMessage[]; status: AgentSession['status'] };
+
+export interface ChainLink {
+  kind: 'model' | 'router';
+  label: string;
+  callModel: CallModel;
+}
+
+function buildModelChain(
+  config: AiConfig,
+  userGoal: string,
+  pageState: PageState | undefined,
+  deps: AgentDeps
+): ChainLink[] {
+  const router: ChainLink = {
+    kind: 'router',
+    label: 'offline mode',
+    callModel: createRouterCallModel(userGoal, pageState),
+  };
+  if (deps.callModel) return [{ kind: 'model', label: 'the AI model', callModel: deps.callModel }, router];
+  if (!isLlmConfigured(config)) return [router];
+  const primaryId = resolveModelId(config);
+  const chain: ChainLink[] = [
+    { kind: 'model', label: primaryId, callModel: createStreamingCallModel(createChatModel(config)) },
+  ];
+  if (config.provider === 'groq' && primaryId !== FALLBACK_GROQ_MODEL) {
+    chain.push({
+      kind: 'model',
+      label: 'a smaller model',
+      callModel: createStreamingCallModel(createChatModel(config, FALLBACK_GROQ_MODEL)),
+    });
+  }
+  chain.push(router);
+  return chain;
+}
+
+/**
+ * Tries each link in order. A step that failed before producing any output moves to
+ * the next link (and stays there for the rest of the turn). Errors the user must fix
+ * (bad key) still fall through to the offline router, which never fails.
+ */
+export function withFallback(
+  chain: ChainLink[],
+  onSwitch: (next: ChainLink, reason: string) => void
+): CallModel {
+  let index = 0;
+  return async (req) => {
+    for (;;) {
+      const res = await chain[index]!.callModel(req);
+      if (!res.error || res.text || res.toolCalls.length > 0 || index >= chain.length - 1) return res;
+      const described = describeProviderError(res.error);
+      if (req.abortSignal?.aborted || described.code === 'ABORTED') return res;
+      // Another model with the same key cannot fix an auth error: go straight to offline mode.
+      index = described.code === 'AUTH' ? chain.length - 1 : index + 1;
+      onSwitch(chain[index]!, described.message);
+    }
+  };
+}
 
 export interface AgentDeps {
   /** Override the model step (tests, or alternative providers). */
@@ -165,67 +222,26 @@ export async function runAgentTaskStream(
     onEvent?.({ type: 'token', token: text });
   };
 
-  // Offline / no key: deterministic provider.
-  if (!isLlmConfigured(aiConfig)) {
-    try {
-      const heuristic = new HeuristicLlmProvider();
-      const heuristicMessages: any[] = [{ role: 'user', content: userGoal }];
-
-      for (let step = 0; step < 4; step++) {
-        const resp = await heuristic.generate({
-          systemPrompt: SYSTEM_PROMPT,
-          messages: heuristicMessages,
-          signal: session.abortController?.signal,
-        });
-
-        if (resp.toolCalls && resp.toolCalls.length > 0) {
-          for (const tc of resp.toolCalls) {
-            const toolRes = await toolExecutor(tc.name, tc.args);
-            heuristicMessages.push({
-              role: 'tool',
-              name: tc.name,
-              content: JSON.stringify(
-                toolRes.ok
-                  ? (toolRes as any).data || (toolRes as any).outcome || toolRes
-                  : toolRes.error
-              ),
-            });
-          }
-        }
-
-        if (resp.content && resp.content.trim().length > 0) {
-          assistantMsg.activeVerb = 'Synthesizing answer...';
-          onEvent?.({
-            type: 'thought',
-            rationale: 'Synthesizing response for user...',
-            activeVerb: 'Synthesizing answer...',
-          });
-          emitText(resp.content.trim());
-          break;
-        }
-
-        if (!resp.toolCalls || resp.toolCalls.length === 0) break;
-      }
-
-      assistantMsg.status = 'success';
-      session.status = 'done';
-    } catch (err) {
-      session.status = 'error';
-      assistantMsg.status = 'error';
-      assistantMsg.content = `Error: ${err instanceof Error ? err.message : String(err)}`;
-      onEvent?.({ type: 'error', error: assistantMsg.content });
-    }
-    return finish();
-  }
-
-  // LLM orchestration (Groq / OpenAI / Gemini via Chat Completions), one step at a time.
   const pageState = await readPageState(tabId);
   session.pageState = pageState;
+
+  // Model chain: configured model → smaller Groq model → deterministic router (offline).
+  const chain = buildModelChain(aiConfig, userGoal, pageState, deps);
+  const callModel = withFallback(chain, (next, reason) => {
+    const rationale =
+      next.kind === 'router'
+        ? `${reason} Using offline mode for this request.`
+        : `${reason} Switching to ${next.label}.`;
+    if (next.kind === 'router') emitText(`_${reason} Using offline mode._\n\n`);
+    assistantMsg.activeVerb = 'Switching to a backup...';
+    onEvent?.({ type: 'thought', rationale, activeVerb: 'Switching to a backup...' });
+  });
+
   const loop = await runModelLoop({
     system: buildSystemPrompt(pageState ? formatPageState(pageState) : undefined),
     history,
     userGoal,
-    callModel: deps.callModel ?? createStreamingCallModel(createChatModel(aiConfig)),
+    callModel,
     execTool: (name, args) => toolExecutor(name, args),
     onText: emitText,
     readPageState: async () => {

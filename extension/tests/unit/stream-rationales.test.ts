@@ -36,64 +36,61 @@ describe('Live Streaming & Rationales Engine', () => {
     expect(getActiveVerb('unknown' as any)).toBe('Thinking...');
   });
 
-  it('runs multi-step streaming and emits thought, tool_call, tool_result, token, and done events', async () => {
-    // Setup chrome.tabs.sendMessage mock
-    const treeMock = [
-      { component: 'input', id: 'fullName', label: 'Full Name', required: true },
-      { component: 'input', id: 'email', label: 'Email Address', required: true },
-      { component: 'input', id: 'password', label: 'Password', required: true },
-    ];
+  const PAGE = {
+    url: 'http://localhost:3000/jobs',
+    title: 'Jobs',
+    pageVersion: 1,
+    headings: ['Role Application'],
+    fields: [
+      { handle: 'fld:full-legal-name', label: 'Full Legal Name', kind: 'text', required: true },
+      { handle: 'fld:email-address', label: 'Email Address', kind: 'email', required: true },
+      { handle: 'fld:password', label: 'Password', kind: 'password', required: true, sensitive: true, filled: false },
+    ],
+    buttons: [],
+  };
 
-    (globalThis as any).chrome = {
-      tabs: {
-        sendMessage: vi.fn().mockImplementation((tabId, msg) => {
-          if (msg.type === 'content/ping') {
-            return Promise.resolve({ ok: true, runtime: 'content', isTederash: true });
-          }
-          if (msg.type === 'tool/exec') {
-            if (msg.payload.call.name === 'tederash_get_tree') {
-              return Promise.resolve({
-                ok: true,
-                data: treeMock,
-                outcome: { ok: true, message: 'Found 3 components' },
-              });
-            }
-          }
-          return Promise.resolve({ ok: true });
-        }),
-      },
-    };
+  function installOfflineChrome() {
+    const sendMessage = vi.fn().mockImplementation((_tabId: number, msg: any) => {
+      if (msg.type === 'content/ping') return Promise.resolve({ ok: true, runtime: 'content', isTederash: true });
+      const call = msg.payload?.call;
+      if (call?.name === 'page_state') return Promise.resolve({ ok: true, data: PAGE });
+      if (call?.name === 'fill') {
+        return Promise.resolve({ ok: true, outcome: { ok: true, message: `Full Legal Name = "${call.args.value}"` } });
+      }
+      return Promise.resolve({ ok: true });
+    });
+    (globalThis as any).chrome = { tabs: { sendMessage } };
+    return sendMessage;
+  }
 
-    const emittedEvents: AgentStreamEvent[] = [];
-    const listener = (event: AgentStreamEvent) => {
-      emittedEvents.push(event);
-    };
+  it('offline mode (no API key) answers form questions from the Page Model', async () => {
+    installOfflineChrome();
+    const events: AgentStreamEvent[] = [];
+    const result = await runAgentTaskStream(42, 'what fields does this form need?', 'conv_offline_q', (e) => events.push(e));
+    expect(result.status).toBe('done');
+    const answer = result.messages.filter((m) => m.role === 'assistant').at(-1)?.content ?? '';
+    expect(answer).toContain('Full Legal Name');
+    expect(answer).toContain('Email Address');
+    expect(answer).toContain('you fill this one yourself');
+    expect(events.some((e) => e.type === 'token')).toBe(true);
+    expect(events.at(-1)?.type).toBe('done');
+  });
 
+  it('offline mode acts on "insert X in the Full Name field" instead of listing fields again', async () => {
+    const sendMessage = installOfflineChrome();
+    const events: AgentStreamEvent[] = [];
     const result = await runAgentTaskStream(
       42,
-      'what fields does this form need?',
-      'conv_stream_test',
-      listener
+      "insert 'Tsegaye Shewamare' in the Full Name field.",
+      'conv_offline_act',
+      (e) => events.push(e)
     );
-
-    // Verify final result
-    expect(result.status).toBe('done');
-    const assistantMsg = result.messages.find((m) => m.role === 'assistant');
-    expect(assistantMsg).toBeDefined();
-    expect(assistantMsg?.content).toContain('Full Name');
-    expect(assistantMsg?.content).toContain('Email Address');
-    expect(assistantMsg?.content).toContain('Password');
-    expect(assistantMsg?.toolCalls?.length).toBeGreaterThan(0);
-
-    // Verify emitted streaming events
-    expect(emittedEvents.some((e) => e.type === 'start')).toBe(true);
-    expect(emittedEvents.some((e) => e.type === 'thought')).toBe(true);
-    expect(emittedEvents.some((e) => e.type === 'tool_call')).toBe(true);
-    expect(emittedEvents.some((e) => e.type === 'tool_result')).toBe(true);
-    expect(emittedEvents.some((e) => e.type === 'token')).toBe(true);
-    expect(emittedEvents.some((e) => e.type === 'done')).toBe(true);
-
-    const toolCallEvent = emittedEvents.find((e) => e.type === 'tool_call') as any;
-    expect(toolCallEvent.toolCall.rationale).toContain('Inspecting Tederash accessible component tree');
+    const fillCall = sendMessage.mock.calls.find(([, msg]) => msg.payload?.call?.name === 'fill');
+    expect(fillCall?.[1].payload.call.args).toEqual({ target: 'Full Name', value: 'Tsegaye Shewamare' });
+    const toolCallEvent = events.find((e) => e.type === 'tool_call') as any;
+    expect(toolCallEvent.toolCall.rationale).toBe('Filling “Full Name”.');
+    const answer = result.messages.filter((m) => m.role === 'assistant').at(-1)?.content ?? '';
+    expect(answer).toContain('Full Legal Name = "Tsegaye Shewamare"');
+    expect(answer).not.toContain('|');
   });
 });

@@ -519,3 +519,16 @@ packages/components/src/**                          → component registry hooks
 extension/scripts/build-extension.mjs               → no production key define
 extension/src/components/sidepanel/*                → protocol v2, confirm dialog
 ```
+
+---
+
+## 8. Implementation status (2026-11-14)
+
+All six phases are implemented and unit-tested (extension 114 tests, `@tederash/react` 73, `@tederash/components` 195). Where the code differs from this spec:
+
+- **Provider:** `@ai-sdk/groq` was not added. `createOpenAI({ baseURL }).chat()` already uses Chat Completions, and a `retry-after`-aware fetch absorbs short 429s. The free Groq tier is limited to 8k tokens per minute, which is why the context is kept compact.
+- **Handles are stateless.** They are recomputed from label and document order on every lookup. There are no stored recipes, so `STALE_HANDLE` never occurs; a missing control returns `NOT_FOUND` with candidates.
+- **Stream protocol:** the existing event names were kept (`thought`, `tool_call`, `tool_result`, `token`, `done`, `error`), with one addition, `confirm_request`. Tokens are batched about every 50ms. The side panel transcript is no longer a live region. A separate polite status region announces debounced status changes, confirmations and the final answer.
+- **Deterministic router:** it replaces the keyword heuristic as offline mode and as the last fallback. There is no pre-LLM fast path, so the model stays in charge whenever it is available.
+- **Resume after a worker restart:** an interrupted turn is marked interrupted and the user is asked to retry. There is no automatic "Continue".
+- **Browser verification:** done for phase 0 only (the 3-turn `/jobs` repro passed with `gpt-oss-120b`). Phases 1–5 are verified by unit and component tests only, so a manual run in the browser is still needed.

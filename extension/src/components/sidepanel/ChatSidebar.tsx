@@ -42,6 +42,20 @@ export function ChatSidebar() {
   >(null);
   const confirmRef = useRef<HTMLDivElement>(null);
 
+  // Screen-reader announcements: the transcript itself is not a live region (it would
+  // read every streamed token); status changes are debounced, answers read once.
+  const [announcement, setAnnouncement] = useState('');
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const announce = (text: string, debounceMs = 0) => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = null;
+    if (debounceMs > 0) {
+      statusTimerRef.current = setTimeout(() => setAnnouncement(text), debounceMs);
+    } else {
+      setAnnouncement(text);
+    }
+  };
+
   // Move focus to the confirmation so keyboard and screen-reader users notice it.
   useEffect(() => {
     if (pendingConfirm) confirmRef.current?.focus();
@@ -250,8 +264,10 @@ export function ChatSidebar() {
         port.onMessage.addListener((event: AgentStreamEvent) => {
           if (event.type === 'confirm_request') {
             setPendingConfirm(event);
+            announce(`Confirmation needed. ${event.title} ${event.detail}`);
             return;
           }
+          if (event.type === 'thought') announce(event.activeVerb, 1000);
           if (event.type === 'done') setPendingConfirm(null);
           if (event.type === 'tool_call') {
             setMessages((prev) =>
@@ -317,17 +333,21 @@ export function ChatSidebar() {
             );
             setIsRunning(false);
           } else if (event.type === 'done') {
+            // The background's final message is authoritative (status and full text).
+            const final = [...(event.messages ?? [])].reverse().find((m) => m.role === 'assistant');
+            const finalContent = final?.content || 'Task completed.';
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === asstMsgId
                   ? {
                       ...m,
-                      status: 'success',
-                      content: m.content || 'Task completed.',
+                      status: final?.status === 'error' ? 'error' : 'success',
+                      content: final?.content || m.content || 'Task completed.',
                     }
                   : m
               )
             );
+            announce(finalContent.replace(/[*_`#>|]/g, '').slice(0, 400));
             setIsRunning(false);
             activePortRef.current = null;
             inputRef.current?.focus();
@@ -564,7 +584,7 @@ export function ChatSidebar() {
               className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="groq">Groq (gpt-oss-120b)</option>
-              <option value="heuristic">Built-in Deterministic (No Key Needed)</option>
+              <option value="heuristic">Offline mode (no key needed)</option>
               <option value="gemini">Google Gemini (OpenAI-compatible)</option>
               <option value="openai">OpenAI (GPT-4o)</option>
               <option value="custom">Custom Endpoint / Local LLM</option>
@@ -698,7 +718,7 @@ export function ChatSidebar() {
           <div
             ref={scrollContainerRef}
             role="log"
-            aria-live="polite"
+            aria-live="off"
             aria-label="Conversation history"
             className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 select-text"
           >
@@ -811,6 +831,10 @@ export function ChatSidebar() {
                 <span>Reasoning & executing…</span>
               </div>
             )}
+          </div>
+
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {announcement}
           </div>
 
           {pendingConfirm && (
