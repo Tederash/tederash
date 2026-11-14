@@ -168,6 +168,7 @@ export function AccessibilityOnboarding() {
       visual: {
         highContrast: true,
         fontScale: 1.25,
+        underlineLinks: true,
       },
       motor: {
         keyboardNavigation: true,
@@ -175,16 +176,36 @@ export function AccessibilityOnboarding() {
       },
       speech: {
         speechOutput: true,
+        language: isAmharic ? "am-ET" : "en-US",
+        speechRate: 0.95,
+      },
+      cognitive: {
+        showInstructions: true,
+        readingFocusGuide: true,
       },
       interaction: {
         preferredInput: "keyboard",
+        formAssistance: true,
         confirmationBeforeDestructiveActions: true,
       },
     });
+
+    const msg = isAmharic
+      ? "የስክሪን አንባቢ እና የኪቦርድ አሰሳ ፕሮፋይል ነቅቷል።"
+      : "Activated Screen Reader & Keyboard Navigation accessibility profile.";
+
     announce({
-      message: "Activated Screen Reader & Keyboard Navigation accessibility profile.",
+      message: msg,
       priority: "assertive",
       category: "success",
+    });
+
+    // Also immediately trigger audio speech narration of the active step instructions
+    const fullAudio = `${msg}. ${step.spokenText}`;
+    setActiveSpeechText(fullAudio);
+    speak(fullAudio, {
+      lang: isAmharic ? "am-ET" : "en-US",
+      rate: 0.95,
     });
   };
 

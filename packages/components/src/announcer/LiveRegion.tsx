@@ -20,7 +20,7 @@ export const TederashLiveRegion = React.forwardRef<
   HTMLDivElement,
   TederashLiveRegionProps
 >(function TederashLiveRegion({ showVisualBanner = false, className = "" }, ref) {
-  const { runtime, adaptations } = useAccessibility();
+  const { runtime, adaptations, profile } = useAccessibility();
   const [politeMessage, setPoliteMessage] = React.useState<string>("");
   const [assertiveMessage, setAssertiveMessage] = React.useState<string>("");
   const [activeBanner, setActiveBanner] = React.useState<Announcement | null>(null);
@@ -31,6 +31,24 @@ export const TederashLiveRegion = React.forwardRef<
         setAssertiveMessage(announcement.message);
       } else {
         setPoliteMessage(announcement.message);
+      }
+
+      // Spoken readout via Web Speech API when speechOutput is enabled in profile
+      if (
+        profile.speech?.speechOutput &&
+        typeof window !== "undefined" &&
+        "speechSynthesis" in window
+      ) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(announcement.message);
+          utterance.lang =
+            profile.speech.language || (profile.locale === "am" ? "am-ET" : "en-US");
+          utterance.rate = profile.speech.speechRate || 1.0;
+          window.speechSynthesis.speak(utterance);
+        } catch {
+          // Ignore speech synthesis errors if unsupported
+        }
       }
 
       if (showVisualBanner) {
