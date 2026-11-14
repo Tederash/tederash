@@ -5,6 +5,8 @@ import { Button } from '../ui/Button';
 
 const envGroqKey =
   typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
+const envGroqModel =
+  typeof process !== 'undefined' && process.env?.GROQ_MODEL ? process.env.GROQ_MODEL : 'openai/gpt-oss-120b';
 
 export function ChatSidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -14,11 +16,11 @@ export function ChatSidebar() {
   const [showSettings, setShowSettings] = useState(false);
   const [aiConfig, setAiConfigState] = useState<AiConfig>({
     provider: 'groq',
-    model: 'llama-3.3-70b-versatile',
+    model: envGroqModel,
     apiKey: envGroqKey,
   });
   const [apiKeyInput, setApiKeyInput] = useState(envGroqKey);
-  const [modelInput, setModelInput] = useState('llama-3.3-70b-versatile');
+  const [modelInput, setModelInput] = useState(envGroqModel);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -243,7 +245,7 @@ export function ChatSidebar() {
               title={`Provider: ${aiConfig.provider} (${aiConfig.model || 'default'})`}
             >
               {aiConfig.provider === 'groq'
-                ? 'groq/llama-3.3'
+                ? `groq/${(aiConfig.model || envGroqModel).replace(/^.*\//, '')}`
                 : aiConfig.provider === 'heuristic'
                   ? 'deterministic'
                   : aiConfig.provider}
@@ -305,15 +307,15 @@ export function ChatSidebar() {
                 setAiConfigState((prev) => ({
                   ...prev,
                   provider: nextProvider,
-                  model: nextProvider === 'groq' ? 'llama-3.3-70b-versatile' : prev.model,
+                  model: nextProvider === 'groq' ? envGroqModel : prev.model,
                 }));
                 if (nextProvider === 'groq') {
-                  setModelInput('llama-3.3-70b-versatile');
+                  setModelInput(envGroqModel);
                 }
               }}
               className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="groq">Groq (Llama 3.3 70B - Recommended)</option>
+              <option value="groq">Groq (Auto-discovered / 120B Reasoning)</option>
               <option value="heuristic">Built-in Deterministic (No Key Needed)</option>
               <option value="gemini">Google Gemini (OpenAI-compatible)</option>
               <option value="openai">OpenAI (GPT-4o)</option>
@@ -345,12 +347,12 @@ export function ChatSidebar() {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ai-model" className="text-xs font-medium text-fg-muted">
-                  Model
+                  Model Override (optional)
                 </label>
                 <input
                   id="ai-model"
                   type="text"
-                  placeholder="llama-3.3-70b-versatile"
+                  placeholder={envGroqModel}
                   value={modelInput}
                   onChange={(e) => setModelInput(e.target.value)}
                   className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"

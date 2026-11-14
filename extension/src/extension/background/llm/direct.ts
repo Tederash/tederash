@@ -8,6 +8,9 @@ export interface DirectLlmConfig {
   baseUrl?: string;
 }
 
+const defaultGroqModel =
+  typeof process !== 'undefined' && process.env?.GROQ_MODEL ? process.env.GROQ_MODEL : 'openai/gpt-oss-120b';
+
 export class DirectLlmProvider implements LlmProvider {
   id: string;
   name: string;
@@ -16,7 +19,35 @@ export class DirectLlmProvider implements LlmProvider {
   constructor(config: DirectLlmConfig) {
     this.config = config;
     this.id = config.provider;
-    this.name = `${config.provider.toUpperCase()} (${config.model || (config.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'default')})`;
+    this.name = `${config.provider.toUpperCase()} (${config.model || (config.provider === 'groq' ? defaultGroqModel : 'default')})`;
+  }
+
+  private async discoverGroqModel(apiKey: string): Promise<string | null> {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const ids: string[] = (data.data || []).map((m: { id: string }) => m.id);
+      const preferred = [
+        'openai/gpt-oss-120b',
+        'qwen/qwen3.8-27b',
+        'llama-3.3-70b-versatile',
+        'llama-3.1-70b-versatile',
+        'llama-3.1-8b-instant',
+        'openai/gpt-oss-20b',
+      ];
+      for (const p of preferred) {
+        if (ids.includes(p)) return p;
+      }
+      const candidate = ids.find(
+        (id) => !id.includes('whisper') && !id.includes('guard') && !id.includes('orpheus')
+      );
+      return candidate || null;
+    } catch {
+      return null;
+    }
   }
 
   async generate(req: {
@@ -32,7 +63,7 @@ export class DirectLlmProvider implements LlmProvider {
 
     if (provider === 'groq') {
       url = baseUrl || 'https://api.groq.com/openai/v1/chat/completions';
-      effectiveModel = model || 'llama-3.3-70b-versatile';
+      effectiveModel = model || defaultGroqModel;
     } else if (provider === 'gemini') {
       url =
         baseUrl ||
@@ -43,7 +74,7 @@ export class DirectLlmProvider implements LlmProvider {
       effectiveModel = model || 'gpt-4o-mini';
     } else if (!url) {
       url = 'https://api.groq.com/openai/v1/chat/completions';
-      effectiveModel = model || 'llama-3.3-70b-versatile';
+      effectiveModel = model || defaultGroqModel;
     }
 
     // Format tools for OpenAI function calling
@@ -106,6 +137,14 @@ export class DirectLlmProvider implements LlmProvider {
 
     if (!res.ok) {
       const errText = await res.text();
+      // Auto-fallback if the specified model is not found or deprecated
+      if (res.status === 404 && provider === 'groq' && errText.includes('model_not_found')) {
+        const fallback = await this.discoverGroqModel(apiKey);
+        if (fallback && fallback !== effectiveModel) {
+          this.config.model = fallback;
+          return this.generate({ ...req });
+        }
+      }
       throw new Error(`LLM provider error (${res.status}): ${errText}`);
     }
 

@@ -5,10 +5,12 @@ import type { LlmProvider } from './types';
 
 const defaultGroqKey =
   typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
+const defaultGroqModel =
+  typeof process !== 'undefined' && process.env?.GROQ_MODEL ? process.env.GROQ_MODEL : 'openai/gpt-oss-120b';
 
 let currentConfig: AiConfig = {
   provider: 'groq',
-  model: 'llama-3.3-70b-versatile',
+  model: defaultGroqModel,
   apiKey: defaultGroqKey,
 };
 
@@ -16,7 +18,7 @@ let cachedProvider: LlmProvider | null = defaultGroqKey
   ? new DirectLlmProvider({
       provider: 'groq',
       apiKey: defaultGroqKey,
-      model: 'llama-3.3-70b-versatile',
+      model: defaultGroqModel,
     })
   : null;
 
@@ -26,7 +28,7 @@ export function setAiConfig(config: AiConfig): LlmProvider {
     cachedProvider = new DirectLlmProvider({
       provider: config.provider,
       apiKey: config.apiKey,
-      model: config.model || (config.provider === 'groq' ? 'llama-3.3-70b-versatile' : undefined),
+      model: config.model || (config.provider === 'groq' ? defaultGroqModel : undefined),
       baseUrl: config.baseUrl,
     });
   } else {

@@ -29,6 +29,7 @@ function loadEnv() {
 
 const envVars = loadEnv();
 const groqKey = envVars.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
+const groqModel = envVars.GROQ_MODEL || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 async function buildAll() {
   if (!fs.existsSync(OUT_DIR)) {
@@ -44,6 +45,7 @@ async function buildAll() {
     define: {
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
       'process.env.GROQ_API_KEY': JSON.stringify(groqKey),
+      'process.env.GROQ_MODEL': JSON.stringify(groqModel),
     },
   };
 
