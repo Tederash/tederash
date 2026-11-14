@@ -1,14 +1,11 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { Input, type InputProps } from "../ui/input";
+import { Label } from "../ui/label";
+import { cn } from "../ui/utils";
 
 export interface TederashInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
+  extends Omit<InputProps, "size"> {
   /** Visible label text for accessible name */
   label?: string;
   /** Explanatory description */
@@ -82,10 +79,9 @@ export const TederashInput = React.forwardRef<
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label
+          <Label
             htmlFor={inputId}
             className={cn(
-              "font-medium leading-none select-none",
               visuallyHideLabel && "sr-only",
               adaptations.targetSize === "extra-large"
                 ? "text-base font-semibold"
@@ -100,7 +96,7 @@ export const TederashInput = React.forwardRef<
                 *
               </span>
             )}
-          </label>
+          </Label>
         )}
 
         {/* Helpful description / simplified instructions */}
@@ -117,7 +113,7 @@ export const TederashInput = React.forwardRef<
           </p>
         )}
 
-        <input
+        <Input
           ref={ref}
           id={inputId}
           data-slot="tederash-input"
@@ -126,7 +122,6 @@ export const TederashInput = React.forwardRef<
           aria-describedby={ariaDescribedBy}
           disabled={disabled}
           className={cn(
-            "w-full transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-50",
             sizeClasses,
             contrastClasses,
             focusClasses,
@@ -157,3 +152,4 @@ export const TederashInput = React.forwardRef<
 TederashInput.displayName = "TederashInput";
 
 export const AccessibleInput = TederashInput;
+export { Input };

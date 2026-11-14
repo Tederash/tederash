@@ -1,12 +1,8 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "../ui/utils";
+import { Menu, X } from "lucide-react";
 
 export interface TederashNavigationLink {
   /** Target URL or route */
@@ -110,7 +106,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
 
   const contrastHeader = adaptations.highContrast
     ? "border-b-2 border-foreground dark:border-white bg-background text-foreground"
-    : "border-b border-border bg-background";
+    : "border-b border-border bg-background/95 backdrop-blur-sm";
 
   return (
     <header
@@ -164,7 +160,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
         </div>
 
         {/* Desktop Navigation Links */}
-        <ul className="hidden md:flex items-center gap-2">
+        <ul className="hidden md:flex items-center gap-1">
           {links.map((link) => {
             const isActive = isActiveRoute(link.href, activeRoute);
             return (
@@ -180,8 +176,8 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
                     targetSizeClasses,
                     focusClasses,
                     isActive
-                      ? "font-bold text-primary underline underline-offset-4"
-                      : "text-foreground hover:text-primary",
+                      ? "font-bold text-primary underline underline-offset-4 bg-accent/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
                     adaptations.underlineLinks && "underline underline-offset-4 decoration-2",
                     adaptations.highContrast && isActive && "border-2 border-current font-bold"
                   )}
@@ -189,7 +185,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
                   {link.icon && <span aria-hidden="true">{link.icon}</span>}
                   <span>{link.label}</span>
                   {link.badge !== undefined && (
-                    <span className="text-xs rounded-full px-1.5 py-0.5 bg-muted font-semibold">
+                    <span className="text-xs rounded-full px-1.5 py-0.5 bg-muted text-muted-foreground font-semibold">
                       {link.badge}
                     </span>
                   )}
@@ -215,7 +211,7 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
             aria-controls={mobileMenuId}
             onClick={() => setIsMobileMenuOpen((open) => !open)}
             className={cn(
-              "md:hidden inline-flex items-center justify-center rounded-md border border-input p-2 hover:bg-accent",
+              "md:hidden inline-flex items-center justify-center rounded-md border border-input p-2 hover:bg-accent hover:text-accent-foreground",
               focusClasses,
               targetSizeClasses
             )}
@@ -223,9 +219,11 @@ export const TederashNavigation: React.FC<TederashNavigationProps> = ({
             <span className="sr-only">
               {isMobileMenuOpen ? t("labels.closeMenu") : t("labels.openMenu")}
             </span>
-            <span aria-hidden="true" className="text-lg font-bold">
-              {isMobileMenuOpen ? "✕" : "☰"}
-            </span>
+            {isMobileMenuOpen ? (
+              <X className="size-5 shrink-0" aria-hidden="true" />
+            ) : (
+              <Menu className="size-5 shrink-0" aria-hidden="true" />
+            )}
           </button>
         </div>
       </nav>

@@ -1,41 +1,15 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { Button, buttonVariants } from "../ui/button";
+import { cn } from "../ui/utils";
+import type { VariantProps } from "class-variance-authority";
 
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
-
-export const buttonBaseVariants = cva(
-  "inline-flex items-center justify-center font-medium transition-all select-none disabled:pointer-events-none disabled:opacity-50 outline-none",
-  {
-    variants: {
-      variant: {
-        primary:
-          "bg-primary text-primary-foreground shadow hover:opacity-90 active:scale-[0.98]",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "bg-destructive text-white hover:opacity-90 active:scale-[0.98]",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-    },
-  }
-);
+export const buttonBaseVariants = buttonVariants;
 
 export interface TederashButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonBaseVariants> {
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   /** Explicit confirmation required when clicking destructive actions */
   confirmDestructivePrompt?: string;
@@ -61,7 +35,6 @@ export const TederashButton = React.forwardRef<
   ) => {
     const { adaptations, announce } = useAccessibility();
     const { t } = useLocalization();
-    const Comp = asChild ? Slot : "button";
 
     const isDestructive = variant === "destructive";
 
@@ -110,13 +83,14 @@ export const TederashButton = React.forwardRef<
     const motionClasses = adaptations.reduceMotion ? "transition-none active:scale-100" : "";
 
     return (
-      <Comp
+      <Button
         ref={ref}
+        asChild={asChild}
+        variant={variant}
         data-slot="tederash-button"
         data-target-size={adaptations.targetSize}
         data-high-contrast={adaptations.highContrast}
         className={cn(
-          buttonBaseVariants({ variant }),
           sizeClasses,
           contrastClasses,
           focusClasses,
@@ -127,7 +101,7 @@ export const TederashButton = React.forwardRef<
         {...props}
       >
         {children}
-      </Comp>
+      </Button>
     );
   }
 );
@@ -135,3 +109,4 @@ export const TederashButton = React.forwardRef<
 TederashButton.displayName = "TederashButton";
 
 export const AccessibleButton = TederashButton;
+export { Button };

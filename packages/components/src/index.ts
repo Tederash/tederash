@@ -1,3 +1,4 @@
+// Adaptive Tederash Components
 export * from "./button/AccessibleButton";
 export * from "./input/AccessibleInput";
 export * from "./form/AccessibleForm";
@@ -8,3 +9,14 @@ export * from "./dialog/AccessibleDialog";
 export * from "./navigation/AccessibleNavigation";
 export * from "./textarea/AccessibleTextarea";
 export * from "./localization/useLocalization";
+
+// Shadcn UI Primitives
+export * from "./ui/button";
+export * from "./ui/input";
+export * from "./ui/textarea";
+export * from "./ui/checkbox";
+export * from "./ui/dialog";
+export * from "./ui/label";
+export * from "./ui/alert";
+export * from "./ui/card";
+export * from "./ui/utils";

@@ -1,15 +1,12 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { Textarea, type TextareaProps } from "../ui/textarea";
+import { Label } from "../ui/label";
+import { cn } from "../ui/utils";
 
 export interface TederashTextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  extends TextareaProps {
   /** Visible label text for accessible name */
   label?: string;
   /** Explanatory description */
@@ -129,7 +126,7 @@ export const TederashTextarea = React.forwardRef<
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label
+          <Label
             htmlFor={textareaId}
             className={cn(
               "font-semibold leading-none select-none text-foreground flex items-center gap-1",
@@ -145,7 +142,7 @@ export const TederashTextarea = React.forwardRef<
                 *
               </span>
             )}
-          </label>
+          </Label>
         )}
 
         {/* Helpful description / simplified instructions */}
@@ -162,10 +159,10 @@ export const TederashTextarea = React.forwardRef<
           </p>
         )}
 
-        <textarea
+        <Textarea
           ref={ref}
           id={textareaId}
-          data-slot="accessible-textarea"
+          data-slot="tederash-textarea"
           data-target-size={adaptations.targetSize}
           data-high-contrast={String(adaptations.highContrast)}
           aria-invalid={Boolean(error)}
@@ -228,3 +225,4 @@ export const TederashTextarea = React.forwardRef<
 TederashTextarea.displayName = "TederashTextarea";
 
 export const AccessibleTextarea = TederashTextarea;
+export { Textarea };

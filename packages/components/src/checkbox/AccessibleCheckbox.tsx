@@ -1,11 +1,8 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+import { cn } from "../ui/utils";
 
 export interface TederashCheckboxProps {
   /** Unique HTML id for the checkbox button and label association */
@@ -83,20 +80,12 @@ export const TederashCheckbox = React.forwardRef<
     const [internalChecked, setInternalChecked] = React.useState<boolean>(defaultChecked);
     const isChecked = isControlled ? controlledChecked : internalChecked;
 
-    const toggle = () => {
+    const handleCheckedChange = (nextChecked: boolean) => {
       if (disabled) return;
-      const nextChecked = !isChecked;
       if (!isControlled) {
         setInternalChecked(nextChecked);
       }
       onCheckedChange?.(nextChecked);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === " " && !disabled) {
-        e.preventDefault();
-        toggle();
-      }
     };
 
     const activeDescription =
@@ -152,24 +141,22 @@ export const TederashCheckbox = React.forwardRef<
             labelClassName
           )}
         >
-          <button
+          <Checkbox
             ref={ref}
-            type="button"
             id={inputId}
-            role="checkbox"
-            aria-checked={indeterminate ? "mixed" : isChecked}
+            checked={isChecked}
+            indeterminate={indeterminate}
+            onCheckedChange={handleCheckedChange}
+            disabled={disabled}
             aria-disabled={disabled}
             aria-invalid={Boolean(error)}
             aria-required={required}
             aria-describedby={ariaDescribedBy}
-            disabled={disabled}
-            data-slot="accessible-checkbox"
+            data-slot="tederash-checkbox"
             data-target-size={adaptations.targetSize}
             data-high-contrast={String(adaptations.highContrast)}
-            onClick={toggle}
-            onKeyDown={handleKeyDown}
             className={cn(
-              "inline-flex items-center justify-center rounded transition-colors bg-background",
+              "rounded transition-colors bg-background",
               targetSizeClass,
               focusClass,
               contrastClass,
@@ -187,7 +174,7 @@ export const TederashCheckbox = React.forwardRef<
             >
               {indeterminate ? "—" : isChecked ? "✓" : ""}
             </span>
-          </button>
+          </Checkbox>
 
           <span
             className={cn(
@@ -248,3 +235,4 @@ export const TederashCheckbox = React.forwardRef<
 TederashCheckbox.displayName = "TederashCheckbox";
 
 export const AccessibleCheckbox = TederashCheckbox;
+export { Checkbox };

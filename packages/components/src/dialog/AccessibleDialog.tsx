@@ -1,12 +1,8 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "../ui/utils";
+import { X } from "lucide-react";
 
 export interface TederashDialogProps {
   /** Whether the dialog is open */
@@ -105,32 +101,35 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       return;
     }
 
-    let focusTimer: ReturnType<typeof setTimeout> | undefined;
-
-    // Transitioning from closed to open
-    if (!wasOpenRef.current) {
-      if (typeof document !== "undefined") {
-        previousActiveElementRef.current = document.activeElement as HTMLElement;
-        originalOverflowRef.current = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-      }
-      wasOpenRef.current = true;
-
-      focusTimer = setTimeout(() => {
-        if (initialFocusRefStable.current?.current) {
-          initialFocusRefStable.current.current.focus();
-        } else if (dialogRef.current) {
-          const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusable.length > 0) {
-            focusable[0].focus();
-          } else {
-            dialogRef.current.focus();
-          }
-        }
-      }, 0);
+    wasOpenRef.current = true;
+    if (typeof document !== "undefined") {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      originalOverflowRef.current = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
     }
+
+    // Move initial focus
+    const focusTimer = setTimeout(() => {
+      if (initialFocusRefStable.current?.current) {
+        initialFocusRefStable.current.current.focus();
+      } else if (dialogRef.current) {
+        const focusableSelector =
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+        if (focusables.length > 0) {
+          focusables[0].focus();
+        } else {
+          dialogRef.current.focus();
+        }
+      }
+    }, 10);
+
+    return () => clearTimeout(focusTimer);
+  }, [open]);
+
+  // Keyboard navigation: Escape key & Tab trapping
+  React.useEffect(() => {
+    if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && closeOnEscapeRef.current) {
@@ -141,22 +140,22 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       }
 
       if (e.key === "Tab" && dialogRef.current) {
-        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) {
+        const focusableSelector =
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+        const focusables = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+        ).filter((el) => el.offsetParent !== null);
+
+        if (focusables.length === 0) {
           e.preventDefault();
           return;
         }
 
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
 
         if (e.shiftKey) {
-          if (
-            document.activeElement === first ||
-            document.activeElement === dialogRef.current
-          ) {
+          if (document.activeElement === first) {
             e.preventDefault();
             last.focus();
           }
@@ -170,18 +169,16 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
-      if (focusTimer) {
-        clearTimeout(focusTimer);
-      }
       window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
-      // Restore focus on close or abrupt unmount while open
-      if (wasOpenRef.current) {
-        if (typeof document !== "undefined") {
-          document.body.style.overflow = originalOverflowRef.current;
-        }
+  // Clean up body overflow on unmount
+  React.useEffect(() => {
+    return () => {
+      if (wasOpenRef.current && typeof document !== "undefined") {
+        document.body.style.overflow = originalOverflowRef.current;
         if (restoreFocusRefStable.current?.current) {
           restoreFocusRefStable.current.current.focus();
         } else if (
@@ -237,7 +234,7 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
       role="presentation"
       data-slot="accessible-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4",
+        "fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs",
         adaptations.highContrast ? "bg-black/80" : "bg-black/50",
         motionClasses
       )}
@@ -259,7 +256,7 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
         data-target-size={adaptations.targetSize}
         data-high-contrast={String(adaptations.highContrast)}
         className={cn(
-          "w-full rounded-lg relative outline-none",
+          "w-full rounded-xl relative outline-none",
           sizeClasses,
           contrastClasses,
           motionClasses,
@@ -269,15 +266,17 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div
+          data-slot="dialog-header"
           className={cn(
-            "flex items-center justify-between pb-3",
+            "flex flex-row items-center justify-between pb-3",
             adaptations.highContrast ? "border-b-2 border-current" : "border-b"
           )}
         >
           <h2
             id={titleId}
+            data-slot="dialog-title"
             className={cn(
-              "font-bold leading-none",
+              "font-bold leading-none tracking-tight",
               isExtraLarge ? "text-xl" : "text-lg",
               destructive && "text-destructive"
             )}
@@ -290,13 +289,13 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
               aria-label={closeButtonAriaLabel ?? t("labels.closeDialog")}
               onClick={() => onOpenChangeRef.current(false)}
               className={cn(
-                "rounded hover:bg-muted font-bold flex items-center justify-center text-muted-foreground hover:text-foreground",
+                "rounded-md hover:bg-muted font-bold flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
                 closeButtonSize,
                 focusClasses,
                 adaptations.highContrast && "border border-current font-bold"
               )}
             >
-              <span aria-hidden="true">✕</span>
+              <X className="size-4 shrink-0" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -304,6 +303,7 @@ export const TederashDialog: React.FC<TederashDialogProps> = ({
         {description && (
           <p
             id={descId}
+            data-slot="dialog-description"
             className={cn(
               "text-muted-foreground mt-2.5 leading-relaxed",
               isExtraLarge ? "text-base font-medium" : "text-sm",

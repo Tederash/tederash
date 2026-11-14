@@ -1,12 +1,9 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "../ui/utils";
+import { Alert, AlertTitle, AlertDescription } from "../ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 export interface TederashFormProps
   extends React.FormHTMLAttributes<HTMLFormElement> {
@@ -70,24 +67,27 @@ export const TederashForm = React.forwardRef<
       >
         {/* Error summary banner for WCAG 3.3.1 / 3.3.3 error identification */}
         {errors.length > 0 && (
-          <div
-            role="alert"
+          <Alert
+            variant="destructive"
             tabIndex={-1}
             aria-labelledby="form-error-heading"
             className={cn(
-              "p-4 rounded-lg border-2 border-destructive bg-destructive/10 text-destructive flex flex-col gap-2",
+              "flex flex-col gap-2 border-2",
               adaptations.highContrast && "bg-black text-white border-4 border-destructive font-bold"
             )}
           >
-            <h2 id="form-error-heading" className="text-base font-bold flex items-center gap-2">
-              <span>⚠️</span> {t("errors.summaryHeading")}
-            </h2>
-            <ul className="list-disc list-inside space-y-1 text-sm font-medium">
-              {errors.map((err, idx) => (
-                <li key={idx}>{err}</li>
-              ))}
-            </ul>
-          </div>
+            <AlertTitle id="form-error-heading" className="text-base font-bold flex items-center gap-2">
+              <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
+              <span>{t("errors.summaryHeading")}</span>
+            </AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc list-inside space-y-1 text-sm font-medium">
+                {errors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
         )}
 
         {children}

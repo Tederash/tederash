@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Announcement } from "@tederash/core";
 import { useAccessibility } from "@tederash/react";
+import { cn } from "../ui/utils";
+import { AlertCircle, CheckCircle, Info } from "lucide-react";
 
 export interface TederashLiveRegionProps {
   /** Include visual toast/banner display alongside screen reader live region */
@@ -64,24 +66,33 @@ export function TederashLiveRegion({ showVisualBanner = false, className = "" }:
         </div>
       </div>
 
-      {/* Optional visible banner for cognitive/visual accessibility */}
+      {/* Optional visible banner for cognitive/visual accessibility with shadcn card/alert styling */}
       {showVisualBanner && activeBanner && (
         <div
           role="status"
-          className={`fixed bottom-5 right-5 z-50 max-w-md rounded-lg p-4 shadow-lg border transition-all ${
+          className={cn(
+            "fixed bottom-5 right-5 z-50 max-w-md rounded-lg p-4 shadow-lg border transition-all flex items-start gap-3",
             adaptations.highContrast
-              ? "bg-black text-white border-2 border-yellow-400"
+              ? "bg-black text-white border-2 border-yellow-400 font-bold"
               : activeBanner.priority === "assertive"
-              ? "bg-red-50 text-red-900 border-red-300 dark:bg-red-950 dark:text-red-100 dark:border-red-800"
-              : "bg-white text-gray-900 border-gray-200 dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700"
-          } ${className}`}
+              ? "bg-destructive/10 text-destructive border-destructive/50 dark:border-destructive"
+              : activeBanner.category === "success"
+              ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 border-emerald-500/30"
+              : "bg-popover text-popover-foreground border-border shadow-md",
+            className
+          )}
         >
-          <div className="flex items-start gap-3">
-            <span className="font-semibold text-sm">
-              {activeBanner.category ? `[${activeBanner.category.toUpperCase()}] ` : ""}
-              {activeBanner.message}
-            </span>
-          </div>
+          {activeBanner.priority === "assertive" ? (
+            <AlertCircle className="size-5 shrink-0 text-destructive mt-0.5" aria-hidden="true" />
+          ) : activeBanner.category === "success" ? (
+            <CheckCircle className="size-5 shrink-0 text-emerald-600 mt-0.5" aria-hidden="true" />
+          ) : (
+            <Info className="size-5 shrink-0 text-primary mt-0.5" aria-hidden="true" />
+          )}
+          <span className="font-medium text-sm leading-relaxed">
+            {activeBanner.category ? `[${activeBanner.category.toUpperCase()}] ` : ""}
+            {activeBanner.message}
+          </span>
         </div>
       )}
     </>

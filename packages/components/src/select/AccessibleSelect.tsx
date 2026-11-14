@@ -1,12 +1,9 @@
 import * as React from "react";
 import { useAccessibility } from "@tederash/react";
 import { useLocalization } from "../localization/useLocalization";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "../ui/utils";
+import { Label } from "../ui/label";
+import { ChevronDown, Check } from "lucide-react";
 
 export interface TederashSelectOption {
   value: string;
@@ -210,22 +207,21 @@ export const TederashSelect = React.forwardRef<
     // High Contrast
     const contrastClass = adaptations.highContrast
       ? "border-2 border-foreground dark:border-white font-medium bg-background text-foreground"
-      : "border border-input bg-background";
+      : "border border-input bg-background shadow-xs";
 
     // Focus indicator
     const focusClass =
       adaptations.focusIndicator === "high-visibility"
         ? "focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         : adaptations.focusIndicator === "enhanced"
-        ? "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-        : "focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none";
+        ? "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        : "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
 
     return (
       <div ref={containerRef} className={cn("flex flex-col gap-1.5 relative w-full", className)}>
-        <label
+        <Label
           htmlFor={selectId}
           className={cn(
-            "font-semibold leading-none select-none text-foreground",
             visuallyHideLabel && "sr-only",
             isExtraLarge ? "text-base" : "text-sm",
             adaptations.highContrast && "font-bold",
@@ -238,7 +234,7 @@ export const TederashSelect = React.forwardRef<
               *
             </span>
           )}
-        </label>
+        </Label>
 
         {activeDescription && (
           <p
@@ -295,9 +291,10 @@ export const TederashSelect = React.forwardRef<
           <span className={cn(!selectedOption && "text-muted-foreground")}>
             {selectedOption ? selectedOption.label : placeholder ?? t("labels.selectAnOption")}
           </span>
-          <span aria-hidden="true" className="ml-2 font-bold select-none">
-            {isOpen ? "▲" : "▼"}
-          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn("size-4 shrink-0 transition-transform text-muted-foreground", isOpen && "rotate-180")}
+          />
         </button>
 
         {name && (
@@ -314,7 +311,7 @@ export const TederashSelect = React.forwardRef<
             role="listbox"
             aria-label={label}
             className={cn(
-              "absolute top-full left-0 right-0 mt-1 z-50 bg-background rounded-md shadow-lg max-h-60 overflow-y-auto",
+              "absolute top-full left-0 right-0 mt-1 z-50 bg-popover text-popover-foreground rounded-md shadow-md border max-h-60 overflow-y-auto p-1",
               contrastClass,
               adaptations.highContrast && "border-2 border-foreground dark:border-white shadow-2xl",
               listboxClassName
@@ -333,9 +330,9 @@ export const TederashSelect = React.forwardRef<
                   aria-disabled={opt.disabled}
                   onClick={() => selectOptionByIndex(idx)}
                   className={cn(
-                    "cursor-pointer flex items-center justify-between select-none transition-colors",
+                    "cursor-pointer flex items-center justify-between rounded-sm px-2 select-none transition-colors",
                     optionHeightClass,
-                    opt.disabled && "opacity-40 cursor-not-allowed",
+                    opt.disabled && "opacity-40 cursor-not-allowed pointer-events-none",
                     isFocused && "bg-accent text-accent-foreground font-medium",
                     isSelected && "font-bold bg-primary/10 text-primary",
                     adaptations.highContrast && isSelected && "border-l-4 border-primary font-bold"
@@ -350,9 +347,7 @@ export const TederashSelect = React.forwardRef<
                     )}
                   </div>
                   {isSelected && (
-                    <span aria-hidden="true" className="font-bold ml-2">
-                      ✓
-                    </span>
+                    <Check aria-hidden="true" className="size-4 shrink-0 font-bold ml-2 text-primary" />
                   )}
                 </li>
               );
