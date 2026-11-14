@@ -9,7 +9,9 @@ import { executeContentTool } from './executor';
 import { toModelHistory } from './history';
 import { formatPageState } from './page-model';
 import { SYSTEM_PROMPT, buildSystemPrompt } from './prompt';
-import { type AgentSession, getOrCreateSession } from './session';
+import { awaitConfirmation } from './confirm';
+import { type ConfirmFn } from './executor';
+import { type AgentSession, ensureSessionsLoaded, getOrCreateSession, persistSessions } from './session';
 import type { AgentStreamListener } from './stream';
 import { type CallModel, createStreamingCallModel, runModelLoop } from './loop';
 
@@ -77,6 +79,7 @@ export async function runAgentTaskStream(
   externalSignal?: AbortSignal,
   deps: AgentDeps = {}
 ): Promise<TurnResult> {
+  await ensureSessionsLoaded();
   const session = getOrCreateSession(tabId, conversationId);
   session.status = 'running';
   session.abortController = new AbortController();
@@ -100,6 +103,7 @@ export async function runAgentTaskStream(
   onEvent?.({ type: 'start', conversationId: session.id });
 
   const finish = (): TurnResult => {
+    void persistSessions();
     onEvent?.({
       type: 'done',
       conversationId: session.id,
@@ -145,8 +149,16 @@ export async function runAgentTaskStream(
     activeVerb: 'Analyzing request...',
   });
 
+  // Consequential actions pause the loop until the user answers in the side panel.
+  const confirm: ConfirmFn = async (req) => {
+    if (!onEvent) return false;
+    const id = `confirm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    onEvent({ type: 'confirm_request', id, ...req });
+    return awaitConfirmation(id, session.abortController?.signal);
+  };
+
   const toolExecutor = (name: any, args: Record<string, unknown>) =>
-    executeContentTool(tabId, session, name, args, assistantMsg, onEvent);
+    executeContentTool(tabId, session, name, args, assistantMsg, onEvent, { confirm });
 
   const emitText = (text: string) => {
     assistantMsg.content += text;

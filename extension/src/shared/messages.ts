@@ -27,7 +27,14 @@ export type AgentStreamEvent =
   | { type: 'tool_result'; id: string; tool: string; status: 'SUCCESS' | 'ERROR'; summary: string }
   | { type: 'token'; token: string }
   | { type: 'done'; conversationId: string; messages: ChatMessage[]; status: 'idle' | 'running' | 'done' | 'error' | 'stopped' }
-  | { type: 'error'; error: string };
+  | { type: 'error'; error: string }
+  | {
+      type: 'confirm_request';
+      id: string;
+      title: string;
+      detail: string;
+      risk: 'consequential' | 'destructive';
+    };
 
 export interface ChatMessage {
   id: string;

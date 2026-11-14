@@ -37,6 +37,26 @@ export function ChatSidebar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const activePortRef = useRef<chrome.runtime.Port | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<
+    Extract<AgentStreamEvent, { type: 'confirm_request' }> | null
+  >(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+
+  // Move focus to the confirmation so keyboard and screen-reader users notice it.
+  useEffect(() => {
+    if (pendingConfirm) confirmRef.current?.focus();
+  }, [pendingConfirm]);
+
+  const answerConfirm = (approved: boolean) => {
+    if (!pendingConfirm) return;
+    try {
+      activePortRef.current?.postMessage({ type: 'agent/confirm', id: pendingConfirm.id, approved });
+    } catch {
+      // Port closed: the background treats a missing answer as "not confirmed".
+    }
+    setPendingConfirm(null);
+    inputRef.current?.focus();
+  };
 
   // Auto scroll to bottom when messages update
   useEffect(() => {
@@ -228,6 +248,11 @@ export function ChatSidebar() {
         activePortRef.current = port;
 
         port.onMessage.addListener((event: AgentStreamEvent) => {
+          if (event.type === 'confirm_request') {
+            setPendingConfirm(event);
+            return;
+          }
+          if (event.type === 'done') setPendingConfirm(null);
           if (event.type === 'tool_call') {
             setMessages((prev) =>
               prev.map((m) => {
@@ -310,6 +335,7 @@ export function ChatSidebar() {
         });
 
         port.onDisconnect.addListener(() => {
+          setPendingConfirm(null);
           setIsRunning(false);
           activePortRef.current = null;
         });
@@ -786,6 +812,38 @@ export function ChatSidebar() {
               </div>
             )}
           </div>
+
+          {pendingConfirm && (
+            <div
+              ref={confirmRef}
+              tabIndex={-1}
+              role="alertdialog"
+              aria-modal="false"
+              aria-labelledby="agent-confirm-title"
+              aria-describedby="agent-confirm-detail"
+              className={`mx-3 mb-2 p-3 rounded-md border text-sm flex flex-col gap-2 focus:outline-none focus:ring-2 focus:ring-accent ${
+                pendingConfirm.risk === 'destructive'
+                  ? 'border-red-600 bg-red-50 text-red-950'
+                  : 'border-amber-600 bg-amber-50 text-amber-950'
+              }`}
+            >
+              <p id="agent-confirm-title" className="font-semibold">
+                {pendingConfirm.risk === 'destructive' ? 'Careful: ' : 'Please confirm: '}
+                {pendingConfirm.title}
+              </p>
+              <p id="agent-confirm-detail" className="text-xs">
+                {pendingConfirm.detail}
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button size="compact" variant="ghost" onClick={() => answerConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button size="compact" variant="primary" onClick={() => answerConfirm(true)}>
+                  Yes, do it
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Input Tray */}
           <footer className="p-3 border-t border-border bg-surface shrink-0 flex flex-col gap-2">

@@ -122,6 +122,9 @@ export type InspectPageArgs = z.infer<typeof InspectPageArgsSchema>;
 
 export const PageStateArgsSchema = z.object({});
 
+/** Describe a click target without acting (used by the policy engine). */
+export const DescribeTargetArgsSchema = z.object({ target: z.string().min(1).max(200) });
+
 export const FindArgsSchema = z.object({
   query: z.string().min(1).max(200),
   kind: z.enum(['field', 'button', 'any']).default('any').optional(),
@@ -186,6 +189,7 @@ export interface PageState {
 
 export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('page_state'), args: PageStateArgsSchema }),
+  z.object({ name: z.literal('describe_target'), args: DescribeTargetArgsSchema }),
   z.object({ name: z.literal('find'), args: FindArgsSchema }),
   z.object({ name: z.literal('fill'), args: FillArgsSchema }),
   z.object({ name: z.literal('choose'), args: ChooseArgsSchema }),

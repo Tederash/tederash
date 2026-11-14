@@ -7,6 +7,8 @@ import {
   type TtsResponse,
   type VaultGetResponse,
 } from '../../shared/messages';
+import { resolveConfirmation } from './agent/confirm';
+import { ensureSessionsLoaded } from './agent/session';
 import {
   clearSessionHistory,
   getSessionHistory,
@@ -388,6 +390,7 @@ async function handleUiMessage(
     }
 
     case 'agent/getHistory': {
+      await ensureSessionsLoaded();
       const messages = getSessionHistory(msg.payload.conversationId);
       return { ok: true, messages };
     }
@@ -486,6 +489,10 @@ if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
       });
 
       port.onMessage.addListener(async (msg: any) => {
+        if (msg?.type === 'agent/confirm' && typeof msg.id === 'string') {
+          resolveConfirmation(msg.id, msg.approved === true);
+          return;
+        }
         if (msg?.type === 'agent/stream/start') {
           const { tabId, text, conversationId } = msg;
           await runAgentTaskStream(

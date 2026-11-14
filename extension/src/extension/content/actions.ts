@@ -1,7 +1,7 @@
 import { BUILTIN_DEFAULTS } from '../../shared/settings/defaults';
 import type { ToolCall, ToolResult } from '../../shared/tools';
 import { adaptationEngine } from './adapt/engine';
-import { choose, clickTarget, fill, find, pageState, pointerActivate, setChecked } from './interact';
+import { choose, clickTarget, describeTarget, fill, find, pageState, pointerActivate, setChecked } from './interact';
 import { buildPageSnapshot, getElementByRef } from './snapshot';
 import {
   detectTederashInPage,
@@ -51,6 +51,8 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
 
       case 'page_state':
         return pageState();
+      case 'describe_target':
+        return describeTarget(call.args.target);
       case 'find':
         return find(call.args);
       case 'fill':

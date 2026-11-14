@@ -276,6 +276,18 @@ export function resolveClick(target: string): ClickTarget | ToolResult {
   return unresolved(target, res.candidates.length ? res : any);
 }
 
+/** Policy pre-check: what would `click` act on? */
+export function describeTarget(target: string): ToolResult {
+  const resolved = resolveClick(target);
+  if ('ok' in resolved) return resolved;
+  const { el, info } = resolved;
+  const submit = 'submit' in info ? Boolean(info.submit) : false;
+  return {
+    ok: true,
+    data: { text: info.label, role: el.getAttribute('role') || el.tagName.toLowerCase(), submit, kind: info.kind },
+  };
+}
+
 export async function clickTarget(target: string): Promise<ToolResult> {
   const resolved = resolveClick(target);
   if ('ok' in resolved) return resolved;
