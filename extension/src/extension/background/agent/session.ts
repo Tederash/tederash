@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../../../shared/messages';
+import type { PageState } from '../../../shared/tools';
 
 export interface AgentSession {
   id: string;
@@ -6,6 +7,8 @@ export interface AgentSession {
   messages: ChatMessage[];
   status: 'idle' | 'running' | 'done' | 'error' | 'stopped';
   abortController?: AbortController;
+  /** Working memory: the last Page Model read from the tab. */
+  pageState?: PageState;
 }
 
 const sessions = new Map<string, AgentSession>();

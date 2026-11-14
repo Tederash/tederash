@@ -3,8 +3,27 @@ import type { ToolCall, ToolResult } from '../../../shared/tools';
 
 export type AgentStreamListener = (event: AgentStreamEvent) => void;
 
+/** Turns a handle ("fld:full-legal-name") or plain words into a readable label. */
+function labelOf(target: unknown): string {
+  if (typeof target !== 'string' || !target) return 'the control';
+  const m = target.match(/^(?:fld|btn|lnk):(.+)$/);
+  const words = m?.[1] ? m[1].replace(/-\d+$/, '').replace(/-/g, ' ') : target;
+  return `“${words.charAt(0).toUpperCase()}${words.slice(1)}”`;
+}
+
 export function formatStepRationale(call: ToolCall): string {
+  const a = call.args as Record<string, unknown>;
   switch (call.name) {
+    case 'page_state':
+      return 'Reading the form fields and buttons on the page.';
+    case 'find':
+      return `Looking for ${labelOf(a.query)}.`;
+    case 'fill':
+      return `Filling ${labelOf(a.target)}.`;
+    case 'choose':
+      return `Choosing “${String(a.option ?? '')}” in ${labelOf(a.target)}.`;
+    case 'set_checked':
+      return `${a.checked ? 'Checking' : 'Unchecking'} ${labelOf(a.target)}.`;
     case 'inspect_form':
       return 'Inspecting form layout, required input fields, and validation requirements.';
     case 'inspect_page':
@@ -28,7 +47,7 @@ export function formatStepRationale(call: ToolCall): string {
     case 'find_elements':
       return `Searching for interactive elements matching "${(call.args as any).query}".`;
     case 'click':
-      return `Clicking interactive element [${(call.args as any).ref}].`;
+      return a.target ? `Clicking ${labelOf(a.target)}.` : `Clicking interactive element [${String(a.ref)}].`;
     case 'fill_field':
       return `Entering text into input field [${(call.args as any).ref}].`;
     case 'scroll':
@@ -46,6 +65,16 @@ export function formatStepRationale(call: ToolCall): string {
 
 export function getActiveVerb(toolName?: string): string {
   switch (toolName) {
+    case 'page_state':
+      return 'Reading the form...';
+    case 'find':
+      return 'Looking for the control...';
+    case 'fill':
+      return 'Filling in the field...';
+    case 'choose':
+      return 'Choosing an option...';
+    case 'set_checked':
+      return 'Updating the checkbox...';
     case 'inspect_form':
       return 'Inspecting form fields...';
     case 'inspect_page':
@@ -96,7 +125,7 @@ export function formatStepSummary(call: ToolCall, result: ToolResult): string {
     case 'observe_page':
       return 'Captured page layout snapshot.';
     case 'click':
-      return `Clicked element [${(call.args as any).ref}].`;
+      return result.outcome?.message || `Clicked element [${String((call.args as any).ref)}].`;
     case 'fill_field':
       return `Filled [${(call.args as any).ref}].`;
     default:

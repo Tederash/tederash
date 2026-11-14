@@ -21,9 +21,13 @@ export const FindElementsArgsSchema = z.object({
 });
 export type FindElementsArgs = z.infer<typeof FindElementsArgsSchema>;
 
-export const ClickArgsSchema = z.object({
-  ref: z.string().min(1).max(20),
-});
+/** `target` (handle or plain words) is preferred; `ref` is the legacy snapshot ref. */
+export const ClickArgsSchema = z
+  .object({
+    ref: z.string().min(1).max(20).optional(),
+    target: z.string().min(1).max(200).optional(),
+  })
+  .refine((a) => Boolean(a.ref || a.target), { message: 'target is required' });
 export type ClickArgs = z.infer<typeof ClickArgsSchema>;
 
 export const FillFieldArgsSchema = z.object({
@@ -116,7 +120,76 @@ export const InspectPageArgsSchema = z.object({
 });
 export type InspectPageArgs = z.infer<typeof InspectPageArgsSchema>;
 
+export const PageStateArgsSchema = z.object({});
+
+export const FindArgsSchema = z.object({
+  query: z.string().min(1).max(200),
+  kind: z.enum(['field', 'button', 'any']).default('any').optional(),
+});
+export type FindArgs = z.infer<typeof FindArgsSchema>;
+
+export const FillArgsSchema = z.object({
+  target: z.string().min(1).max(200),
+  value: z.string().max(5000),
+});
+export type FillArgs = z.infer<typeof FillArgsSchema>;
+
+export const ChooseArgsSchema = z.object({
+  target: z.string().min(1).max(200),
+  option: z.string().min(1).max(200),
+});
+export type ChooseArgs = z.infer<typeof ChooseArgsSchema>;
+
+export const SetCheckedArgsSchema = z.object({
+  target: z.string().min(1).max(200),
+  checked: z.boolean(),
+});
+export type SetCheckedArgs = z.infer<typeof SetCheckedArgsSchema>;
+
+export type PageFieldKind =
+  | 'text' | 'email' | 'tel' | 'url' | 'number' | 'password' | 'search' | 'date'
+  | 'datetime-local' | 'month' | 'week' | 'time' | 'color' | 'range'
+  | 'textarea' | 'select' | 'combobox' | 'checkbox' | 'radio' | 'switch' | 'editable';
+
+export interface PageField {
+  handle: string;
+  label: string;
+  kind: PageFieldKind;
+  required?: boolean;
+  value?: string;
+  checked?: boolean;
+  options?: string[];
+  error?: string;
+  disabled?: boolean;
+  /** Password / payment / one-time-code: value never read or written by the agent. */
+  sensitive?: boolean;
+  filled?: boolean;
+}
+
+export interface PageButton {
+  handle: string;
+  label: string;
+  kind: 'button' | 'link';
+  submit?: boolean;
+  inForm?: boolean;
+  disabled?: boolean;
+}
+
+export interface PageState {
+  url: string;
+  title: string;
+  pageVersion: number;
+  headings: string[];
+  fields: PageField[];
+  buttons: PageButton[];
+}
+
 export const ToolCallSchema = z.discriminatedUnion('name', [
+  z.object({ name: z.literal('page_state'), args: PageStateArgsSchema }),
+  z.object({ name: z.literal('find'), args: FindArgsSchema }),
+  z.object({ name: z.literal('fill'), args: FillArgsSchema }),
+  z.object({ name: z.literal('choose'), args: ChooseArgsSchema }),
+  z.object({ name: z.literal('set_checked'), args: SetCheckedArgsSchema }),
   z.object({ name: z.literal('observe_page'), args: ObservePageArgsSchema }),
   z.object({ name: z.literal('inspect_page'), args: InspectPageArgsSchema }),
   z.object({ name: z.literal('inspect_form'), args: InspectFormArgsSchema }),
@@ -150,7 +223,15 @@ export interface ActionOutcome {
 
 export type ToolResult =
   | { ok: true; data?: unknown; outcome?: ActionOutcome }
-  | { ok: false; error: { code: string; message: string; hint?: string } };
+  | {
+      ok: false;
+      error: {
+        code: string;
+        message: string;
+        hint?: string;
+        candidates?: Array<{ handle: string; label: string; score: number }>;
+      };
+    };
 
 export const TOOL_SPECS: ToolSpec[] = [
   {

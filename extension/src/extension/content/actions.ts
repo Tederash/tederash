@@ -1,6 +1,7 @@
 import { BUILTIN_DEFAULTS } from '../../shared/settings/defaults';
 import type { ToolCall, ToolResult } from '../../shared/tools';
 import { adaptationEngine } from './adapt/engine';
+import { choose, clickTarget, fill, find, pageState, pointerActivate, setChecked } from './interact';
 import { buildPageSnapshot, getElementByRef } from './snapshot';
 import {
   detectTederashInPage,
@@ -48,8 +49,20 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
         };
       }
 
+      case 'page_state':
+        return pageState();
+      case 'find':
+        return find(call.args);
+      case 'fill':
+        return fill(call.args);
+      case 'choose':
+        return choose(call.args);
+      case 'set_checked':
+        return setChecked(call.args);
+
       case 'click': {
-        const el = getElementByRef(call.args.ref);
+        if (call.args.target) return clickTarget(call.args.target);
+        const el = call.args.ref ? getElementByRef(call.args.ref) : undefined;
         if (!el) {
           return {
             ok: false,
@@ -59,32 +72,11 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
             },
           };
         }
-
-        // Scroll into view
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        // Focus if focusable
         if (el instanceof HTMLElement) {
           el.focus();
+          pointerActivate(el);
         }
-
-        // Synthetic mouse event sequence
-        const mouseEvents = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
-        for (const evtName of mouseEvents) {
-          const event = new MouseEvent(evtName, {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            buttons: 1,
-          });
-          el.dispatchEvent(event);
-        }
-
-        // Direct click fallback
-        if (el instanceof HTMLElement) {
-          el.click();
-        }
-
         return {
           ok: true,
           outcome: {

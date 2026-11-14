@@ -1,13 +1,15 @@
 import { isStepCount, streamText } from 'ai';
 import { createEnvelope } from '../../../shared/envelope';
 import type { ChatMessage, PingResponse } from '../../../shared/messages';
+import type { PageState, ToolResult } from '../../../shared/tools';
 import { isLlmConfigured, loadAiConfig } from '../llm';
 import { HeuristicLlmProvider } from '../llm/heuristic';
 import { createChatModel } from '../llm/model';
 import { describeProviderError } from './errors';
 import { executeContentTool } from './executor';
 import { toModelHistory } from './history';
-import { SYSTEM_PROMPT } from './prompt';
+import { formatPageState } from './page-model';
+import { SYSTEM_PROMPT, buildSystemPrompt } from './prompt';
 import { type AgentSession, getOrCreateSession } from './session';
 import type { AgentStreamListener } from './stream';
 import { getAgentTools } from './tools';
@@ -42,6 +44,20 @@ async function preflight(tabId: number): Promise<{ reachable: boolean; isTederas
   }
   const reachable = Boolean(ping?.ok && ping.runtime === 'content');
   return { reachable, isTederash: reachable && Boolean(ping?.isTederash) };
+}
+
+/** Reads the Page Model silently (no timeline step, no model tokens spent on a tool call). */
+async function readPageState(tabId: number): Promise<PageState | undefined> {
+  try {
+    const res = (await chrome.tabs.sendMessage(
+      tabId,
+      createEnvelope('tool/exec', { call: { name: 'page_state', args: {} } }),
+      { frameId: 0 }
+    )) as ToolResult;
+    return res?.ok ? (res.data as PageState) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Short closing line built from what the steps did, used when the model wrote nothing. */
@@ -198,9 +214,12 @@ export async function runAgentTaskStream(
       execute: toolExecutor,
     });
 
+    const pageState = await readPageState(tabId);
+    session.pageState = pageState;
+
     const result = streamText({
       model: createChatModel(aiConfig),
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(pageState ? formatPageState(pageState) : undefined),
       messages: [...history, { role: 'user', content: userGoal }],
       tools,
       stopWhen: isStepCount(MAX_MODEL_STEPS),

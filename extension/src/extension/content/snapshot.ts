@@ -11,7 +11,7 @@ export function clearRegistry(): void {
   elementRegistry.clear();
 }
 
-function getAccessibleName(el: Element): string {
+export function getAccessibleName(el: Element): string {
   const ariaLabel = el.getAttribute('aria-label');
   if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
 
@@ -53,7 +53,7 @@ function getAccessibleName(el: Element): string {
   return text;
 }
 
-function isElementVisible(el: Element): boolean {
+export function isElementVisible(el: Element): boolean {
   if (!(el instanceof HTMLElement)) return true;
   if (el.hidden || el.style.display === 'none' || el.style.visibility === 'hidden') {
     return false;

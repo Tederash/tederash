@@ -70,9 +70,9 @@ describe('agent tool schemas', () => {
       string,
       { inputSchema: { safeParse: (v: unknown) => { success: boolean } } }
     >;
-    expect(tools.inspect_form!.inputSchema.safeParse({ formSelector: null }).success).toBe(true);
-    expect(tools.read_text!.inputSchema.safeParse({ ref: null, scope: null, maxChars: null }).success).toBe(true);
-    expect(tools.tederash_interact!.inputSchema.safeParse({ componentId: 'x', action: 'fill', value: null }).success).toBe(true);
+    expect(tools.read_page!.inputSchema.safeParse({ detail: null }).success).toBe(true);
+    expect(tools.find!.inputSchema.safeParse({ query: 'email', kind: null }).success).toBe(true);
+    expect(tools.set_preferences!.inputSchema.safeParse({ fontScale: null, highContrast: true }).success).toBe(true);
   });
 });
 
@@ -163,6 +163,7 @@ describe('LLM orchestration plumbing', () => {
     await runAgentTaskStream(7, "insert 'Tsegaye Shewamare' in the Full Name field.", t1.conversationId);
 
     const secondCall = streamTextMock.mock.calls[1]![0];
+    expect(secondCall.system).toContain('PAGE STATE');
     expect(secondCall.prompt).toBeUndefined();
     expect(secondCall.messages).toEqual([
       { role: 'user', content: 'what does this form ask?' },
@@ -211,14 +212,16 @@ describe('LLM orchestration plumbing', () => {
     await setAiConfig({ provider: 'groq', apiKey: 'gsk_test' });
     streamTextMock.mockImplementationOnce((opts: any) => ({
       fullStream: (async function* () {
-        await opts.tools.inspect_form.execute({ formSelector: null }, { toolCallId: 'c1', messages: [] });
+        await opts.tools.read_page.execute({ detail: null }, { toolCallId: 'c1', messages: [] });
         yield { type: 'text-delta', text: 'ok' };
       })(),
     }));
     await runAgentTaskStream(7, 'what does this form ask?');
 
-    const execCall = sendMessage.mock.calls.find(([, msg]) => msg.type === 'tool/exec');
-    expect(execCall?.[1].payload.call).toEqual({ name: 'inspect_form', args: {} });
+    const execCall = sendMessage.mock.calls.find(
+      ([, msg]) => msg.type === 'tool/exec' && msg.payload.call.name === 'inspect_page'
+    );
+    expect(execCall?.[1].payload.call).toEqual({ name: 'inspect_page', args: {} });
     expect(execCall?.[2]).toEqual({ frameId: 0 });
     for (const [, , opts] of sendMessage.mock.calls) expect(opts).toEqual({ frameId: 0 });
   });

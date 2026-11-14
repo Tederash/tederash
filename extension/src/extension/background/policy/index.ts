@@ -43,6 +43,13 @@ export function evaluatePolicy(call: ToolCall, elementContext?: { text?: string;
         requiresConfirmation: false,
       };
 
+    case 'page_state':
+    case 'find':
+      return { risk: 'none', allowed: true, requiresConfirmation: false };
+
+    case 'fill':
+    case 'choose':
+    case 'set_checked':
     case 'fill_field':
       return {
         risk: 'low',
