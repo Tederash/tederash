@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createEnvelope } from '../../shared/envelope';
 import type { AiConfig, ChatMessage } from '../../shared/messages';
 import { Button } from '../ui/Button';
+import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 
 const envGroqKey =
   typeof process !== 'undefined' && process.env?.GROQ_API_KEY ? process.env.GROQ_API_KEY : '';
@@ -430,13 +431,13 @@ export function ChatSidebar() {
                 </div>
               ) : (
                 <div
-                  className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs ${
+                  className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
                     m.status === 'error'
                       ? 'border-danger/40 bg-danger/10 text-danger'
                       : 'border-border bg-surface text-fg'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  <MarkdownRenderer content={m.content} />
                 </div>
               )}
               <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
