@@ -7,6 +7,9 @@ import {
   isSpeechSynthesisSupported,
 } from "@tederash/core";
 
+/** Support never changes after load, so there is nothing to subscribe to. */
+const subscribeNoop = () => () => {};
+
 export interface UseSpeechSynthesisOptions extends SpeechSynthesisOptions {}
 
 export interface UseSpeechSynthesisResult {
@@ -35,7 +38,12 @@ export interface UseSpeechSynthesisResult {
 export function useSpeechSynthesis(
   options: UseSpeechSynthesisOptions = {}
 ): UseSpeechSynthesisResult {
-  const [isSupported] = React.useState(() => isSpeechSynthesisSupported());
+  // false during SSR and hydration (matches server markup), real value after.
+  const isSupported = React.useSyncExternalStore(
+    subscribeNoop,
+    isSpeechSynthesisSupported,
+    () => false
+  );
   const [isSpeaking, setIsSpeaking] = React.useState(false);
   const [isPaused, setIsPaused] = React.useState(false);
   const [voices, setVoices] = React.useState<VoiceInfo[]>([]);

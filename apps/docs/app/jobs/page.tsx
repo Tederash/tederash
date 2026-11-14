@@ -9,11 +9,7 @@ import {
   AccessibleSelect,
   AccessibleCheckbox,
 } from "@tederash/components";
-import {
-  useAccessibility,
-  PRESET_PROFILES,
-  TederashProfile,
-} from "@tederash/react";
+import { useAccessibility } from "@tederash/react";
 import {
   Briefcase,
   MapPin,
@@ -25,16 +21,11 @@ import {
   ShieldCheck,
   Send,
   RotateCcw,
-  Sliders,
-  Eye,
-  MousePointerClick,
-  Brain,
-  Languages,
 } from "lucide-react";
-import { AccessibilityOnboarding } from "../../components/jobs/AccessibilityOnboarding";
+import { ApplicationAssistChooser } from "../../components/jobs/ApplicationAssistChooser";
 
 export default function JobApplicationPage() {
-  const { profile, adaptations, setProfile, announce } = useAccessibility();
+  const { profile, announce } = useAccessibility();
 
   // Form State
   const [fullName, setFullName] = useState("");
@@ -53,15 +44,6 @@ export default function JobApplicationPage() {
   const [submissionId, setSubmissionId] = useState("");
 
   const isAmharic = profile.locale === "am";
-
-  const handleSelectPreset = (preset: TederashProfile) => {
-    setProfile(preset);
-    announce({
-      message: `Activated ${preset.name} accessibility profile.`,
-      priority: "polite",
-      category: "info",
-    });
-  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -171,46 +153,8 @@ export default function JobApplicationPage() {
         </div>
       </div>
 
-      {/* Live Accessibility Preset Toolbar */}
-      <div className="p-4 rounded-xl border border-border bg-card flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            <Sliders className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Application Accessibility Presets</span>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            Test how this form adapts for screen readers, motor tremors, low vision, and cognitive needs
-          </span>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {PRESET_PROFILES.map((preset) => {
-            const isActive = profile.id === preset.id;
-            return (
-              <button
-                key={preset.id}
-                onClick={() => handleSelectPreset(preset)}
-                aria-pressed={isActive}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 border border-border"
-                }`}
-              >
-                {preset.id === "low-vision" && <Eye className="w-3.5 h-3.5" aria-hidden="true" />}
-                {preset.id === "motor-assist" && <MousePointerClick className="w-3.5 h-3.5" aria-hidden="true" />}
-                {preset.id === "cognitive-assist" && <Brain className="w-3.5 h-3.5" aria-hidden="true" />}
-                {preset.id === "amharic" && <Languages className="w-3.5 h-3.5" aria-hidden="true" />}
-                {preset.id === "standard" && <Sliders className="w-3.5 h-3.5" aria-hidden="true" />}
-                <span>{preset.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Accessible Orientation & Onboarding Guide for Blind & Deaf Candidates */}
-      <AccessibilityOnboarding />
+      {/* One question that adapts the application; other settings live in the ♿ panel */}
+      <ApplicationAssistChooser />
 
       {/* The Single Job Listing Header & Details Card */}
       <section
@@ -430,6 +374,8 @@ export default function JobApplicationPage() {
 
               <AccessibleInput
                 label={isAmharic ? "ሙሉ ህጋዊ ስም" : "Full Legal Name"}
+                speechInput
+                speechOutput
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 description={
@@ -447,6 +393,8 @@ export default function JobApplicationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <AccessibleInput
                   label={isAmharic ? "የኢሜይል አድራሻ" : "Email Address"}
+                  speechInput
+                  speechOutput
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -464,6 +412,8 @@ export default function JobApplicationPage() {
 
                 <AccessibleInput
                   label={isAmharic ? "የስልክ ቁጥር" : "Telephone Number"}
+                  speechInput
+                  speechOutput
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -482,6 +432,7 @@ export default function JobApplicationPage() {
 
               <AccessibleInput
                 label={isAmharic ? "የGitHub ወይም የፖርትፎሊዮ ሊንክ" : "GitHub or Portfolio URL"}
+                speechOutput
                 type="url"
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
@@ -534,6 +485,8 @@ export default function JobApplicationPage() {
 
               <AccessibleTextarea
                 label={isAmharic ? "ስለራስዎ እና ስለ ተደራሽነት ፍላጎትዎ አጭር መግለጫ" : "Statement of Interest & Accessibility Experience"}
+                speechInput
+                speechOutput
                 value={coverNote}
                 onChange={(e) => setCoverNote(e.target.value)}
                 maxLength={500}

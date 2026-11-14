@@ -30,6 +30,8 @@ export interface ComponentAdaptations {
   readingFocusGuide: boolean;
   /** Require explicit modal/dialog confirmation before destructive actions */
   confirmationBeforeDestructiveActions: boolean;
+  /** Show every announcement visually (on-screen banner kept up longer) instead of relying on sound */
+  visualNotifications: boolean;
   /** Speech output is enabled */
   speechOutputEnabled: boolean;
   /** Speech input / voice dictation is enabled */

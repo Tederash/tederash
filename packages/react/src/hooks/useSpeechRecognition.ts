@@ -6,6 +6,9 @@ import {
   isSpeechRecognitionSupported,
 } from "@tederash/core";
 
+/** Support never changes after load, so there is nothing to subscribe to. */
+const subscribeNoop = () => () => {};
+
 export interface UseSpeechRecognitionOptions extends SpeechRecognitionOptions {}
 
 export interface UseSpeechRecognitionResult {
@@ -48,7 +51,12 @@ export function useSpeechRecognition(
   const [interimTranscript, setInterimTranscript] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [isSupported] = React.useState(() => isSpeechRecognitionSupported());
+  // false during SSR and hydration (matches server markup), real value after.
+  const isSupported = React.useSyncExternalStore(
+    subscribeNoop,
+    isSpeechRecognitionSupported,
+    () => false
+  );
 
   const [controller] = React.useState<SpeechRecognitionController>(() =>
     createSpeechRecognitionController({

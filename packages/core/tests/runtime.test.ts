@@ -227,3 +227,28 @@ describe("Announcement spoken flag", () => {
     expect("spoken" in received[1]).toBe(false);
   });
 });
+
+describe("Need-based presets", () => {
+  it("are valid, listed, and configured for their purpose", async () => {
+    const core = await import("../src");
+    const { SCREEN_READER_PRESET, READ_ALOUD_PRESET, VISUAL_ALERTS_PRESET, PRESET_PROFILES } = core;
+    for (const preset of [SCREEN_READER_PRESET, READ_ALOUD_PRESET, VISUAL_ALERTS_PRESET]) {
+      expect(validateProfile(preset).valid).toBe(true);
+      expect(PRESET_PROFILES).toContain(preset);
+    }
+    // Screen reader users have their own speech: the page must stay silent.
+    expect(resolveAdaptations(SCREEN_READER_PRESET).speechOutputEnabled).toBe(false);
+    expect(resolveAdaptations(SCREEN_READER_PRESET).focusIndicator).toBe("high-visibility");
+    const readAloud = resolveAdaptations(READ_ALOUD_PRESET);
+    expect(readAloud.speechOutputEnabled).toBe(true);
+    // Partially sighted users: moderately larger text and targets
+    expect(readAloud.fontScale).toBe(1.25);
+    expect(readAloud.targetSize).toBe("large");
+    expect(readAloud.underlineLinks).toBe(true);
+    const visual = resolveAdaptations(VISUAL_ALERTS_PRESET);
+    expect(visual.visualNotifications).toBe(true);
+    expect(visual.speechOutputEnabled).toBe(false);
+    expect(visual.dataAttributes["data-a11y-visual-notifications"]).toBe("true");
+    expect(resolveAdaptations(DEFAULT_PROFILE).visualNotifications).toBe(false);
+  });
+});

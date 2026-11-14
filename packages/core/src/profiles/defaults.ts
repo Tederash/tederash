@@ -29,7 +29,8 @@ export const DEFAULT_TEDERASH_PROFILE: TederashProfile = {
   },
   auditory: {
     captionsEnabled: false,
-    visualNotifications: true,
+    // Opt-in: when on, every announcement also shows a longer-lasting on-screen banner.
+    visualNotifications: false,
   },
   speech: {
     speechOutput: false,
@@ -153,12 +154,57 @@ export const VOICE_ASSIST_PRESET: TederashProfile = {
   id: "voice-assist",
   name: "Voice Assistance",
   description:
-    "Voice dictation and read-aloud on fields that support them (developers opt fields in with the speechInput / speechOutput props).",
+    "Speak into form fields and have instructions read aloud, where the page supports it.",
   version: 1,
   speech: {
     speechInput: true,
     speechOutput: true,
   },
+};
+
+/**
+ * For people using their own screen reader (NVDA, JAWS, VoiceOver, TalkBack).
+ * The page does not speak itself, so nothing is heard twice.
+ */
+export const SCREEN_READER_PRESET: TederashProfile = {
+  id: "screen-reader",
+  name: "Screen Reader",
+  description:
+    "Works with your own screen reader: clear instructions, strong keyboard focus, confirmations, and voice input. The page stays silent so nothing is read twice.",
+  version: 1,
+  motor: { keyboardNavigation: true },
+  cognitive: { showInstructions: true },
+  speech: { speechInput: true, speechOutput: false },
+  interaction: { preferredInput: "keyboard", confirmationBeforeDestructiveActions: true },
+};
+
+/**
+ * For people who are blind or partially sighted and do not use a screen
+ * reader: speech plus moderately larger text and targets for any remaining sight.
+ */
+export const READ_ALOUD_PRESET: TederashProfile = {
+  id: "read-aloud",
+  name: "Read Aloud",
+  description:
+    "The page reads status messages and field instructions aloud, with larger text and buttons, voice input, strong keyboard focus and confirmations. For use without a screen reader.",
+  version: 1,
+  visual: { fontScale: 1.25, underlineLinks: true },
+  motor: { keyboardNavigation: true, targetSize: "large" },
+  cognitive: { showInstructions: true },
+  speech: { speechInput: true, speechOutput: true, speechRate: 1 },
+  interaction: { preferredInput: "keyboard", confirmationBeforeDestructiveActions: true },
+};
+
+/** For people who cannot rely on sound. */
+export const VISUAL_ALERTS_PRESET: TederashProfile = {
+  id: "visual-alerts",
+  name: "Visual Alerts",
+  description:
+    "Nothing depends on sound: every message appears on screen and stays longer, instructions are always shown, and captions are preferred.",
+  version: 1,
+  auditory: { visualNotifications: true, captionsEnabled: true },
+  cognitive: { showInstructions: true },
+  speech: { speechInput: false, speechOutput: false },
 };
 
 export const AMHARIC_PRESET: TederashProfile = {
@@ -188,6 +234,9 @@ export const TEDERASH_PRESETS: TederashProfile[] = [
   REDUCED_MOTION_PRESET,
   KEYBOARD_FIRST_PRESET,
   VOICE_ASSIST_PRESET,
+  SCREEN_READER_PRESET,
+  READ_ALOUD_PRESET,
+  VISUAL_ALERTS_PRESET,
   AMHARIC_PRESET,
 ];
 

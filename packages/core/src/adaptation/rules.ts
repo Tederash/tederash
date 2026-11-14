@@ -37,6 +37,7 @@ export function resolveAdaptations(profile: AccessibilityProfile): ComponentAdap
   const confirmationBeforeDestructiveActions =
     profile.interaction?.confirmationBeforeDestructiveActions !== false;
 
+  const visualNotifications = Boolean(profile.auditory?.visualNotifications);
   const speechOutputEnabled = Boolean(profile.speech?.speechOutput);
   const speechInputEnabled = Boolean(profile.speech?.speechInput);
   const language = profile.speech?.language ?? "en-US";
@@ -61,6 +62,7 @@ export function resolveAdaptations(profile: AccessibilityProfile): ComponentAdap
     "data-a11y-focus-indicator": focusIndicator,
     "data-a11y-simplified": simplifiedLanguage ? "true" : "false",
     "data-a11y-guided": guidedInteraction ? "true" : "false",
+    "data-a11y-visual-notifications": visualNotifications ? "true" : "false",
     "data-a11y-locale": locale,
   };
 
@@ -85,6 +87,7 @@ export function resolveAdaptations(profile: AccessibilityProfile): ComponentAdap
     showInstructions,
     readingFocusGuide,
     confirmationBeforeDestructiveActions,
+    visualNotifications,
     speechOutputEnabled,
     speechInputEnabled,
     language,

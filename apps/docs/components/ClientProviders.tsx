@@ -9,7 +9,8 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <TederashProvider storageKey="tederash:app:profile">
       <AccessibilityControlPanel />
-      <TederashLiveRegion showVisualBanner={true} />
+      {/* Sit above the floating ♿ button instead of covering it */}
+      <TederashLiveRegion showVisualBanner={true} className="bottom-24" />
       {children}
     </TederashProvider>
   );

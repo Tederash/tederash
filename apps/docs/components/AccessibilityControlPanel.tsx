@@ -1,12 +1,9 @@
 "use client";
 
 import * as React from "react";
-import {
-  PRESET_PROFILES,
-  TargetSize,
-  useTederash,
-} from "@tederash/react";
+import { useTederash } from "@tederash/react";
 import { TederashButton } from "@tederash/components";
+import { AccessibilitySettings } from "./AccessibilitySettings";
 
 interface AuditViolation {
   id: string;
@@ -15,24 +12,30 @@ interface AuditViolation {
   description: string;
 }
 
+/** Dispatch on `window` to open the settings drawer from anywhere on the page. */
+export const OPEN_ACCESSIBILITY_SETTINGS_EVENT = "tederash:open-accessibility-settings";
+
 export function AccessibilityControlPanel() {
-  const { profile, adaptations, setProfile, updatePreferences, resetProfile, announce } =
-    useTederash();
+  const { profile, adaptations, resetProfile, announce } = useTederash();
   const [isOpen, setIsOpen] = React.useState(false);
+  const drawerRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const wasOpenRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener(OPEN_ACCESSIBILITY_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(OPEN_ACCESSIBILITY_SETTINGS_EVENT, open);
+  }, []);
+
+  // Move focus into the drawer when it opens; return it to the trigger on close.
+  React.useEffect(() => {
+    if (isOpen) drawerRef.current?.focus();
+    else if (wasOpenRef.current) triggerRef.current?.focus();
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
   const [auditResults, setAuditResults] = React.useState<AuditViolation[] | null>(null);
   const [isAuditing, setIsAuditing] = React.useState(false);
-
-  const handleSelectPreset = (presetId: string) => {
-    const selected = PRESET_PROFILES.find((p) => p.id === presetId);
-    if (selected) {
-      setProfile(selected);
-      announce({
-        message: `Activated ${selected.name} accessibility profile.`,
-        priority: "polite",
-        category: "info",
-      });
-    }
-  };
 
   const runAxeAudit = async () => {
     setIsAuditing(true);
@@ -62,6 +65,7 @@ export function AccessibilityControlPanel() {
       {/* Floating Accessibility Trigger Pill */}
       <div className="fixed bottom-6 right-6 z-40">
         <button
+          ref={triggerRef}
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="accessibility-drawer"
@@ -76,6 +80,11 @@ export function AccessibilityControlPanel() {
       {isOpen && (
         <div
           id="accessibility-drawer"
+          ref={drawerRef}
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setIsOpen(false);
+          }}
           role="dialog"
           aria-label="Adaptive Accessibility Settings"
           className="fixed top-0 right-0 h-full w-full max-w-md bg-background border-l border-border shadow-2xl z-50 overflow-y-auto p-6 flex flex-col gap-6"
@@ -96,164 +105,7 @@ export function AccessibilityControlPanel() {
             </button>
           </div>
 
-          {/* Quick Preset Selector */}
-          <section className="flex flex-col gap-2">
-            <label className="text-sm font-semibold">Accessibility Presets</label>
-            <div className="grid grid-cols-2 gap-2">
-              {PRESET_PROFILES.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => handleSelectPreset(p.id)}
-                  aria-pressed={profile.id === p.id}
-                  className={`p-2.5 rounded-lg text-left text-xs font-medium border transition-all ${
-                    profile.id === p.id
-                      ? "border-primary bg-primary/10 text-primary font-bold ring-2 ring-primary"
-                      : "border-border bg-card hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <div className="font-semibold">{p.name}</div>
-                  <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">
-                    {p.description}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Fine-Tuning Controls */}
-          <section className="flex flex-col gap-4 border-t pt-4">
-            <h3 className="text-sm font-semibold">Fine-Tune Preferences</h3>
-
-            {/* Font Scale */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span>Font Scale</span>
-                <span>{(profile.visual?.fontScale ?? 1.0).toFixed(2)}x</span>
-              </div>
-              <input
-                type="range"
-                min="0.8"
-                max="2.0"
-                step="0.05"
-                value={profile.visual?.fontScale ?? 1.0}
-                onChange={(e) =>
-                  updatePreferences({
-                    visual: { fontScale: parseFloat(e.target.value) },
-                  })
-                }
-                className="w-full cursor-pointer accent-primary"
-              />
-            </div>
-
-            {/* Target Size */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium">Target Size (Touch/Click)</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["normal", "large", "extra-large"] as TargetSize[]).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() =>
-                      updatePreferences({ motor: { targetSize: size } })
-                    }
-                    className={`py-1.5 text-xs rounded border capitalize ${
-                      (profile.motor?.targetSize ?? "normal") === size
-                        ? "border-primary bg-primary text-primary-foreground font-semibold"
-                        : "border-border bg-background"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Boolean Toggles */}
-            <div className="grid grid-cols-1 gap-2 text-xs">
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>High Contrast Mode</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.visual?.highContrast)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      visual: { highContrast: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>Underline Links</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.visual?.underlineLinks)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      visual: { underlineLinks: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>Reduce Motion & Animations</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.visual?.reduceMotion)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      visual: { reduceMotion: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>Simplified Plain Language</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.cognitive?.simplifiedLanguage)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      cognitive: { simplifiedLanguage: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>Show Extended Instructions</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.cognitive?.showInstructions)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      cognitive: { showInstructions: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded border bg-card cursor-pointer">
-                <span>Guided Step-by-Step Form Flow</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.cognitive?.guidedInteraction)}
-                  onChange={(e) =>
-                    updatePreferences({
-                      cognitive: { guidedInteraction: e.target.checked },
-                    })
-                  }
-                  className="rounded accent-primary"
-                />
-              </label>
-            </div>
-          </section>
+          <AccessibilitySettings idPrefix="drawer" />
 
           {/* Active Adaptations Inspector */}
           <section className="border-t pt-4 flex flex-col gap-2">

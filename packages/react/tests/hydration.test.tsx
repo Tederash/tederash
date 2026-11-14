@@ -9,6 +9,7 @@ import {
   useAccessibility,
   createAccessibilityRuntime,
   DEFAULT_PROFILE,
+  useSpeechSynthesis,
 } from "../src";
 
 // Renders different *structure* depending on the profile, like components that
@@ -65,5 +66,42 @@ describe("SSR hydration with persisted preferences", () => {
     expect(container.querySelector('[data-testid="target"]')?.textContent).toBe("extra-large");
     expect(container.textContent).toContain("Dictate");
     container.remove();
+  });
+});
+
+describe("SSR hydration with speech support", () => {
+  it("useSpeechSynthesis reports unsupported during hydration, then the real value", async () => {
+    const w = window as unknown as Record<string, unknown>;
+    w.speechSynthesis = {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      getVoices: () => [],
+    };
+
+    function ReadAloudButton() {
+      const { isSupported } = useSpeechSynthesis();
+      return <div>{isSupported ? <button type="button">Read aloud</button> : <span>Text only</span>}</div>;
+    }
+
+    // Server render never has speech support.
+    const html = renderToString(<ReadAloudButton />);
+    expect(html).toContain("Text only");
+
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    const recoverableErrors: unknown[] = [];
+    await act(async () => {
+      hydrateRoot(container, <ReadAloudButton />, {
+        onRecoverableError: (err) => recoverableErrors.push(err),
+      });
+    });
+
+    expect(recoverableErrors).toHaveLength(0);
+    expect(container.textContent).toContain("Read aloud");
+    container.remove();
+    delete w.speechSynthesis;
   });
 });
