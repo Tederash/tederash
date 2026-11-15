@@ -8,6 +8,9 @@ overrides:
   nextra@4.6.1>zod: 4.1.12
   nextra-theme-docs@4.6.1>zod: 4.1.12
 
+patchedDependencies:
+  nextra-theme-docs: 21b763e6da9103f55b2f7321b02b867f61ca9888abde20b8d6336aaa79fd53d7
+
 importers:
 
   .:
@@ -62,7 +65,7 @@ importers:
         version: 4.6.1(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
       nextra-theme-docs:
         specifier: ^4.6.1
-        version: 4.6.1(@types/react@19.3.0)(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nextra@4.6.1(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
+        version: 4.6.1(patch_hash=21b763e6da9103f55b2f7321b02b867f61ca9888abde20b8d6336aaa79fd53d7)(@types/react@19.3.0)(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nextra@4.6.1(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
       react:
         specifier: ^19.0.0
         version: 19.3.1
@@ -9933,7 +9936,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  nextra-theme-docs@4.6.1(@types/react@19.3.0)(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nextra@4.6.1(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1)):
+  nextra-theme-docs@4.6.1(patch_hash=21b763e6da9103f55b2f7321b02b867f61ca9888abde20b8d6336aaa79fd53d7)(@types/react@19.3.0)(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(nextra@4.6.1(next@15.5.29(@playwright/test@1.65.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1)):
     dependencies:
       '@headlessui/react': 2.2.10(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       clsx: 2.1.1

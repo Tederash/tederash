@@ -46,7 +46,7 @@ export default async function RootLayout({
         <ClientProviders>
           <Layout
             banner={
-              <Banner storageKey="tederash-docs-banner" key="banner">
+              <Banner storageKey="tederash-docs-banner">
                 ♿ Tederash: runtime-adaptive accessibility for React
               </Banner>
             }
@@ -93,7 +93,7 @@ export default async function RootLayout({
               content: "Questions? Give feedback",
               labels: "feedback",
             }}
-            footer={<Footer key="footer" />}
+            footer={<Footer />}
           >
             {children}
           </Layout>

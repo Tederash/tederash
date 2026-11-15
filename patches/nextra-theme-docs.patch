@@ -1,0 +1,13 @@
+diff --git a/dist/components/navbar/index.client.js b/dist/components/navbar/index.client.js
+index 85988436aecac2a9073aef7cef392cbd84e28818..bf67fae6512972a46805c2caf9f931b77bec541a 100644
+--- a/dist/components/navbar/index.client.js
++++ b/dist/components/navbar/index.client.js
+@@ -191,7 +191,7 @@ const ClientNavbar = (t0) => {
+   }
+   let t7;
+   if ($[16] !== children || $[17] !== t3 || $[18] !== t4 || $[19] !== t6) {
+-    t7 = /* @__PURE__ */ jsxs(Fragment, { children: [
++    t7 = /* @__PURE__ */ jsxs("div", { className: "contents", children: [
+       t3,
+       t4,
+       children,
