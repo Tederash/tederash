@@ -6,7 +6,6 @@ type MetaRecord = Record<
 const meta: MetaRecord = {
   index: "Introduction",
   "quick-start": "Quick Start",
-  installation: "Installation",
   profiles: "Profiles",
   separator1: { type: "separator", title: "API Reference" },
   runtime: "Runtime",
