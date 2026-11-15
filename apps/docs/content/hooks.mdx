@@ -64,8 +64,10 @@ const { locale, direction, dictionary, typography, t, setLocale } = useLocale();
 t("errors.required", { field: t("labels.email") });
 // 'en' → "Email is required."
 // 'am' → "የኢሜይል አድራሻ ያስፈልጋል።"
+// 'om' → "Teessoo iimeelii barbaachisaadha."
 
 setLocale("am"); // also switches speech.language to the dictionary's speechTag ("am-ET")
+setLocale("om"); // switches speech.language to "om-ET"
 ```
 
 Missing keys return the raw key, so UI always renders something meaningful.

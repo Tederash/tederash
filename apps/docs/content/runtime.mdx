@@ -119,7 +119,10 @@ import { getDictionary, translate, getTypographyForLocale } from "@tederash/core
 const dict = getDictionary("am-ET");      // falls back to English for unknown locales
 translate(dict, "errors.required", { field: "ኢሜይል" });
 
+const omDict = getDictionary("om-ET");    // Afaan Oromoo dictionary
+translate(omDict, "errors.required", { field: "Iimeelii" });
+
 getTypographyForLocale("am");             // Ethiopic font stack + 1.8 line-height
 ```
 
-Dictionaries cover four sections: `labels`, `errors`, `announcements`, `presets`. Missing keys resolve to the raw key; unknown locales fall back to English.
+Dictionaries cover four sections: `labels`, `errors`, `announcements`, `presets` out of the box for English (`en`), Amharic (`am`), and Afaan Oromoo (`om`). Missing keys resolve to the raw key; unknown locales fall back to English.

@@ -5,6 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import {
   AccessibilityProvider,
   AMHARIC_PRESET,
+  OROMO_PRESET,
   useLocale,
   ETHIOPIC_TYPOGRAPHY,
   LATIN_TYPOGRAPHY,
@@ -93,5 +94,36 @@ describe("useLocale", () => {
 
     expect(result.current.locale).toBe("am");
     expect(result.current.t("labels.fullName")).toBe("ሙሉ ስም");
+  });
+
+  it("switches to Oromo and translates instantly", () => {
+    const { result } = renderWithProvider();
+
+    act(() => result.current.setLocale("om"));
+
+    expect(result.current.locale).toBe("om");
+    expect(result.current.dictionary.locale).toBe("om");
+    expect(result.current.dictionary.name).toBe("Afaan Oromoo");
+    expect(result.current.dictionary.speechTag).toBe("om-ET");
+    expect(result.current.t("labels.email")).toBe("Teessoo iimeelii");
+    expect(
+      result.current.t("errors.required", { field: "Maqaa" })
+    ).toBe("Maqaa barbaachisaadha.");
+  });
+
+  it("reflects OROMO_PRESET at startup", () => {
+    const { result } = renderHook(() => useLocale(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <AccessibilityProvider
+          defaultProfile={OROMO_PRESET}
+          persistence="none"
+        >
+          {children}
+        </AccessibilityProvider>
+      ),
+    });
+
+    expect(result.current.locale).toBe("om");
+    expect(result.current.t("labels.fullName")).toBe("Maqaa guutuu");
   });
 });

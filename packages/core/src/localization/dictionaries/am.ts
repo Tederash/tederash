@@ -98,6 +98,7 @@ export const AMHARIC_DICTIONARY: LocalizationDictionary = {
       "read-aloud": "በድምፅ ማንበብ",
       "visual-alerts": "የሚታዩ ማሳወቂያዎች",
       amharic: "አማርኛ",
+      oromo: "ኦሮምኛ",
     },
   },
 };

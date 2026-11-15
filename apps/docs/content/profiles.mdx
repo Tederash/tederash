@@ -76,6 +76,7 @@ interface TederashProfile {
 | `REDUCED_MOTION_PRESET` | No animations, minimal distraction |
 | `KEYBOARD_FIRST_PRESET` | Keyboard flow, strong focus indicators |
 | `AMHARIC_PRESET` | `locale: "am"`, `am-ET` speech, Ge'ez typography compensation |
+| `OROMO_PRESET` | `locale: "om"`, `om-ET` speech, Latin Qubee typography |
 
 All presets are exported from `@tederash/core` and collected in `TEDERASH_PRESETS`.
 
@@ -105,5 +106,5 @@ Section values merge key-by-key; only explicitly set keys win, so a preset can b
 
 The `locale` field drives two behaviors:
 
-- **Localization**: dictionaries (`en`, `am`), translations, and speech language tags: see `getDictionary`, `translate`, `useLocale`.
+- **Localization**: dictionaries (`en`, `am`, `om`), translations, and speech language tags: see `getDictionary`, `translate`, `useLocale`.
 - **Typography**: Ethiopic locales receive a Ge'ez font stack (`Noto Sans Ethiopic`, `Abyssinica SIL`) and line-height compensation (1.8 vs Latin 1.5) injected as `--a11y-font-family` and `--a11y-line-height` by the adaptation engine. Unknown locales fall back to the English dictionary and Latin typography.

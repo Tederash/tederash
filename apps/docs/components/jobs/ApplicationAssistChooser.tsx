@@ -12,7 +12,7 @@ import {
 import { Ear, EarOff, Settings2, Sparkles, Volume2 } from "lucide-react";
 import { OPEN_ACCESSIBILITY_SETTINGS_EVENT } from "../AccessibilityControlPanel";
 
-type Text = { en: string; am: string };
+type Text = { en: string; am: string; om: string };
 
 interface AssistOption {
   preset: TederashProfile;
@@ -27,47 +27,61 @@ const OPTIONS: AssistOption[] = [
   {
     preset: DEFAULT_PROFILE,
     icon: Sparkles,
-    title: { en: "No changes", am: "ምንም ለውጥ የለም" },
-    description: { en: "Use the application as it is.", am: "ማመልከቻውን እንዳለ ይጠቀሙ።" },
-    confirmation: { en: "Standard settings restored.", am: "መደበኛ ቅንብሮች ተመልሰዋል።" },
+    title: { en: "No changes", am: "ምንም ለውጥ የለም", om: "Jijjiirama malee" },
+    description: {
+      en: "Use the application as it is.",
+      am: "ማመልከቻውን እንዳለ ይጠቀሙ።",
+      om: "Akka jiruun iyyannicha fayyadamaa.",
+    },
+    confirmation: {
+      en: "Standard settings restored.",
+      am: "መደበኛ ቅንብሮች ተመልሰዋል።",
+      om: "Qindaa'inni idilee deebi'eera.",
+    },
   },
   {
     preset: SCREEN_READER_PRESET,
     icon: Ear,
-    title: { en: "I use a screen reader", am: "ስክሪን አንባቢ እጠቀማለሁ" },
+    title: { en: "I use a screen reader", am: "ስክሪን አንባቢ እጠቀማለሁ", om: "Dubbisaa iskiriinii nan fayyadama" },
     description: {
       en: "Works with NVDA, JAWS, VoiceOver or TalkBack: clear instructions, strong keyboard focus, confirmations and voice input. The page stays silent so nothing is read twice.",
       am: "ከNVDA፣ JAWS፣ VoiceOver ወይም TalkBack ጋር ይሰራል፦ ግልጽ መመሪያዎች፣ ጠንካራ የኪቦርድ ትኩረት፣ ማረጋገጫዎች እና የድምፅ ግቤት። ምንም ነገር ሁለት ጊዜ እንዳይነበብ ገጹ ዝም ይላል።",
+      om: "NVDA, JAWS, VoiceOver ykn TalkBack wajjin hojjata: qajeelfama ifa ta'e, xiyyeeffannoo kiiboordii cimaa, mirkaneessaa fi galtee sagalee. Fuulli akka wanti tokko illee irra deebi'amee hin dubbifamne callisa.",
     },
     confirmation: {
       en: "Screen reader mode on. Field instructions are always shown, and you can answer any text field by voice.",
       am: "የስክሪን አንባቢ ሁኔታ በርቷል። የመስክ መመሪያዎች ሁልጊዜ ይታያሉ፣ እና ማንኛውንም የጽሑፍ መስክ በድምፅ መመለስ ይችላሉ።",
+      om: "Haalli dubbisaa iskiriinii baneera. Qajeelfamoonni dirree yeroo hunda ni mul'atu, dirree barruu kamiyyuu sagaleedhaan deebisuu dandeessu.",
     },
   },
   {
     preset: READ_ALOUD_PRESET,
     icon: Volume2,
-    title: { en: "I'm blind, read the page to me", am: "ማየት አልችልም፣ ገጹን አንብብልኝ" },
+    title: { en: "I'm blind, read the page to me", am: "ማየት አልችልም፣ ገጹን አንብብልኝ", om: "ArgUU hin danda'u, fuula naaf dubbisi" },
     description: {
       en: "For use without a screen reader. Messages and field instructions are read aloud, you can answer by voice, and text and buttons are larger for any remaining sight.",
       am: "ያለ ስክሪን አንባቢ ለመጠቀም። መልዕክቶች እና የመስክ መመሪያዎች በድምፅ ይነበባሉ፣ በድምፅ መመለስ ይችላሉ፣ እንዲሁም ለቀሪ እይታ ጽሑፍ እና ቁልፎች ትልቅ ይሆናሉ።",
+      om: "Dubbisaa iskiriinii malee fayyadamuuf. Ergaawwanii fi qajeelfamoonni dirree sagaleedhaan dubbifamu, sagaleedhaan deebisuu dandeessu, barruunii fi qabduun immoo ija hafeef guddaa ta'u.",
     },
     confirmation: {
       en: "Read aloud mode on. Use Tab to move between fields. Each field has a button to hear its instructions and a microphone to answer by voice.",
       am: "በድምፅ የማንበብ ሁኔታ በርቷል። በመስኮች መካከል ለመንቀሳቀስ Tab ይጠቀሙ። እያንዳንዱ መስክ መመሪያውን ለማዳመጥ ቁልፍ እና በድምፅ ለመመለስ ማይክሮፎን አለው።",
+      om: "Haalli sagaleedhaan dubbisuu baneera. Dirreewwan gidduu deemuf Tab fayyadamaa. Qajeelfama dhaggeeffachuuf qabduu, sagaleedhaan deebisuuf maaykiroofoonii qaba.",
     },
   },
   {
     preset: VISUAL_ALERTS_PRESET,
     icon: EarOff,
-    title: { en: "I'm deaf or hard of hearing", am: "መስማት የተሳነኝ ወይም የመስማት ችግር አለብኝ" },
+    title: { en: "I'm deaf or hard of hearing", am: "መስማት የተሳነኝ ወይም የመስማት ችግር አለብኝ", om: "Dhaga'uu hin danda'u yookiin rakkoo dhageettii qaba" },
     description: {
       en: "Nothing depends on sound. Every message appears on screen and stays longer, and instructions are always shown.",
       am: "ምንም ነገር በድምፅ ላይ አይመሰረትም። እያንዳንዱ መልዕክት በስክሪኑ ላይ ይታያል እና ረዘም ላለ ጊዜ ይቆያል፣ መመሪያዎችም ሁልጊዜ ይታያሉ።",
+      om: "Wanti sagalee irratti hundaa'e hin jiru. Ergaan hundi iskiriinii irratti mul'ata, yeroo dheeraaf tura, qajeelfamoonnis yeroo hunda ni mul'atu.",
     },
     confirmation: {
       en: "Visual alerts on. All messages will appear on screen.",
       am: "የሚታዩ ማሳወቂያዎች በርተዋል። ሁሉም መልዕክቶች በስክሪኑ ላይ ይታያሉ።",
+      om: "Akeekkachiisni mul'atu baneera. Ergaawwan hundi iskiriinii irratti ni mul'atu.",
     },
   },
 ];
@@ -79,8 +93,10 @@ const OPTIONS: AssistOption[] = [
  */
 export function ApplicationAssistChooser() {
   const { profile, setProfile, announce } = useAccessibility();
-  const isAmharic = profile.locale === "am";
-  const t = (text: Text) => (isAmharic ? text.am : text.en);
+  const locale = profile.locale ?? "en";
+  const isAmharic = locale === "am";
+  const isOromo = locale === "om";
+  const t = (text: Text) => (isAmharic ? text.am : isOromo ? text.om : text.en);
   const selectedId = OPTIONS.some((o) => o.preset.id === profile.id) ? profile.id : null;
 
   const choose = (option: AssistOption) => {
@@ -101,11 +117,17 @@ export function ApplicationAssistChooser() {
     >
       <fieldset className="flex flex-col gap-3">
         <legend id="apply-assist-heading" className="text-base sm:text-lg font-bold text-foreground">
-          {isAmharic ? "እንዴት ማመልከት ይፈልጋሉ?" : "How would you like to apply?"}
+          {isAmharic
+            ? "እንዴት ማመልከት ይፈልጋሉ?"
+            : isOromo
+            ? "Akkamitti iyyachuu barbaaddu?"
+            : "How would you like to apply?"}
         </legend>
         <p className="text-sm text-muted-foreground -mt-1">
           {isAmharic
             ? "አንዱን ይምረጡ፣ ማመልከቻው ወዲያውኑ ይስተካከላል። በማንኛውም ጊዜ መቀየር ይችላሉ።"
+            : isOromo
+            ? "Tokko filadhaa, iyyannichi yeruma san madaqfama. Yeroo kamiyyuu jijjiiruu dandeessu."
             : "Choose one and the application adapts straight away. You can change it at any time."}
         </p>
 
@@ -149,9 +171,13 @@ export function ApplicationAssistChooser() {
           {selectedId === null
             ? isAmharic
               ? "የራስዎን ቅንብሮች እየተጠቀሙ ነው።"
+              : isOromo
+              ? "Qindaa'ina mataa keessanii fayyadamaa jirtu."
               : "You're using your own custom settings."
             : isAmharic
             ? "የጽሑፍ መጠን፣ ንፅፅር፣ እንቅስቃሴ ወይም ቋንቋ መቀየር ይፈልጋሉ?"
+            : isOromo
+            ? "Guddina barruu, walsimannaa, sochii yookiin afaan jijjiiruu barbaadduu?"
             : "Need larger text, more contrast, less motion or another language?"}
         </p>
         <button
@@ -160,7 +186,7 @@ export function ApplicationAssistChooser() {
           className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-2 min-h-[44px] rounded-lg border border-border text-sm font-medium hover:bg-muted focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         >
           <Settings2 className="w-4 h-4" aria-hidden="true" />
-          {isAmharic ? "ሌሎች ቅንብሮች" : "More settings"}
+          {isAmharic ? "ሌሎች ቅንብሮች" : isOromo ? "Qindaa'ina dabalataa" : "More settings"}
         </button>
       </div>
     </section>

@@ -52,7 +52,13 @@ export const TederashLiveRegion = React.forwardRef<
         "speechSynthesis" in window
       ) {
         try {
-          const lang = profile.speech.language || (profile.locale === "am" ? "am-ET" : "en-US");
+          const lang =
+            profile.speech.language ||
+            (profile.locale === "am"
+              ? "am-ET"
+              : profile.locale === "om"
+                ? "om-ET"
+                : "en-US");
           const voices = window.speechSynthesis.getVoices();
           const voice = findVoiceForLanguage(voices, lang);
           // No installed voice speaks this language (common for Amharic on desktop):

@@ -1,13 +1,16 @@
 import { Locale, LocalizationDictionary, TranslationParams } from "../types";
 import { ENGLISH_DICTIONARY } from "./en";
 import { AMHARIC_DICTIONARY } from "./am";
+import { OROMO_DICTIONARY } from "./om";
 
 export { ENGLISH_DICTIONARY } from "./en";
 export { AMHARIC_DICTIONARY } from "./am";
+export { OROMO_DICTIONARY } from "./om";
 
 export const DICTIONARIES: Record<Locale, LocalizationDictionary> = {
   en: ENGLISH_DICTIONARY,
   am: AMHARIC_DICTIONARY,
+  om: OROMO_DICTIONARY,
 };
 
 export const DEFAULT_LOCALE: Locale = "en";

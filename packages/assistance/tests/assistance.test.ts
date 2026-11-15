@@ -99,6 +99,16 @@ describe("Intelligent Form Assistance Engine (@tederash/assistance)", () => {
       expect(phoneAm).toContain("ስልክ ቁጥርዎን");
       expect(fallbackAm).toContain("መለያ ቁጥር");
     });
+
+    it("1.13 supports Oromo localization for fields", async () => {
+      const emailOm = await heuristicProvider.explainField({ fieldName: "email", type: "email", locale: "om" });
+      const phoneOm = await heuristicProvider.explainField({ fieldName: "phone", type: "tel", locale: "om-ET" });
+      const fallbackOm = await heuristicProvider.explainField({ fieldName: "custom", locale: "om", label: "Lakk. Eenyummaa" });
+
+      expect(emailOm).toContain("teessoo iimeelii");
+      expect(phoneOm).toContain("lakkoofsa bilbilaa");
+      expect(fallbackOm).toContain("Lakk. Eenyummaa");
+    });
   });
 
   // ==========================================================================
@@ -223,6 +233,16 @@ describe("Intelligent Form Assistance Engine (@tederash/assistance)", () => {
       });
 
       expect(requiredAm).toContain("አስፈላጊ ነው");
+    });
+
+    it("2.13 translates errors to Oromo when locale is 'om'", async () => {
+      const requiredOm = await heuristicProvider.explainError({
+        fieldName: "Maqaa",
+        errorType: "valueMissing",
+        locale: "om",
+      });
+
+      expect(requiredOm).toContain("barbaachisaadha");
     });
   });
 

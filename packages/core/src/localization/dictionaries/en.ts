@@ -103,6 +103,7 @@ export const ENGLISH_DICTIONARY: LocalizationDictionary = {
       "read-aloud": "Read Aloud",
       "visual-alerts": "Visual Alerts",
       amharic: "Amharic",
+      oromo: "Afaan Oromoo",
     },
   },
 };

@@ -30,12 +30,17 @@ export function LiveDemo() {
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const isAmharic = profile.locale === "am";
+  const isOromo = profile.locale === "om";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     announce({
-      message: isAmharic ? "ቅጹ ተልኳል።" : "Form submitted.",
+      message: isAmharic
+        ? "ቅጹ ተልኳል።"
+        : isOromo
+          ? "Foormichi ergameera."
+          : "Form submitted.",
       priority: "polite",
       category: "success",
     });
@@ -86,46 +91,68 @@ export function LiveDemo() {
               <dt className="text-muted-foreground">Contrast</dt>
               <dd className="text-foreground">{adaptations.highContrast ? "High" : "Normal"}</dd>
               <dt className="text-muted-foreground">Language</dt>
-              <dd className="text-foreground">{isAmharic ? "አማርኛ" : "English"}</dd>
+              <dd className="text-foreground">{isAmharic ? "አማርኛ" : isOromo ? "Afaan Oromoo" : "English"}</dd>
             </dl>
           </div>
 
           <form
             onSubmit={onSubmit}
             className="rounded-lg border border-border p-6 md:p-8 flex flex-col gap-5"
-            aria-label={isAmharic ? "የናሙና ቅጽ" : "Sample form"}
+            aria-label={isAmharic ? "የናሙና ቅጽ" : isOromo ? "Foormii fakkeenyaa" : "Sample form"}
           >
             <TederashInput
               id="demo-name"
-              label={isAmharic ? "ሙሉ ስም" : "Full name"}
+              label={isAmharic ? "ሙሉ ስም" : isOromo ? "Maqaa guutuu" : "Full name"}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              description={isAmharic ? "በመታወቂያዎ ላይ እንደሚታየው።" : "As it appears on your ID."}
-              simplifiedDescription={isAmharic ? "ስምዎን እዚህ ይጻፉ።" : "Type your first and last name."}
+              description={
+                isAmharic
+                  ? "በመታወቂያዎ ላይ እንደሚታየው።"
+                  : isOromo
+                    ? "Akkuma waraqaa eenyummaa keessan irratti mul'atutti."
+                    : "As it appears on your ID."
+              }
+              simplifiedDescription={
+                isAmharic
+                  ? "ስምዎን እዚህ ይጻፉ።"
+                  : isOromo
+                    ? "Maqaa keessan asitti barreessaa."
+                    : "Type your first and last name."
+              }
               required
             />
             <TederashSelect
               id="demo-role"
-              label={isAmharic ? "ሙያ" : "Role"}
+              label={isAmharic ? "ሙያ" : isOromo ? "Gahee hojii" : "Role"}
               options={ROLE_OPTIONS}
               value={role}
               onChange={setRole}
-              placeholder={isAmharic ? "ይምረጡ" : "Choose one"}
-              simplifiedDescription={isAmharic ? "ከዝርዝሩ አንዱን ይምረጡ።" : "Pick the one that fits you best."}
+              placeholder={isAmharic ? "ይምረጡ" : isOromo ? "Filadhaa" : "Choose one"}
+              simplifiedDescription={
+                isAmharic
+                  ? "ከዝርዝሩ አንዱን ይምረጡ።"
+                  : isOromo
+                    ? "Tarree keessaa isa isin fakkaatu filadhaa."
+                    : "Pick the one that fits you best."
+              }
             />
             <TederashCheckbox
               id="demo-updates"
-              label={isAmharic ? "ዝማኔዎችን ላኩልኝ" : "Send me updates"}
+              label={isAmharic ? "ዝማኔዎችን ላኩልኝ" : isOromo ? "Oodeeffannoowwan haaraa naaf ergaa" : "Send me updates"}
               checked={updates}
               onCheckedChange={setUpdates}
             />
             <div className="flex items-center gap-4 pt-1">
               <TederashButton type="submit" variant="primary">
-                {isAmharic ? "ላክ" : "Submit"}
+                {isAmharic ? "ላክ" : isOromo ? "Ergi" : "Submit"}
               </TederashButton>
               {submitted && (
                 <p role="status" className="text-sm text-muted-foreground">
-                  {isAmharic ? "ተልኳል። ይህ ናሙና ብቻ ነው።" : "Submitted. This is only a demo."}
+                  {isAmharic
+                    ? "ተልኳል። ይህ ናሙና ብቻ ነው።"
+                    : isOromo
+                      ? "Ergameera. Kun yaalii qofa."
+                      : "Submitted. This is only a demo."}
                 </p>
               )}
             </div>

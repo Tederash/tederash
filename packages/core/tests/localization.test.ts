@@ -4,6 +4,8 @@ import {
   AMHARIC_PRESET,
   DEFAULT_PROFILE,
   ENGLISH_DICTIONARY,
+  OROMO_DICTIONARY,
+  OROMO_PRESET,
   DEFAULT_LOCALE,
   ETHIOPIC_TYPOGRAPHY,
   LATIN_TYPOGRAPHY,
@@ -44,6 +46,24 @@ describe("Localization dictionary schema", () => {
     }
   });
 
+  it("provides a complete Oromo dictionary with matching structure", () => {
+    expect(OROMO_DICTIONARY.locale).toBe("om");
+    expect(OROMO_DICTIONARY.name).toBe("Afaan Oromoo");
+    expect(OROMO_DICTIONARY.direction).toBe("ltr");
+    expect(OROMO_DICTIONARY.speechTag).toBe("om-ET");
+
+    const enSections = Object.keys(ENGLISH_DICTIONARY.translations);
+    const omSections = Object.keys(OROMO_DICTIONARY.translations);
+    expect(omSections).toEqual(enSections);
+
+    // Every Oromo section has the same keys as English
+    for (const section of enSections as Array<keyof typeof ENGLISH_DICTIONARY.translations>) {
+      expect(Object.keys(OROMO_DICTIONARY.translations[section]).sort()).toEqual(
+        Object.keys(ENGLISH_DICTIONARY.translations[section]).sort()
+      );
+    }
+  });
+
   it("looks up dot-notated keys per section", () => {
     expect(translate(ENGLISH_DICTIONARY, "labels.email")).toBe(
       "Email address"
@@ -51,8 +71,14 @@ describe("Localization dictionary schema", () => {
     expect(translate(AMHARIC_DICTIONARY, "labels.email")).toBe(
       "የኢሜይል አድራሻ"
     );
+    expect(translate(OROMO_DICTIONARY, "labels.email")).toBe(
+      "Teessoo iimeelii"
+    );
     expect(translate(AMHARIC_DICTIONARY, "errors.required", { field: "ስም" })).toBe(
       "ስም ያስፈልጋል።"
+    );
+    expect(translate(OROMO_DICTIONARY, "errors.required", { field: "Maqaa" })).toBe(
+      "Maqaa barbaachisaadha."
     );
   });
 
@@ -73,6 +99,8 @@ describe("Dictionary resolution & fallback", () => {
   it("resolves dictionaries by locale tag including region subtags", () => {
     expect(getDictionary("am")).toBe(AMHARIC_DICTIONARY);
     expect(getDictionary("am-ET")).toBe(AMHARIC_DICTIONARY);
+    expect(getDictionary("om")).toBe(OROMO_DICTIONARY);
+    expect(getDictionary("om-ET")).toBe(OROMO_DICTIONARY);
     expect(getDictionary("en")).toBe(ENGLISH_DICTIONARY);
     expect(getDictionary("en-GB")).toBe(ENGLISH_DICTIONARY);
   });

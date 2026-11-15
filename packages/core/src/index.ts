@@ -25,7 +25,7 @@ export * from "./speech/recognition";
 export * from "./speech/normalize";
 export * from "./speech/voices";
 
-// Localization (English / Amharic)
+// Localization (English / Amharic / Afaan Oromoo)
 export * from "./localization/types";
 export * from "./localization/typography";
 export * from "./localization/dictionaries";

@@ -36,10 +36,13 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
   const targetSize = profile.motor?.targetSize ?? "normal";
   const locale = profile.locale ?? "en";
   const speechRate = profile.speech?.speechRate ?? 1;
-  const speechLanguage = profile.speech?.language ?? (locale === "am" ? "am-ET" : "en-US");
+  const speechLanguage =
+    profile.speech?.language ??
+    (locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-US");
   const synthesis = useSpeechSynthesis();
   const voiceMissing = Boolean(profile.speech?.speechOutput) && synthesis.isVoiceMissing(speechLanguage);
-  const languageName = locale === "am" ? "Amharic" : "English";
+  const languageName =
+    locale === "am" ? "Amharic" : locale === "om" ? "Afaan Oromoo" : "English";
   const id = (name: string) => `${idPrefix}-${name}`;
 
   return (
@@ -82,18 +85,19 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
       {/* Language */}
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
         <legend className="text-sm font-semibold mb-2">Language</legend>
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Interface language">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="group" aria-label="Interface language">
           {[
             { value: "en", label: "English", lang: "en", speech: "en-US" },
             { value: "am", label: "አማርኛ (Amharic)", lang: "am", speech: "am-ET" },
+            { value: "om", label: "Afaan Oromoo", lang: "om", speech: "om-ET" },
           ].map((option) => (
             <button
               key={option.value}
               type="button"
               lang={option.lang}
               aria-pressed={locale === option.value}
-              onClick={() => updatePreferences({ locale: option.value, speech: { language: option.speech } })}
-              className={`py-2 text-sm rounded-lg border min-h-[44px] focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none ${
+              onClick={() => updatePreferences({ locale: option.value as any, speech: { language: option.speech } })}
+              className={`py-2 px-2 text-xs sm:text-sm rounded-lg border min-h-[44px] focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none text-center ${
                 locale === option.value
                   ? "border-primary bg-primary text-primary-foreground font-semibold"
                   : "border-border bg-background hover:bg-muted"

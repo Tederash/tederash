@@ -22,7 +22,7 @@ const PACKAGES = [
 
 const FACTS = [
   "Works offline. Preferences stay in the browser.",
-  "English and Amharic out of the box, with Ge'ez-aware typography.",
+  "English, Amharic, and Afaan Oromoo out of the box, with Ge'ez-aware typography.",
   "Speech input and read-aloud where the browser supports it.",
   "Confirmation before destructive actions when the profile asks for it.",
 ];

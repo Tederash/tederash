@@ -1,9 +1,9 @@
 /**
  * Localization Types (Phase 8: Localization and Ethiopian Context)
- * Strongly-typed bilingual dictionary schema for English and Amharic.
+ * Strongly-typed multilingual dictionary schema for English, Amharic, and Afaan Oromoo.
  */
 
-export type Locale = "en" | "am";
+export type Locale = "en" | "am" | "om";
 export type TextDirection = "ltr" | "rtl";
 
 /** Values interpolated into placeholders like "{field}" */

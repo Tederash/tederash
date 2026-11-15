@@ -226,6 +226,25 @@ export const AMHARIC_PRESET: TederashProfile = {
   },
 };
 
+export const OROMO_PRESET: TederashProfile = {
+  id: "oromo",
+  name: "Afaan Oromoo / Oromo",
+  description:
+    "Afaan Oromoo locale with Latin Qubee typography, accessible touch targets, and Oromo speech language.",
+  version: 1,
+  locale: "om",
+  visual: {
+    fontScale: 1.05,
+  },
+  cognitive: {
+    showInstructions: true,
+  },
+  speech: {
+    language: "om-ET",
+    speechRate: 1.0,
+  },
+};
+
 export const TEDERASH_PRESETS: TederashProfile[] = [
   DEFAULT_TEDERASH_PROFILE,
   LOW_VISION_PRESET,
@@ -238,6 +257,7 @@ export const TEDERASH_PRESETS: TederashProfile[] = [
   READ_ALOUD_PRESET,
   VISUAL_ALERTS_PRESET,
   AMHARIC_PRESET,
+  OROMO_PRESET,
 ];
 
 export const PRESET_PROFILES = TEDERASH_PRESETS;
