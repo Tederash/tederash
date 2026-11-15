@@ -39,18 +39,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (msg.payload.rate !== undefined) utterance.rate = msg.payload.rate;
       if (msg.payload.pitch !== undefined) utterance.pitch = msg.payload.pitch;
       if (msg.payload.lang !== undefined) utterance.lang = msg.payload.lang;
+      const wait = msg.payload.wait === true;
       utterance.onerror = (event) => {
         if (event.error !== 'canceled' && event.error !== 'interrupted') {
           reportError(`Speech failed: ${event.error}`);
         }
+        if (wait) sendResponse({ ok: false, error: event.error });
       };
       utterance.onend = () => {
         currentUtterance = null;
+        if (wait) sendResponse({ ok: true });
       };
       currentUtterance = utterance;
       window.speechSynthesis.speak(utterance);
-      sendResponse({ ok: true });
-      return false;
+      if (!wait) {
+        sendResponse({ ok: true });
+        return false;
+      }
+      return true; // keep the channel open until the utterance ends
     }
 
     case 'offscreen/stop': {
