@@ -8,6 +8,8 @@ import type { Metadata } from "next";
 import config from "../config";
 import { ClientProviders } from "../components/ClientProviders";
 import { Footer } from "../components/Footer";
+import { NpmIcon } from "../components/NpmIcon";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 
 export const metadata: Metadata = config.metadata;
 
@@ -61,8 +63,10 @@ export default async function RootLayout({
                   </div>
                 }
                 projectLink="https://github.com/tederash/tederash-ui-library"
+                chatLink="https://www.npmjs.com/package/@tederash/core"
+                chatIcon={<NpmIcon className="w-5 h-5" />}
               >
-                <div className="flex items-center gap-4 text-xs font-semibold mr-2">
+                <div className="flex items-center gap-4 text-xs font-semibold mr-2 max-md:hidden">
                   <a href="/docs" className="hover:opacity-80 transition-opacity">
                     Documentation
                   </a>
@@ -73,6 +77,7 @@ export default async function RootLayout({
                     Pricing
                   </a>
                 </div>
+                <ThemeSwitcher />
               </Navbar>
             }
             pageMap={pageMap}
