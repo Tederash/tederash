@@ -1,7 +1,7 @@
 import "../theme/global.css";
 
 import { Layout, Navbar } from "nextra-theme-docs";
-import { Banner, Head } from "nextra/components";
+import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -45,11 +45,6 @@ export default async function RootLayout({
       <body>
         <ClientProviders>
           <Layout
-            banner={
-              <Banner storageKey="tederash-docs-banner">
-                ♿ Tederash: runtime-adaptive accessibility for React
-              </Banner>
-            }
             navbar={
               <Navbar
                 logo={
