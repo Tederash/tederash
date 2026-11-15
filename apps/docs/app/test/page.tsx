@@ -218,7 +218,7 @@ export default function TestPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-12 px-6">
+    <main data-pagefind-body className="max-w-2xl mx-auto py-12 px-6">
       {/* Page Header */}
       <header className="mb-8 pb-6 border-b border-border">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
@@ -743,6 +743,6 @@ export default function TestPage() {
           </div>
         </div>
       </AccessibleDialog>
-    </div>
+    </main>
   );
 }
