@@ -1,0 +1,93 @@
+---
+title: "Assistance"
+description: "Intelligent form assistance: plain-language field explanations and validation guidance, with AI strictly optional."
+---
+
+import { Callout } from "nextra/components";
+
+# Assistance
+
+`@tederash/assistance` turns terse validation messages into guidance people can
+act on. Instead of *"Invalid input."*, a phone number field explains: *"Your
+phone number appears incomplete. Please include the full number, including the
+area code."*
+
+<Callout type="info">
+  **AI is optional, never required.** The default provider is fully
+  heuristic and runs 100% locally — no network, no account, no data leaves the
+  device. AI providers are an opt-in adapter, not a dependency.
+</Callout>
+
+## Architecture
+
+The package is built around one interface and two implementations:
+
+```ts assistance-provider
+interface AssistanceProvider {
+  explainField(context: FieldContext): Promise<string>;
+  explainError(context: ErrorContext): Promise<string>;
+  simplifyInstructions(context: SimplificationContext): Promise<string>;
+}
+```
+
+| Piece | Purpose |
+| :--- | :--- |
+| `AssistanceProvider` | Interface every assistance source implements |
+| `HeuristicAssistanceProvider` | Offline, deterministic explanations from field type, constraints and error type |
+| `AssistanceManager` | Routes requests to the right provider, sanitizes context, caches, falls back |
+
+## Context types
+
+```ts context
+import type { FieldContext, ErrorContext, StandardErrorType } from "@tederash/assistance";
+```
+
+- **`FieldContext`** — `fieldName`, `type` (email/tel/password/…), `label`,
+  `description`, `required`, `constraints` and the current value.
+- **`ErrorContext`** — `fieldName`, `errorType` (a `StandardErrorType` such as
+  `typeMismatch`, `tooShort`, `patternMismatch`, or a custom code),
+  `rawMessage`, `value`, `expectedFormat`.
+
+## The AssistanceManager
+
+```ts manager
+import { AssistanceManager, HeuristicAssistanceProvider } from "@tederash/assistance";
+
+const manager = new AssistanceManager({
+  defaultProvider: new HeuristicAssistanceProvider(),
+  // Optionally register additional (e.g. AI) providers behind explicit consent.
+});
+```
+
+```ts manager-api
+await manager.explainField({ fieldName: "phone", type: "tel", required: true });
+await manager.explainError({ fieldName: "phone", errorType: "tooShort" });
+await manager.simplifyInstructions("Enter the email address associated with your account.");
+```
+
+`AssistanceManager` behavior you can rely on:
+
+1. **Context sanitization before any remote provider runs** — sensitive fields
+   are stripped unconditionally unless the provider's privacy options allow
+   them. Form contents are **never sent to an external service by default**.
+2. **Fallback** — if a registered provider fails, the default (heuristic)
+   provider answers.
+3. **Caching** — repeated requests for the same input return cached results.
+
+## Ground rules
+
+The assistance layer is designed around hard safety constraints:
+
+- Users stay in control of form submissions — nothing is ever auto-submitted.
+- User input is never overwritten without confirmation.
+- AI-generated explanations never replace actual validation — they explain it.
+- Generated assistance is clearly distinguishable from authoritative
+  application instructions.
+
+## Using it with components
+
+The [adaptive form components](/docs/components) surface assistance
+automatically when an `AssistanceManager` is provided — see
+`TederashForm`'s guided mode and the plain-language field descriptions driven
+by `cognitive.simplifiedLanguage` in your
+[profile](/docs/profiles#cognitive).

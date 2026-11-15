@@ -5,6 +5,8 @@ const withNextra = nextra({
     codeblocks: false,
   },
   contentDirBasePath: "/docs",
+  // Render the copy button on every code block (still opt-out per fence with `copy=false`).
+  defaultShowCopyCode: true,
 });
 
 export default withNextra({

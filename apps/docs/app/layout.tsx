@@ -39,10 +39,6 @@ export default async function RootLayout({
           lightness: { light: 40, dark: 62 },
         }}
       >
-        <link
-          rel="shortcut icon"
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ccircle cx='11' cy='12' r='4.5' fill='none' stroke='white' stroke-width='2.5'/%3E%3Ccircle cx='21' cy='20' r='4.5' fill='none' stroke='white' stroke-width='2.5'/%3E%3C/svg%3E"
-        />
       </Head>
       <body>
         <ClientProviders>
@@ -62,7 +58,7 @@ export default async function RootLayout({
                     <span className="tederash-brand-sub">Adaptive Accessibility</span>
                   </div>
                 }
-                projectLink="https://github.com/tederash/tederash-ui-library"
+                projectLink="https://github.com/Tederash/tederash"
                 chatLink="https://www.npmjs.com/package/@tederash/core"
                 chatIcon={<NpmIcon className="w-5 h-5" />}
               >
@@ -83,6 +79,16 @@ export default async function RootLayout({
             pageMap={pageMap}
             docsRepositoryBase={config.nextraLayout.docsRepositoryBase}
             sidebar={{ toggleButton: true }}
+            toc={{
+              float: true,
+              title: "On this page",
+              backToTop: "Back to top",
+            }}
+            editLink="Edit this page"
+            feedback={{
+              content: "Questions? Give feedback",
+              labels: "feedback",
+            }}
             footer={<Footer key="footer" />}
           >
             {children}

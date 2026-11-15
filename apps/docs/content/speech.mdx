@@ -1,0 +1,111 @@
+---
+title: "Speech"
+description: "Voice synthesis, dictation, and the voice-availability honesty model introduced in 0.2.0."
+---
+
+import { Callout } from "nextra/components";
+
+# Speech
+
+Tederash treats speech as a **progressive enhancement with honest failure**.
+Browsers only ship voices for some languages — desktop Chrome, Windows and
+macOS have **no Amharic voice**, Android does. Reading Ethiopic text through an
+English voice produces noise, so the framework checks for a usable voice first
+and tells the user when there is none instead of failing silently.
+
+<Callout type="warning">
+  **Do not promise Amharic speech support you have not tested.** Voice
+  availability varies by browser and operating system. Always feature-detect
+  (the framework does this for you) and test on your target devices.
+</Callout>
+
+## Voice availability (core)
+
+`@tederash/core` exposes a small, dependency-free module for reasoning about
+installed voices:
+
+```ts voices
+import {
+  primaryLanguage,
+  voiceSpeaksLanguage,
+  findVoiceForLanguage,
+  hasVoiceForLanguage,
+} from "@tederash/core";
+```
+
+| Function | Behavior |
+| :--- | :--- |
+| `primaryLanguage(tag)` | Primary subtag of a BCP-47 tag — `"am-ET"` → `"am"` |
+| `voiceSpeaksLanguage(voice, lang)` | `true` when the voice speaks the same language (region may differ) |
+| `findVoiceForLanguage(voices, lang)` | Best matching installed voice, or `undefined` |
+| `hasVoiceForLanguage(voices, lang)` | Boolean fast path for capability checks |
+
+## Synthesis refusal
+
+`createSpeechSynthesisController` **refuses to speak a language that no
+installed voice speaks**. The promise rejects with a machine-readable error
+instead of producing garbled output:
+
+```ts refusal
+const synth = createSpeechSynthesisController();
+
+try {
+  await synth.speak("ሰላምታ", { language: "am-ET" });
+} catch (error) {
+  // error.code === "no-voice-for-language"
+  // Show "No Amharic voice is installed on this device" — localized.
+}
+```
+
+`no-voice-for-language` is also reported when the browser has no voices at
+all. All synthesis and recognition errors carry a `code` field so callers can
+react programmatically rather than parsing message strings.
+
+## React hooks
+
+```tsx hooks
+import { useSpeechSynthesis, useSpeechRecognition } from "@tederash/react";
+
+const {
+  speak,
+  stop,
+  voicesLoaded,
+  voiceForLanguage,
+  isVoiceMissing,
+  error,
+} = useSpeechSynthesis();
+
+const { listen, stop: stopListening, errorCode } = useSpeechRecognition();
+```
+
+| Hook | Additions in 0.2.0 |
+| :--- | :--- |
+| `useSpeechSynthesis` | `voicesLoaded`, `voiceForLanguage(lang)`, `isVoiceMissing(lang)` and the last error (with `code`) |
+| `useSpeechRecognition` | `errorCode` — machine-readable failure reason (no microphone, permission denied, unsupported language, …) |
+
+## Component behavior
+
+The speech UI in `@tederash/components` follows the honesty model:
+
+- **Read-aloud** (`speechOutput`) announces *"No Amharic voice on this device"*
+  (localized, `aria-disabled` with an `aria-describedby` explanation) instead of
+  reading Ge'ez through an English voice.
+- **Dictation** (`speechInput`) explains when the browser cannot accept voice
+  input in the profile language and tells the user to type instead.
+- **LiveRegion** keeps announcements **visual** when no installed voice speaks
+  the profile language — screen-reader announcements are unaffected (screen
+  readers have their own voices).
+
+## Language and rate
+
+Speech language and rate come from the active profile:
+
+```ts profile
+runtime.updatePreferences({
+  speech: { language: "am-ET", speechRate: 0.95 },
+});
+```
+
+The [AMHARIC_PRESET](/docs/profiles#built-in-presets) and
+[Voice Assistance preset](/docs/profiles#built-in-presets) configure these for
+you.

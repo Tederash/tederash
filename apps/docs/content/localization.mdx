@@ -1,0 +1,95 @@
+---
+title: "Localization"
+description: "English, Amharic and Oromo support, Ge'ez typography, and localized UI strings."
+---
+
+import { Callout } from "nextra/components";
+
+# Localization
+
+Localization is part of the architecture, not an afterthought. Tederash ships
+with English, Amharic and Oromo dictionaries and keeps the framework useful on
+low-bandwidth connections — core accessibility functionality never depends on
+a remote service.
+
+## Locales
+
+```ts locale
+import type { Locale } from "@tederash/core"; // "en" | "am" | "om"
+```
+
+Setting the locale changes:
+
+1. UI strings inside Tederash components (control names, announcements, tips).
+2. Typography — the adaptation engine injects locale-appropriate CSS variables.
+3. Speech language defaults.
+
+## Dictionaries
+
+```ts dictionaries
+import { DICTIONARIES, AMHARIC_DICTIONARY } from "@tederash/core";
+```
+
+| Export | Locale |
+| :--- | :--- |
+| `ENGLISH_DICTIONARY` | `en` |
+| `AMHARIC_DICTIONARY` | `am` |
+| `OROMO_DICTIONARY` | `om` |
+| `DICTIONARIES` | `Record<Locale, LocalizationDictionary>` |
+
+A dictionary maps keys to translated strings (with `{placeholder}` parameter
+interpolation). Custom dictionaries can extend the type — the framework is not
+locked to the three built-in locales.
+
+## Ge'ez typography engine
+
+Ge'ez-script text needs different metrics than Latin text: taller glyph
+clusters, more generous line height, and font stacks that actually contain
+Ethiopic glyphs.
+
+```ts typography
+import { getTypographyForLocale, getTypographyCssVariables } from "@tederash/core";
+```
+
+- `ETHIOPIC_TYPOGRAPHY` raises line height (≈ 1.6–1.8) for Ethiopic text.
+- `LATIN_TYPOGRAPHY` keeps standard metrics for `en`.
+- `getTypographyForLocale(locale)` picks the right profile; the adaptation
+  engine applies its variables automatically when the locale changes — no
+  manual wiring needed.
+
+<Callout type="info">
+  This documentation site loads **Noto Sans Ethiopic** as a webfont so Amharic
+  examples render consistently on every operating system. Do the same in your
+  application for reliable Ethiopic rendering.
+</Callout>
+
+## Switching locale at runtime
+
+```tsx locale-hook
+import { useLocale } from "@tederash/react";
+
+function LanguageSwitch() {
+  const { locale, setLocale } = useLocale();
+  const locales: Locale[] = ["en", "am", "om"];
+  return (
+    <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+      <option value="en">English</option>
+      <option value="am">አማርኛ</option>
+      <option value="om">Afaan Oromoo</option>
+    </select>
+  );
+}
+```
+
+The `AMHARIC_PRESET` combines locale, typography and speech preferences into a
+single preset — see [Profiles](/docs/profiles#built-in-presets).
+
+## Honest limits
+
+<Callout type="warning">
+  Amharic **speech recognition and synthesis** depend on voices the operating
+  system provides. Desktop browsers typically have none; Android often does.
+  The framework detects this and degrades honestly — see
+  [Speech](/docs/speech) — but never claim reliable Amharic voice input or
+  output without testing on your actual target devices.
+</Callout>

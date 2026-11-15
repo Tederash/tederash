@@ -145,6 +145,15 @@ export function Footer() {
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
+        {/* Built with Tederash — the docs demo the product */}
+        <p className="mb-6 text-center text-xs text-muted-foreground">
+          This documentation is built with{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">@tederash/components</code>{" "}
+          and adapts to your accessibility profile in real time — open the{" "}
+          <span aria-hidden="true">♿</span>
+          <span className="sr-only">accessibility</span> control panel to try it.
+        </p>
+
         {/* Bottom Tier: Copyright, badges, and tech stack */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>

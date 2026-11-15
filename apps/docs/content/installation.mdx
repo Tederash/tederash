@@ -1,0 +1,75 @@
+---
+title: "Installation"
+description: "Packages, requirements, and setup options for the Tederash Adaptive Accessibility Framework."
+---
+
+import { Callout, Tabs } from "nextra/components";
+
+# Installation
+
+## Requirements
+
+| Requirement | Version |
+| :--- | :--- |
+| React | ≥ 18 |
+| TypeScript | ≥ 5 (strict mode recommended) |
+
+<Callout type="warning" emoji="🎨">
+  **Import the component stylesheet once.** `@tederash/components` ships a
+  precompiled, self-contained stylesheet — all adaptive styling (touch-target
+  sizing, contrast, focus rings, font scale, reduced motion) renders from it:
+
+  ```ts app/globals.ts
+  import "@tederash/components/style.css";
+  ```
+
+  Skip this and the components still *behave* correctly (ARIA, announcements,
+  confirmations, keyboard handling) — but the adaptive visual styling has
+  nowhere to render from. No Tailwind setup is required; the stylesheet is
+  safe to import alongside your own CSS.
+</Callout>
+
+## Choose your packages
+
+| Package | Install when you need… |
+| :--- | :--- |
+| `@tederash/core` | The framework-independent runtime, profile schema, adaptation engine, speech and localization services — no React required |
+| `@tederash/react` | The `TederashProvider`, hooks (`useTederash`, `useTederashPreference`, …) and the browser-extension bridge |
+| `@tederash/components` | The adaptive component library (`TederashButton`, `TederashInput`, …) |
+| `@tederash/assistance` | Intelligent form assistance: plain-language field explanations and error guidance |
+
+Most applications install all three React-facing packages; `@tederash/core` is a
+transitive dependency but useful to install directly for its types, presets and
+runtime APIs.
+
+## Install
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tabs.Tab>npm install @tederash/core @tederash/react @tederash/components @tederash/assistance</Tabs.Tab>
+  <Tabs.Tab>pnpm add @tederash/core @tederash/react @tederash/components @tederash/assistance</Tabs.Tab>
+  <Tabs.Tab>yarn add @tederash/core @tederash/react @tederash/components @tederash/assistance</Tabs.Tab>
+</Tabs>
+
+Import all packages you use in the same file tree — they share types through
+`@tederash/core`.
+
+## CDN / script tag usage
+
+The packages are published to npm and served by jsDelivr. Note that the
+built distributions are **ES modules**, so a classic `<script src>` will not
+work; consume them as modules:
+
+```html index.html
+<script type="module">
+  import { createTederashRuntime } from "https://esm.sh/@tederash/core@0.2";
+</script>
+```
+
+For a zero-build, plain-HTML usage path (custom elements wrapping the real
+React components), see the roadmap notes in the repository README.
+
+## Next steps
+
+1. Wrap your application — [Quick Start](/docs/quick-start).
+2. Pick or compose a [profile](/docs/profiles).
+3. Add adaptive [components](/docs/components) to your pages.

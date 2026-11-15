@@ -15,6 +15,43 @@ Below is the live component output. You can interact with different button varia
 
 <ButtonDemo />
 
+<details>
+<summary>View the demo source</summary>
+
+Trimmed from [`apps/docs/components/demos/ButtonDemo.tsx`](https://github.com/Tederash/tederash/blob/main/apps/docs/components/demos/ButtonDemo.tsx):
+
+```tsx ButtonDemo.tsx
+"use client";
+
+import * as React from "react";
+import { TederashButton } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
+
+export function ButtonDemo() {
+  const { profile, setProfile } = useTederash();
+  const [clickedMsg, setClickedMsg] = React.useState<string | null>(null);
+
+  /* …profile switcher UI… */
+
+  return (
+    <>
+      {/* …profile switcher UI… */}
+      <TederashButton variant="primary" onClick={() => handleClick("primary")}>
+        Primary action
+      </TederashButton>
+      <TederashButton variant="secondary" onClick={() => handleClick("secondary")}>
+        Secondary action
+      </TederashButton>
+      <TederashButton variant="outline" onClick={() => handleClick("outline")}>
+        Outline action
+      </TederashButton>
+    </>
+  );
+}
+```
+
+</details>
+
 ## Usage
 
 ```tsx

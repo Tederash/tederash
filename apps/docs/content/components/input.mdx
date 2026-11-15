@@ -15,6 +15,53 @@ Below is the live component output. Toggle profiles or test validation error sta
 
 <InputDemo />
 
+<details>
+<summary>View the demo source</summary>
+
+Trimmed from [`apps/docs/components/demos/InputDemo.tsx`](https://github.com/Tederash/tederash/blob/main/apps/docs/components/demos/InputDemo.tsx):
+
+```tsx InputDemo.tsx
+"use client";
+
+import * as React from "react";
+import { TederashInput } from "@tederash/components";
+import { useTederash, PRESET_PROFILES } from "@tederash/react";
+
+export function InputDemo() {
+  const { profile, setProfile } = useTederash();
+  const [val1, setVal1] = React.useState("Abebe Bikila");
+  const [val2, setVal2] = React.useState("invalid-email");
+  const [showError, setShowError] = React.useState(true);
+
+  return (
+    <>
+      {/* …profile switcher UI… */}
+      <TederashInput
+        label="Full name"
+        value={val1}
+        onChange={(e) => setVal1(e.target.value)}
+        description="As it appears on your legal identification."
+        simplifiedDescription="Type your full name."
+        speechInput
+        speechOutput
+      />
+      <TederashInput
+        label="Email"
+        type="email"
+        value={val2}
+        onChange={(e) => setVal2(e.target.value)}
+        description="Enter your company email for identity verification."
+        simplifiedDescription="Type your email address."
+        error={showError && !val2.includes("@") ? "Email address must include an @ symbol." : undefined}
+        required
+      />
+    </>
+  );
+}
+```
+
+</details>
+
 ## Usage
 
 ```tsx
@@ -42,19 +89,19 @@ export function InputExample() {
 
 `TederashInput` extends `React.InputHTMLAttributes<HTMLInputElement>` (omitting native `size`).
 
-| Property | Type | Default | Description |
+| Property | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `label` | `string` | `undefined` | Visible label associated with the input through `htmlFor` and `id`. Essential for accessible names and screen reader comprehension. |
-| `description` | `string` | `undefined` | Explanatory helper text associated with the input through `aria-describedby`. |
-| `simplifiedDescription` | `string` | `undefined` | Alternative plain-language instruction shown automatically when the active profile has `cognitive.simplifiedLanguage` enabled. |
-| `error` | `string` | `undefined` | Error message displayed below the input. When present, automatically links via `aria-describedby`, sets `aria-invalid="true"`, and applies high-visibility destructive borders. |
-| `visuallyHideLabel` | `boolean` | `false` | When true, visually hides the label using `sr-only` while maintaining programmatic accessibility for screen readers. |
-| `required` | `boolean` | `false` | Marks the input as required, adds a visible required asterisk `*`, and sets `aria-required="true"`. |
-| `disabled` | `boolean` | `false` | Disables user interaction and applies accessible muted styling. |
-| `className` | `string` | `undefined` | Additional CSS class names merged with default styles. |
-| `id` | `string` | `useId()` | Explicit HTML id. If omitted, a unique deterministic React id is generated automatically. |
-| `speechInput` | `boolean` | `false` | Opts this field in to voice dictation. The microphone button appears only when the user's profile also enables `speech.speechInput` (e.g. the **Voice Assistance** preset). Never shown for `password`, number/date-like types, or disabled/read-only fields. |
-| `speechOutput` | `boolean` | `false` | Opts this field in to read-aloud of its label, required state, current instructions and error. The speaker button appears only when the user's profile also enables `speech.speechOutput`. |
+| `label` | `string` | Recommended | Visible label associated with the input through `htmlFor` and `id`. It is the accessible name — screen reader comprehension depends on it. |
+| `description` | `string` | No | Explanatory helper text associated with the input through `aria-describedby`. |
+| `simplifiedDescription` | `string` | No | Alternative plain-language instruction shown automatically when the active profile has `cognitive.simplifiedLanguage` enabled. |
+| `error` | `string` | No | Error message displayed below the input. When present, automatically links via `aria-describedby`, sets `aria-invalid="true"`, and applies high-visibility destructive borders. |
+| `visuallyHideLabel` | `boolean` | No | When true, visually hides the label using `sr-only` while maintaining programmatic accessibility for screen readers. |
+| `required` | `boolean` | No | Marks the input as required, adds a visible required asterisk `*`, and sets `aria-required="true"`. |
+| `disabled` | `boolean` | No | Disables user interaction and applies accessible muted styling. |
+| `className` | `string` | No | Additional CSS class names merged with default styles. |
+| `id` | `string` | No | Explicit HTML id. If omitted, a unique deterministic React id is generated automatically. |
+| `speechInput` | `boolean` | No | Opts this field in to voice dictation. The microphone button appears only when the user's profile also enables `speech.speechInput` (e.g. the **Voice Assistance** preset). Never shown for `password`, number/date-like types, or disabled/read-only fields. |
+| `speechOutput` | `boolean` | No | Opts this field in to read-aloud of its label, required state, current instructions and error. The speaker button appears only when the user's profile also enables `speech.speechOutput`. |
 
 ## Runtime Adaptations
 

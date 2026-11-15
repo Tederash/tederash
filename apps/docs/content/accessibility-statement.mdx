@@ -1,0 +1,50 @@
+---
+title: "Accessibility Statement"
+description: "How this framework and this documentation site target WCAG 2.2 AA, what is tested, and what remains."
+---
+
+# Accessibility Statement
+
+An accessibility framework should publish its own accessibility statement.
+This is ours — for both the framework's output and this documentation site.
+
+## Conformance target
+
+Tederash targets **WCAG 2.2 level AA** as a design and testing goal. We treat
+this as a target to engineer toward, not a badge to claim.
+
+## What we do
+
+- **Semantic HTML first.** Components render native elements (`<button>`,
+  `<input>`, `<nav>`, `<dialog>` semantics) and build on established accessible
+  primitives (Radix UI) rather than reinventing them.
+- **Keyboard operability** for every interactive component, with visible focus
+  states that strengthen under low-vision profiles.
+- **Programmatic association** of labels, descriptions and errors
+  (`htmlFor`, `aria-describedby`, `aria-invalid`, `aria-required`).
+- **No color-only communication.** Errors pair iconography, text and borders.
+- **Automated checks.** The component library and docs run axe-core audits in
+  CI, and the floating control panel on this site runs live audits.
+- **Reduced motion respected** globally, both via OS preference and via the
+  accessibility profile.
+- **Honest speech.** Read-aloud refuses to speak languages for which no voice
+  is installed and says so — see [Speech](/docs/speech).
+
+## Known limitations
+
+- **Amharic speech availability** depends on installed OS voices, which most
+  desktop browsers lack; see [Localization](/docs/localization#honest-limits).
+- **Automated audits are necessary, not sufficient.** Passing axe-core does
+  not prove full WCAG conformance. Manual keyboard and screen-reader testing
+  remain essential, and we do not claim otherwise.
+- The **browser extension** performs automated interaction only with explicit
+  confirmation for consequential actions; it is not itself an assistive
+  technology and does not replace screen readers.
+
+## Feedback
+
+Found a barrier? Open an issue at
+[github.com/Tederash/tederash/issues](https://github.com/Tederash/tederash/issues)
+— or use the **Questions? Give feedback** link at the bottom of any page,
+which pre-fills an issue for you. Reports about this site are as welcome as
+reports about the framework.

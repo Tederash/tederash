@@ -1,0 +1,99 @@
+---
+title: "Extension Bridge"
+description: "The deterministic bridge protocol between the Tederash browser extension and Tederash-powered applications."
+---
+
+import { Callout } from "nextra/components";
+
+# Extension Bridge
+
+The Tederash browser extension is an accessibility assistant that lives in a
+sidepanel. Instead of guessing at arbitrary web pages with blind CSS scraping,
+the extension interacts with applications built on Tederash through a
+**deterministic bridge**: semantic data attributes, a root handshake stamp, and
+a window `CustomEvent` protocol.
+
+<Callout type="info">
+  The bridge is exported from `@tederash/react` — applications expose it
+  automatically by rendering `TederashProvider`; extension-side tooling imports
+  the same types.
+</Callout>
+
+## 1. Root handshake stamp
+
+When `TederashProvider` mounts, it stamps runtime attributes on
+`document.documentElement`:
+
+```html stamp
+<html data-tederash-root="true" data-tederash-version="0.2.0"></html>
+```
+
+A content script detects `data-tederash-root` in well under a millisecond —
+no DOM walking. If the stamp is absent (internal browser pages, non-Tederash
+sites), the extension shows guidance instead of running the agent loop.
+
+## 2. Event protocol
+
+The provider listens for requests and answers with responses on `window`:
+
+| Event | Direction | Payload |
+| :--- | :--- | :--- |
+| `tederash:request` | extension → app | `{ id, type, payload? }` |
+| `tederash:response` | app → extension | `{ id, data, ok }` |
+| `tederash:state-change` | app → extension | `{ profile, ... }` broadcast on every runtime change |
+
+Supported request types (`TederashBridgeRequestType`):
+
+| Type | Effect |
+| :--- | :--- |
+| `tederash:get_state` | Active profile, resolved adaptations, locale |
+| `tederash:set_profile` | Switch the active profile by id |
+| `tederash:update_pref` | Merge a partial preference patch |
+| `tederash:reset_profile` | Reset to the default profile |
+| `tederash:announce` | Route a live-region announcement |
+| `tederash:interact` | Perform a semantic component action |
+
+```ts bridge-types
+import type {
+  TederashBridgeRequestDetail,
+  TederashBridgeResponseDetail,
+  TederashStateChangeDetail,
+} from "@tederash/react";
+```
+
+## 3. Semantic component attributes
+
+Every adaptive component marks its outermost interactive element, giving the
+extension a stable, intent-revealing tree:
+
+| Component | Attributes |
+| :--- | :--- |
+| `TederashButton` | `data-tederash-component="button"`, `data-tederash-id`, `data-tederash-intent` |
+| `TederashInput` / `Textarea` | `data-tederash-component="input"`, `data-tederash-field`, `data-tederash-invalid` |
+| `TederashSelect` | `data-tederash-component="select"`, `data-tederash-value` |
+| `TederashCheckbox` | `data-tederash-component="checkbox"`, `data-tederash-checked` |
+| `TederashDialog` | `data-tederash-component="dialog"`, `data-tederash-state` (`open` \| `closed`) |
+
+## 4. Interaction helpers
+
+```ts interactions
+import {
+  registerTederashInteraction,
+  runTederashInteraction,
+  matchTederashOption,
+} from "@tederash/react";
+```
+
+- `registerTederashInteraction` / `runTederashInteraction` execute the
+  `fill`, `choose` and `setChecked` actions through the components' real React
+  event paths — synthetic DOM mutation is not involved, so controlled and
+  uncontrolled state stay consistent.
+- `matchTederashOption` matches a spoken or typed option to a listbox entry,
+  returning a confirmation requirement when the match is ambiguous.
+
+<Callout type="warning">
+  Interaction actions are **consequential**: the extension's policy engine
+  requires user confirmation before any action that changes data or submits
+  forms, and fills are always announced through the live region. Nothing is
+  filled silently.
+</Callout>

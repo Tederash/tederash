@@ -4,6 +4,10 @@
  * Modern shadcn tokens for clean typography, crisp borders, and subtle elevation.
  */
 
+/* Ethiopic webfont so Amharic examples render consistently on every OS
+   (the system font stack already prefers it for Ethiopic code points). */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600&display=swap");
+
 @import "tailwindcss";
 @import "nextra-theme-docs/style.css";
 
@@ -161,6 +165,62 @@ html[data-a11y-reduce-motion="true"] *::after {
 html[data-a11y-locale="am"] body {
   font-family: var(--a11y-font-family, inherit);
   line-height: var(--a11y-line-height, inherit);
+}
+
+/* ------------------------------------------------------------------ */
+/* Code blocks (Nextra)                                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Nextra ships the copy / word-wrap buttons hover-only (opacity-0 until
+ * group-hover). Make them always visible so the affordance is discoverable
+ * for keyboard, touch and low-vision users alike. The x: classes are
+ * Nextra's internal prefix — the colon needs escaping in selectors.
+ */
+pre > div.x\:opacity-0 {
+  opacity: 1 !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Table of contents: thin scroll-progress track                       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * TocProgress injects a 2px track on the left edge of the "On this page"
+ * panel and fills it with the brand teal proportionally to article scroll
+ * progress. The track is absolutely positioned inside the panel's existing
+ * sticky element (position: sticky already establishes a containing block),
+ * so the panel keeps scrolling normally and the track never scrolls away.
+ */
+
+.tederash-toc-track {
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--border) 80%, transparent);
+  overflow: hidden;
+}
+
+.tederash-toc-track-fill {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 0%;
+  border-radius: inherit;
+  background: #0f766e;
+  transition: height 100ms ease-out;
+}
+
+.dark .tederash-toc-track-fill {
+  background: #2dd4bf;
+}
+
+@media print {
+  .tederash-toc-track {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------ */
