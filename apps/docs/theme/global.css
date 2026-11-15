@@ -64,6 +64,35 @@
   --ring: oklch(0.439 0 0);
 }
 
+html[data-theme="high-contrast"],
+html[data-a11y-high-contrast="true"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #000000;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #ffffff;
+  --muted: #141414;
+  --muted-foreground: #facc15;
+  --accent: #facc15;
+  --accent-foreground: #000000;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #000000;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #facc15;
+}
+
+html[data-theme="high-contrast"] a:not([role="button"]):not([data-slot="skip-to-content"]),
+html[data-a11y-high-contrast="true"] a:not([role="button"]):not([data-slot="skip-to-content"]) {
+  color: #ffff00;
+  text-decoration: underline;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
