@@ -77,7 +77,7 @@ export function TederashProvider({
 
     // Stamp root handshake markers for the Tederash Extension & tools
     root.setAttribute("data-tederash-root", "true");
-    root.setAttribute("data-tederash-version", "0.1.0");
+    root.setAttribute("data-tederash-version", "0.2.0");
     root.setAttribute("data-a11y-profile", state.profile.id);
     root.setAttribute("data-a11y-locale", state.profile.speech?.language || "en");
 

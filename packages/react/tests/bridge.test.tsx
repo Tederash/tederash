@@ -34,7 +34,7 @@ describe("Tederash In-Page Bridge & Root Handshake", () => {
 
     const root = document.documentElement;
     expect(root.getAttribute("data-tederash-root")).toBe("true");
-    expect(root.getAttribute("data-tederash-version")).toBe("0.1.0");
+    expect(root.getAttribute("data-tederash-version")).toBe("0.2.0");
     expect(root.getAttribute("data-a11y-profile")).toBe(DEFAULT_PROFILE.id);
     expect(root.getAttribute("data-a11y-locale")).toBe("en");
   });
