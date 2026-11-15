@@ -24,7 +24,7 @@ export function Hero() {
           Let people choose how your app should look and behave.
         </h1>
 
-        <p className="mt-6 text-lg text-foreground leading-relaxed max-w-2xl lg:max-w-3xl">
+        <p className="mt-6 text-lg text-foreground/80 leading-relaxed max-w-2xl lg:max-w-3xl">
           Tederash is a React library for accessibility. A user picks a profile, such as larger text,
           bigger buttons or plain-language help, and every component follows it. You write normal React.
         </p>
