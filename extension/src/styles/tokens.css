@@ -64,3 +64,9 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Aliases used by shadcn-style components (thinking-prompt-input shimmer gradient). */
+:root {
+  --color-foreground: var(--color-fg);
+  --color-muted-foreground: var(--color-fg-muted);
+}

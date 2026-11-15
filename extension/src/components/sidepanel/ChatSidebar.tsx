@@ -8,9 +8,44 @@ import type {
 } from '../../shared/messages';
 import { Button } from '../ui/Button';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
-import { ThoughtProcess } from './ThoughtProcess';
 import { type CaptureResult, useVoice, queryMicrophonePermission } from './useVoice';
 import { useVoiceMode, type VoiceTurnMeta } from './useVoiceMode';
+import { Contrast, Moon, Sun } from '../ui/icons';
+import {
+  ThinkingPromptInput,
+  type ThinkingStatus,
+  type ThinkingStep,
+} from '../ui/thinking-prompt-input';
+
+type Theme = 'light' | 'dark' | 'high-contrast';
+const THEMES: Array<{ id: Theme; label: string; Icon: typeof Sun }> = [
+  { id: 'light', label: 'Light theme', Icon: Sun },
+  { id: 'dark', label: 'Dark theme', Icon: Moon },
+  { id: 'high-contrast', label: 'High contrast theme', Icon: Contrast },
+];
+const THEME_KEY = 'tederash.sidepanel.theme';
+
+function useTheme(): [Theme, (t: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>('light');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY) as Theme | null;
+      if (saved && THEMES.some((t) => t.id === saved)) setTheme(saved);
+      else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+    } catch {
+      // storage unavailable: keep the default
+    }
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+  return [theme, setTheme];
+}
 
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
@@ -69,6 +104,15 @@ export function ChatSidebar() {
   // Screen-reader announcements: the transcript itself is not a live region (it would
   // read every streamed token); status changes are debounced, answers read once.
   const [announcement, setAnnouncement] = useState('');
+  const [theme, setTheme] = useTheme();
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!isRunning) return;
+    const started = Date.now();
+    setElapsed(0);
+    const t = window.setInterval(() => setElapsed((Date.now() - started) / 1000), 1000);
+    return () => window.clearInterval(t);
+  }, [isRunning]);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const announce = (text: string, debounceMs = 0) => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
@@ -217,7 +261,23 @@ export function ChatSidebar() {
         if (!tabs || tabs.length === 0 || !tabs[0]?.id) {
           tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         }
-        const t = tabs[0];
+        let t = tabs[0];
+        // If the sidepanel is opened in its own tab (e.g. during testing or development),
+        // tabs[0] is the sidepanel itself (chrome-extension://...). Look for the active or
+        // first non-extension webpage tab in the window so the assistant connects properly.
+        if (t?.url && (t.url.startsWith('chrome-extension://') || t.url.startsWith('chrome://'))) {
+          const allTabs = await chrome.tabs.query({ currentWindow: true });
+          const candidate = allTabs.find(
+            (tab) =>
+              tab.id !== t?.id &&
+              tab.url &&
+              !tab.url.startsWith('chrome-extension://') &&
+              !tab.url.startsWith('chrome://')
+          );
+          if (candidate) {
+            t = candidate;
+          }
+        }
         if (t?.id !== undefined) {
           currentTabId = currentTabId ?? t.id;
           currentTitle = t.title || '';
@@ -812,31 +872,22 @@ export function ChatSidebar() {
   return (
     <div className="flex flex-col h-screen max-h-screen bg-bg text-fg font-sans antialiased select-none">
       {/* Header */}
-      <header className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between gap-3 shrink-0">
+      <header className="px-4 pt-3 pb-2 flex items-center justify-between gap-3 shrink-0">
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-sm tracking-tight text-fg">Tederash</h1>
-            {tederashState.isTederash ? (
-              <>
-                <span className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
-                  v{tederashState.version || '0.1.0'}
-                </span>
-                {tederashState.profile && (
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-fg-muted border border-border">
-                    {tederashState.profile}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-surface-elevated text-fg-muted border border-border font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-fg-muted inline-block" />
+            <h1 className="font-medium text-[15px] tracking-tight text-fg">Tederash</h1>
+            {!tederashState.isTederash && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-border text-fg-muted font-medium">
+                <span
+                  aria-hidden="true"
+                  className="w-1.5 h-1.5 rounded-full inline-block bg-fg-muted"
+                />
                 Inactive
               </span>
             )}
           </div>
           {activeTabInfo.title && (
-            <span className="text-xs text-fg-muted truncate mt-0.5" title={activeTabInfo.url}>
+            <span className="text-[11px] text-fg-muted truncate mt-0.5" title={activeTabInfo.url}>
               {activeTabInfo.title}
             </span>
           )}
@@ -847,16 +898,16 @@ export function ChatSidebar() {
           <div
             role="group"
             aria-label="Interaction mode"
-            className="flex items-center rounded-md border border-border overflow-hidden shrink-0"
+            className="flex items-center rounded-full border border-border bg-surface p-0.5 shrink-0"
           >
             <button
               type="button"
               aria-pressed={!voiceMode.enabled}
               onClick={() => void setVoiceModeEnabled(false)}
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
                 voiceMode.enabled
-                  ? 'text-fg-muted hover:bg-surface-elevated'
-                  : 'bg-accent/15 text-accent font-semibold'
+                  ? 'text-fg-muted hover:text-fg'
+                  : 'bg-accent text-accent-fg font-semibold'
               }`}
             >
               Text
@@ -865,21 +916,40 @@ export function ChatSidebar() {
               type="button"
               aria-pressed={voiceMode.enabled}
               onClick={() => void setVoiceModeEnabled(true)}
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
                 voiceMode.enabled
-                  ? 'bg-accent/15 text-accent font-semibold'
-                  : 'text-fg-muted hover:bg-surface-elevated'
+                  ? 'bg-accent text-accent-fg font-semibold'
+                  : 'text-fg-muted hover:text-fg'
               }`}
             >
               Voice
             </button>
           </div>
+
+          <div role="group" aria-label="Theme" className="flex items-center rounded-full border border-border bg-surface p-0.5">
+            {THEMES.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-label={label}
+                aria-pressed={theme === id}
+                title={label}
+                onClick={() => setTheme(id)}
+                className={`inline-flex size-7 items-center justify-center rounded-full outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-focus ${
+                  theme === id ? 'bg-accent text-accent-fg' : 'text-fg-muted hover:text-fg'
+                }`}
+              >
+                <Icon className="size-3.5" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}
             aria-label="Settings"
+            aria-expanded={showSettings}
             title="Configure AI model & API key"
-            className="px-2.5 py-1 text-xs font-medium text-fg-muted hover:text-fg rounded-md border border-border hover:bg-surface-elevated transition-colors"
+            className="h-8 px-3 text-xs font-medium text-fg-muted hover:text-fg rounded-full border border-border bg-surface transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             Settings
           </button>
@@ -889,7 +959,7 @@ export function ChatSidebar() {
               onClick={handleClearHistory}
               aria-label="Clear chat conversation"
               title="Clear chat history"
-              className="px-2.5 py-1 text-xs font-medium text-fg-muted hover:text-danger rounded-md border border-border hover:bg-surface-elevated transition-colors"
+              className="h-8 px-3 text-xs font-medium text-fg-muted hover:text-danger rounded-full border border-border bg-surface transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Clear
             </button>
@@ -1082,288 +1152,235 @@ export function ChatSidebar() {
         </div>
       ) : (
         <>
-          {/* Message Stream */}
-          <div
-            ref={scrollContainerRef}
-            role="log"
-            aria-live="off"
-            aria-label="Conversation history"
-            className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 select-text"
-          >
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center my-auto text-center gap-3 p-4">
-                <div className="w-10 h-10 rounded-full border border-border bg-surface-elevated flex items-center justify-center text-sm font-mono font-medium text-fg">
-                  AI
-                </div>
-                <h2 className="font-semibold text-sm text-fg tracking-tight">
-                  Tederash Assistant Active
-                </h2>
-                <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed">
-                  Ask questions, adapt visual contrast, inspect accessible form fields, or navigate.
-                </p>
-                <div className="flex flex-col gap-1.5 w-full max-w-[280px] mt-2">
-                  {suggestions.map((sug) => (
-                    <button
-                      key={sug}
-                      type="button"
-                      onClick={() => handleSend(sug)}
-                      className="text-xs px-3 py-2 rounded-md border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors text-left flex items-center justify-between"
-                    >
-                      <span>{sug}</span>
-                      <span className="text-fg-muted text-[10px]">↵</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              messages.map((m, idx) => {
-                const isLast = idx === messages.length - 1;
-                const isCurrentInvestigating = isLast && isRunning && m.role === 'assistant';
+          {(() => {
+            let turnStart = -1;
+            for (let i = messages.length - 1; i >= 0; i--) {
+              if (messages[i]!.role === 'user') {
+                turnStart = i;
+                break;
+              }
+            }
+            const earlier = turnStart > 0 ? messages.slice(0, turnStart) : [];
+            const turnUser = turnStart >= 0 ? messages[turnStart] : undefined;
+            const turnAsst =
+              turnStart >= 0 ? [...messages.slice(turnStart + 1)].reverse().find((m) => m.role === 'assistant') : undefined;
+            const steps: ThinkingStep[] = [
+              ...(turnAsst?.toolCalls ?? []).map((tc) => ({
+                id: tc.id,
+                text: tc.summary || tc.rationale || tc.tool,
+                status: (tc.status === 'PENDING' ? 'active' : 'complete') as ThinkingStep['status'],
+              })),
+              ...(turnStart >= 0
+                ? messages
+                    .slice(turnStart + 1)
+                    .filter((m) => m.role === 'step')
+                    .map((m) => ({ id: m.id, text: m.content, status: 'complete' as const }))
+                : []),
+            ];
+            const status: ThinkingStatus = !turnUser
+              ? 'idle'
+              : isRunning
+                ? turnAsst?.content
+                  ? 'answering'
+                  : 'thinking'
+                : 'done';
 
-                if (m.role === 'user') {
-                  return (
-                    <div
-                      key={m.id}
-                      className="flex flex-col max-w-[88%] self-end items-end"
-                    >
-                      <div className="px-3.5 py-2.5 rounded-lg bg-accent text-accent-fg text-sm leading-relaxed shadow-xs">
-                        {m.content}
-                      </div>
-                      <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
-                        {new Date(m.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                  );
-                }
-
-                if (m.role === 'step') {
-                  return (
-                    <div
-                      key={m.id}
-                      className={`text-xs px-2.5 py-1.5 rounded-md border my-0.5 font-mono flex items-center gap-2 max-w-full ${
-                        m.status === 'error'
-                          ? 'border-danger/30 bg-danger/10 text-danger'
-                          : 'border-border bg-surface-elevated text-fg-muted'
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase font-bold text-fg-muted">Action</span>
-                      <span className="truncate">{m.content}</span>
-                    </div>
-                  );
-                }
-
-                return (
+            return (
+              <div className="flex-1 min-h-0 flex flex-col items-center px-4 pb-4 select-text">
+                {earlier.length > 0 && (
                   <div
-                    key={m.id}
-                    className="flex flex-col w-full max-w-full self-start items-start text-sm py-1"
+                    ref={scrollContainerRef}
+                    role="log"
+                    aria-live="off"
+                    aria-label="Earlier messages"
+                    className="w-full max-w-[480px] max-h-[35%] overflow-y-auto mb-3 flex flex-col gap-3 border-b border-border pb-3"
                   >
-                    <ThoughtProcess
-                      isInvestigating={isCurrentInvestigating}
-                      activeVerb={m.activeVerb || (isCurrentInvestigating ? 'Thinking...' : undefined)}
-                      toolCalls={m.toolCalls || []}
-                    />
-
-                    {m.content ? (
-                      <div
-                        className={`w-full px-3.5 py-2.5 rounded-lg text-sm leading-relaxed border shadow-xs max-w-full overflow-hidden ${
-                          m.status === 'error'
-                            ? 'border-danger/40 bg-danger/10 text-danger'
-                            : 'border-border bg-surface text-fg'
-                        }`}
-                      >
-                        <MarkdownRenderer content={m.content} />
-                      </div>
-                    ) : isCurrentInvestigating ? null : (
-                      <div className="text-xs font-mono text-fg-muted italic py-1">
-                        No response generated.
-                      </div>
-                    )}
-
-                    <span className="text-[10px] text-fg-muted px-1 mt-1 font-mono">
-                      {new Date(m.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
+                    {earlier
+                      .filter((m) => m.role !== 'step')
+                      .map((m) =>
+                        m.role === 'user' ? (
+                          <div
+                            key={m.id}
+                            className="ml-auto w-fit max-w-[94%] rounded-2xl rounded-br-sm bg-surface-elevated px-3.5 py-2 text-[13px] leading-5 text-fg"
+                          >
+                            {m.content}
+                          </div>
+                        ) : (
+                          <div
+                            key={m.id}
+                            className={`text-sm leading-6 ${m.status === 'error' ? 'text-danger' : 'text-fg'}`}
+                          >
+                            {m.content ? <MarkdownRenderer content={m.content} /> : null}
+                          </div>
+                        )
+                      )}
                   </div>
-                );
-              })
-            )}
-
-            {isRunning && (
-              <div className="self-start flex items-center gap-2 text-xs font-mono text-fg-muted px-3 py-2 rounded-md bg-surface-elevated border border-border">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
-                <span>Reasoning & executing…</span>
-              </div>
-            )}
-          </div>
-
-          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-            {announcement}
-          </div>
-
-          {pendingConfirm && (
-            <div
-              ref={confirmRef}
-              tabIndex={-1}
-              role="alertdialog"
-              aria-modal="false"
-              aria-labelledby="agent-confirm-title"
-              aria-describedby="agent-confirm-detail"
-              className={`mx-3 mb-2 p-3 rounded-md border text-sm flex flex-col gap-2 focus:outline-none focus:ring-2 focus:ring-accent ${
-                pendingConfirm.risk === 'destructive'
-                  ? 'border-red-600 bg-red-50 text-red-950'
-                  : 'border-amber-600 bg-amber-50 text-amber-950'
-              }`}
-            >
-              <p id="agent-confirm-title" className="font-semibold">
-                {pendingConfirm.risk === 'destructive' ? 'Careful: ' : 'Please confirm: '}
-                {pendingConfirm.title}
-              </p>
-              <p id="agent-confirm-detail" className="text-xs">
-                {pendingConfirm.detail}
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button size="compact" variant="ghost" onClick={() => answerConfirm(false)}>
-                  Cancel
-                </Button>
-                <Button size="compact" variant="primary" onClick={() => answerConfirm(true)}>
-                  Yes, do it
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* The assistant asked a question out loud and is waiting for the answer. */}
-          {pendingListen && (
-            <div
-              ref={listenRef}
-              tabIndex={-1}
-              role="group"
-              aria-label="Answering by voice"
-              className="mx-3 mb-2 p-3 rounded-md border border-accent/60 bg-accent/10 text-sm flex flex-col gap-2"
-            >
-              <p className="font-medium text-fg">{pendingListen.prompt}</p>
-              <p className="text-xs text-fg-muted">
-                {voiceMode.enabled
-                  ? 'Just say your answer out loud.'
-                  : voice.needsPermission
-                    ? 'Allow the microphone on the tab that just opened, then come back here.'
-                    : voice.isCapturing
-                      ? interim || 'Listening… speak your answer, then press Done.'
-                      : 'Starting the microphone…'}
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button size="compact" variant="ghost" onClick={cancelListen}>
-                  Cancel
-                </Button>
-                {!voiceMode.enabled && (
-                  <Button size="compact" variant="primary" onClick={() => voice.stop()}>
-                    Done
-                  </Button>
                 )}
-              </div>
-            </div>
-          )}
 
-          {/* Input Tray */}
-          <footer className="p-3 border-t border-border bg-surface shrink-0 flex flex-col gap-2">
-            {voiceMode.enabled && (
-              <p
-                role="status"
-                className="text-[11px] font-medium text-accent flex items-center gap-1.5"
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full inline-block ${
-                    voiceMode.status === 'busy' ? 'bg-amber-500' : 'bg-success'
-                  }`}
-                  aria-hidden="true"
-                />
-                {interim || VOICE_STATUS_LABEL[voiceMode.status] || 'Voice mode'}
-              </p>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleSend(undefined, { isVoiceTurn: draftIsSpoken });
-              }}
-              className="flex flex-col gap-2"
-            >
-              <div className="relative">
-                <textarea
-                  ref={inputRef}
-                  rows={2}
+                {status === 'idle' && (
+                  <div className="w-full max-w-[480px] my-auto flex flex-col gap-4">
+                    <div>
+                      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-fg-muted">
+                        Your accessibility assistant
+                      </p>
+                      <h2 className="text-[22px] font-medium leading-tight tracking-tight text-fg">
+                        What should this page do for you?
+                      </h2>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestions.map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => handleSend(sug)}
+                          className="text-xs px-3 py-1.5 rounded-full border border-border bg-surface hover:bg-surface-elevated text-fg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <ThinkingPromptInput
+                  className={status === 'idle' ? '!h-auto' : 'flex-1'}
+                  status={status}
+                  prompt={turnUser?.content ?? ''}
+                  steps={steps}
+                  answer={turnAsst?.content ?? ''}
+                  renderAnswer={(text) => (
+                    <div className={turnAsst?.status === 'error' ? 'text-danger' : undefined}>
+                      <MarkdownRenderer content={text} />
+                    </div>
+                  )}
+                  elapsedSeconds={elapsed}
                   value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
+                  onValueChange={(val) => {
+                    setInput(val);
                     setDraftIsSpoken(false);
                   }}
-                  onKeyDown={handleKeyDown}
-                  disabled={isRunning}
-                  placeholder="Ask Tederash or type an action... (Press Enter to send)"
-                  aria-label="Message prompt for assistant"
-                  className="w-full px-3 py-2 rounded-md border border-border bg-surface text-fg placeholder:text-fg-muted text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-                />
-                {voice.needsPermission ? (
-                  <p className="mt-1 text-[11px] text-fg-muted" role="status">
-                    Allow the microphone on the tab that just opened, then come back here.
-                  </p>
-                ) : (
-                  !pendingListen &&
-                  voice.isCapturing && (
-                    <p className="mt-1 text-[11px] text-fg-muted italic" aria-hidden="true">
-                      {interim || 'Listening…'}
-                    </p>
-                  )
-                )}
-              </div>
+                  hideThinkToggle
+                  placeholder="Ask Tederash or describe an action"
+                  followUpPlaceholder="Ask a follow-up"
+                  onSubmit={(text) => {
+                    void handleSend(text, { isVoiceTurn: draftIsSpoken });
+                    setDraftIsSpoken(false);
+                  }}
+                  onStop={() => void handleStop()}
+                  beforeComposer={
+                    <>
+                      {pendingConfirm && (
+                        <div
+                          ref={confirmRef}
+                          tabIndex={-1}
+                          role="alertdialog"
+                          aria-modal="false"
+                          aria-labelledby="agent-confirm-title"
+                          aria-describedby="agent-confirm-detail"
+                          className={`mb-3 p-3 rounded-2xl border-2 text-sm flex flex-col gap-2 bg-surface text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
+                            pendingConfirm.risk === 'destructive' ? 'border-danger' : 'border-warning'
+                          }`}
+                        >
+                          <p id="agent-confirm-title" className="font-semibold">
+                            {pendingConfirm.risk === 'destructive' ? 'Careful: ' : 'Please confirm: '}
+                            {pendingConfirm.title}
+                          </p>
+                          <p id="agent-confirm-detail" className="text-xs text-fg-muted">
+                            {pendingConfirm.detail}
+                          </p>
+                          <div className="flex gap-2 justify-end">
+                            <Button size="compact" variant="ghost" onClick={() => answerConfirm(false)}>
+                              Cancel
+                            </Button>
+                            <Button size="compact" variant="primary" onClick={() => answerConfirm(true)}>
+                              Yes, do it
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-fg-muted font-mono">
-                  Enter to send · Shift+Enter for newline
-                </span>
-                <div className="flex items-center gap-2">
-                  {voice.isSupported && !pendingListen && !voiceMode.enabled && (
-                    <Button
-                      type="button"
-                      variant={voice.isCapturing ? 'danger' : 'ghost'}
-                      size="compact"
-                      onClick={() => void handleDictate()}
-                      disabled={isRunning}
-                      aria-pressed={voice.isCapturing}
-                      aria-label={voice.isCapturing ? 'Stop dictating' : 'Dictate a message'}
-                    >
-                      {voice.isCapturing ? 'Stop mic' : 'Speak'}
-                    </Button>
-                  )}
-                  {isRunning ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="compact"
-                      onClick={handleStop}
-                      aria-label="Stop running task"
-                    >
-                      Stop
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="compact"
-                      disabled={!input.trim()}
-                      aria-label="Send message"
-                    >
-                      Send
-                    </Button>
-                  )}
-                </div>
+                      {/* The assistant asked a question out loud and is waiting for the answer. */}
+                      {pendingListen && (
+                        <div
+                          ref={listenRef}
+                          tabIndex={-1}
+                          role="group"
+                          aria-label="Answering by voice"
+                          className="mb-3 p-3 rounded-2xl border-2 border-accent/60 bg-accent/10 text-sm flex flex-col gap-2"
+                        >
+                          <p className="font-medium text-fg">{pendingListen.prompt}</p>
+                          <p className="text-xs text-fg-muted">
+                            {voiceMode.enabled
+                              ? 'Just say your answer out loud.'
+                              : voice.needsPermission
+                                ? 'Allow the microphone on the tab that just opened, then come back here.'
+                                : voice.isCapturing
+                                  ? interim || 'Listening… speak your answer, then press Done.'
+                                  : 'Starting the microphone…'}
+                          </p>
+                          <div className="flex gap-2 justify-end">
+                            <Button size="compact" variant="ghost" onClick={cancelListen}>
+                              Cancel
+                            </Button>
+                            {!voiceMode.enabled && (
+                              <Button size="compact" variant="primary" onClick={() => voice.stop()}>
+                                Done
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Voice mode status badge or dictation preview */}
+                      {voiceMode.enabled && (
+                        <div
+                          role="status"
+                          className="mb-2 text-[11px] font-medium text-accent flex items-center gap-1.5 px-1"
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full inline-block ${
+                              voiceMode.status === 'busy' ? 'bg-amber-500' : 'bg-success'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {interim || VOICE_STATUS_LABEL[voiceMode.status] || 'Voice mode'}
+                        </div>
+                      )}
+
+                      {voice.needsPermission ? (
+                        <p className="mb-2 text-[11px] text-fg-muted px-1" role="status">
+                          Allow the microphone on the tab that just opened, then come back here.
+                        </p>
+                      ) : (
+                        !pendingListen &&
+                        voice.isCapturing && (
+                          <p className="mb-2 text-[11px] text-fg-muted italic px-1" aria-hidden="true">
+                            {interim || 'Listening…'}
+                          </p>
+                        )
+                      )}
+                    </>
+                  }
+                  extraActions={
+                    voice.isSupported && !pendingListen && !voiceMode.enabled ? (
+                      <Button
+                        type="button"
+                        variant={voice.isCapturing ? 'danger' : 'ghost'}
+                        size="compact"
+                        onClick={() => void handleDictate()}
+                        disabled={isRunning}
+                        aria-pressed={voice.isCapturing}
+                        aria-label={voice.isCapturing ? 'Stop dictating' : 'Dictate a message'}
+                        className="h-8 rounded-xl px-2.5 text-xs"
+                      >
+                        {voice.isCapturing ? 'Stop mic' : 'Speak'}
+                      </Button>
+                    ) : null
+                  }
+                />
               </div>
-            </form>
-          </footer>
+            );
+          })()}
         </>
       )}
     </div>

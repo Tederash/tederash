@@ -87,8 +87,8 @@ export function PopupView() {
           <h1 className="text-sm font-semibold tracking-tight">Tederash Assistant</h1>
         </div>
         {isTederash ? (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-medium">
-            Active v{tederashVersion || '0.1.0'}
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-elevated text-fg-muted border border-border">
+            v{tederashVersion || '0.1.0'}
           </span>
         ) : (
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-elevated text-fg-muted border border-border">

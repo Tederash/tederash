@@ -29,6 +29,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# AI Agent transcripts & handoffs
+.claude/
+handoff.md
+
 # Hosting
 .vercel
 .clerk/

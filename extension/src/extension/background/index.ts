@@ -135,7 +135,21 @@ async function handleUiMessage(
         if (!tabs || tabs.length === 0 || !tabs[0]?.id) {
           tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         }
-        targetTabId = tabs[0]?.id;
+        let t = tabs[0];
+        if (t?.url && (t.url.startsWith('chrome-extension://') || t.url.startsWith('chrome://'))) {
+          const allTabs = await chrome.tabs.query({ currentWindow: true });
+          const candidate = allTabs.find(
+            (tab) =>
+              tab.id !== t?.id &&
+              tab.url &&
+              !tab.url.startsWith('chrome-extension://') &&
+              !tab.url.startsWith('chrome://')
+          );
+          if (candidate) {
+            t = candidate;
+          }
+        }
+        targetTabId = t?.id;
       }
 
       if (targetTabId === undefined) {
