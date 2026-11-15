@@ -2,6 +2,7 @@
   "name": "tederash-accessibility-framework",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Adaptive Accessibility Framework & React Component SDK",
   "scripts": {
     "build": "pnpm --filter \"./packages/*\" run build && pnpm --filter docs run build",
