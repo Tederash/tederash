@@ -1,4 +1,5 @@
 import * as React from "react";
+import { getDictionary } from "@tederash/core";
 import {
   dictationFormatForInputType,
   rankDictationCandidates,
@@ -114,6 +115,17 @@ function useFieldSpeech(options: FieldSpeechOptions) {
   const canReadAloud =
     Boolean(speechOutput) && adaptations.speechOutputEnabled && synthesis.isSupported;
 
+  // Honest read-aloud: when no installed voice speaks the profile language
+  // (desktop browsers ship no Amharic voice), say so instead of staying silent
+  // or reading Ethiopic text through an English voice.
+  const speechLanguageName = getDictionary(adaptations.language).name;
+  const voiceMissing =
+    canReadAloud &&
+    (synthesis.isVoiceMissing(adaptations.language) ||
+      synthesis.error?.code === "no-voice-for-language" ||
+      synthesis.error?.code === "language-not-supported");
+  const voiceMissingMessage = t("errors.noVoiceForLanguage", { language: speechLanguageName });
+
   const fieldName = label || t("labels.thisField");
 
   const micRef = React.useRef<HTMLButtonElement>(null);
@@ -135,16 +147,20 @@ function useFieldSpeech(options: FieldSpeechOptions) {
 
   // Announce session end / failure (start is announced in startDictation).
   const wasListeningRef = React.useRef(false);
+  const dictationErrorMessage =
+    recognition.errorCode === "language-not-supported"
+      ? t("errors.dictationLanguageUnsupported", { language: speechLanguageName })
+      : t("errors.dictationFailed");
   React.useEffect(() => {
     if (wasListeningRef.current && !recognition.isListening) {
       if (recognition.error) {
-        announce({ message: t("errors.dictationFailed"), priority: "assertive", category: "error" });
+        announce({ message: dictationErrorMessage, priority: "assertive", category: "error" });
       } else if (!transcript.trim()) {
         announce({ message: t("announcements.listeningStopped"), priority: "polite", category: "info" });
       }
     }
     wasListeningRef.current = recognition.isListening;
-  }, [recognition.isListening, recognition.error, transcript, announce, t]);
+  }, [recognition.isListening, recognition.error, transcript, announce, t, dictationErrorMessage]);
 
   // Announce the review once it opens (or when a late final result updates it).
   const bestCandidate = candidates[0] ?? "";
@@ -226,9 +242,21 @@ function useFieldSpeech(options: FieldSpeechOptions) {
       synthesis.cancel();
       return;
     }
+    if (voiceMissing) {
+      // Nothing can be spoken; tell screen-reader users why through the live region.
+      announce({ message: voiceMissingMessage, priority: "polite", category: "warning", spoken: false });
+      return;
+    }
     synthesis.speak(readoutText, {
       lang: adaptations.language,
       rate: profile.speech?.speechRate,
+      onError: (message, code) => {
+        if (code === "no-voice-for-language" || code === "language-not-supported") {
+          announce({ message: voiceMissingMessage, priority: "polite", category: "warning", spoken: false });
+        } else if (code !== "canceled" && code !== "interrupted") {
+          announce({ message, priority: "polite", category: "warning", spoken: false });
+        }
+      },
     });
   };
 
@@ -241,7 +269,10 @@ function useFieldSpeech(options: FieldSpeechOptions) {
     isListening: recognition.isListening,
     interimTranscript: recognition.interimTranscript,
     dictationError: recognition.error,
+    dictationErrorMessage,
     isSpeaking: synthesis.isSpeaking,
+    voiceMissing,
+    voiceMissingMessage,
     micRef,
     format,
     tip:
@@ -294,7 +325,7 @@ export function FieldSpeech(props: FieldSpeechOptions) {
   return (
     <>
       <FieldSpeechControls speech={speech} fieldId={props.fieldId} />
-      <FieldSpeechStatus speech={speech} />
+      <FieldSpeechStatus speech={speech} fieldId={props.fieldId} />
       {speech.reviewOpen && (
         // Remount when the candidates change so the draft resets to the new best match
         <DictationReview key={speech.candidates.join("\u0000")} speech={speech} />
@@ -366,6 +397,9 @@ function FieldSpeechControls({ speech, fieldId }: { speech: FieldSpeechState; fi
           size="icon"
           className={buttonClass}
           aria-pressed={speech.isSpeaking}
+          // aria-disabled (not disabled) keeps the button focusable so the reason is discoverable.
+          aria-disabled={speech.voiceMissing || undefined}
+          aria-describedby={speech.voiceMissing ? `${fieldId}-voice-missing` : undefined}
           aria-label={
             speech.isSpeaking
               ? t("labels.stopReading")
@@ -386,8 +420,19 @@ function FieldSpeechControls({ speech, fieldId }: { speech: FieldSpeechState; fi
  * screen readers are not flooded; start/stop/failure are announced once
  * through the central live region instead.
  */
-function FieldSpeechStatus({ speech }: { speech: FieldSpeechState }) {
+function FieldSpeechStatus({ speech, fieldId }: { speech: FieldSpeechState; fieldId: string }) {
   const { t } = useLocalization();
+  if (speech.voiceMissing && !speech.isListening) {
+    return (
+      <p
+        id={`${fieldId}-voice-missing`}
+        data-slot="voice-missing-status"
+        className="basis-full text-xs text-muted-foreground"
+      >
+        {speech.voiceMissingMessage}
+      </p>
+    );
+  }
   if (speech.isListening) {
     return (
       <p
@@ -404,7 +449,7 @@ function FieldSpeechStatus({ speech }: { speech: FieldSpeechState }) {
   if (speech.dictationError && speech.canDictate) {
     return (
       <p data-slot="dictation-status" className="basis-full text-xs text-muted-foreground">
-        {t("errors.dictationFailed")}
+        {speech.dictationErrorMessage}
       </p>
     );
   }

@@ -1,9 +1,11 @@
 import * as React from "react";
 import {
   SpeechSynthesisController,
+  SpeechSynthesisErrorCode,
   SpeechSynthesisOptions,
   VoiceInfo,
   createSpeechSynthesisController,
+  findVoiceForLanguage,
   isSpeechSynthesisSupported,
 } from "@tederash/core";
 
@@ -29,6 +31,17 @@ export interface UseSpeechSynthesisResult {
   isSupported: boolean;
   /** Available synthesis voices */
   voices: VoiceInfo[];
+  /** True once the browser has reported its voice list (it can arrive after mount). */
+  voicesLoaded: boolean;
+  /** The voice that would speak `lang`, or undefined when none is installed (or voices are not loaded yet). */
+  voiceForLanguage: (lang?: string) => VoiceInfo | undefined;
+  /**
+   * True when voices are loaded and none speaks `lang`. Use it to tell the
+   * user read-aloud is unavailable for their language rather than failing silently.
+   */
+  isVoiceMissing: (lang?: string) => boolean;
+  /** Message and code of the last failed speak() call, cleared by the next one. */
+  error: { message: string; code: SpeechSynthesisErrorCode } | null;
 }
 
 /**
@@ -47,6 +60,7 @@ export function useSpeechSynthesis(
   const [isSpeaking, setIsSpeaking] = React.useState(false);
   const [isPaused, setIsPaused] = React.useState(false);
   const [voices, setVoices] = React.useState<VoiceInfo[]>([]);
+  const [error, setError] = React.useState<UseSpeechSynthesisResult["error"]>(null);
 
   // Stable controller instance for the lifetime of the component
   const [controller] = React.useState<SpeechSynthesisController>(() =>
@@ -77,6 +91,7 @@ export function useSpeechSynthesis(
 
   const speak = React.useCallback(
     (text: string, speakOptions?: SpeechSynthesisOptions) => {
+      setError(null);
       controller.speak(text, {
         ...speakOptions,
         onEnd: () => {
@@ -84,10 +99,11 @@ export function useSpeechSynthesis(
           setIsPaused(false);
           speakOptions?.onEnd?.();
         },
-        onError: (message) => {
+        onError: (message, code) => {
           setIsSpeaking(false);
           setIsPaused(false);
-          speakOptions?.onError?.(message);
+          setError({ message, code });
+          speakOptions?.onError?.(message, code);
         },
       });
       // Only reflect speaking state when the engine accepted the utterance
@@ -113,6 +129,15 @@ export function useSpeechSynthesis(
     setIsPaused(controller.isPaused());
   }, [controller]);
 
+  const voiceForLanguage = React.useCallback(
+    (lang?: string) => findVoiceForLanguage(voices, lang),
+    [voices]
+  );
+  const isVoiceMissing = React.useCallback(
+    (lang?: string) => voices.length > 0 && Boolean(lang) && !findVoiceForLanguage(voices, lang),
+    [voices]
+  );
+
   return {
     speak,
     cancel,
@@ -122,5 +147,9 @@ export function useSpeechSynthesis(
     isPaused,
     isSupported,
     voices,
+    voicesLoaded: voices.length > 0,
+    voiceForLanguage,
+    isVoiceMissing,
+    error,
   };
 }

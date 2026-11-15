@@ -76,4 +76,25 @@ describe("LiveRegion and profile preferences", () => {
     expect(spoken).toContain("Read aloud mode on.");
     speakSpy.mockRestore();
   });
+
+  it("keeps an Amharic announcement visual when no Amharic voice is installed", () => {
+    const voicesSpy = vi
+      .spyOn(window.speechSynthesis, "getVoices")
+      .mockReturnValue([{ name: "English (US)", lang: "en-US", default: true }] as SpeechSynthesisVoice[]);
+    const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
+    const runtime = createAccessibilityRuntime({ defaultProfile: DEFAULT_PROFILE, persistence: "none" });
+    render(
+      <AccessibilityProvider runtime={runtime}>
+        <LiveRegion />
+      </AccessibilityProvider>
+    );
+    act(() => {
+      runtime.setProfile({ ...READ_ALOUD_PRESET, locale: "am", speech: { ...READ_ALOUD_PRESET.speech, language: "am-ET" } });
+      runtime.announce({ message: "ቅጹ ተልኳል።" });
+    });
+    expect(speakSpy).not.toHaveBeenCalled();
+    expect(screen.getByText("ቅጹ ተልኳል።")).toBeTruthy();
+    voicesSpy.mockRestore();
+    speakSpy.mockRestore();
+  });
 });

@@ -58,6 +58,8 @@ export const AMHARIC_DICTIONARY: LocalizationDictionary = {
     },
     errors: {
       dictationFailed: "የድምፅ ግቤት አሁን አይገኝም። እባክዎ በምትኩ ይተይቡ።",
+      dictationLanguageUnsupported: "ይህ አሳሽ በ{language} የድምፅ ግቤት አይቀበልም። እባክዎ በምትኩ ይተይቡ።",
+      noVoiceForLanguage: "በዚህ መሣሪያ ላይ የ{language} ድምፅ ስላልተጫነ በድምፅ ማንበብ እዚህ አይገኝም።",
       required: "{field} ያስፈልጋል።",
       invalidEmail: "እባክዎ ትክክለኛ የኢሜይል አድራሻ ያስገቡ።",
       incompletePhone: "የስልክ ቁጥርዎ አልተሟላም። እባክዎ ሙሉውን ቁጥር ጨምረው ያስገቡ።",

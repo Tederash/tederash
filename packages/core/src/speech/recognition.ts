@@ -7,6 +7,7 @@
 import {
   SpeechRecognitionController,
   SpeechRecognitionControllerOptions,
+  SpeechRecognitionErrorCode,
   SpeechRecognitionOptions,
   SpeechRecognitionResultInfo,
 } from "./types";
@@ -42,21 +43,26 @@ interface RecognitionInstanceLike {
 
 type RecognitionCtorLike = new () => RecognitionInstanceLike;
 
-function getRecognitionErrorMessage(error?: string): string {
+function describeRecognitionError(
+  error?: string
+): { message: string; code: SpeechRecognitionErrorCode } {
   switch (error) {
     case "not-allowed":
     case "service-not-allowed":
-      return "Microphone access was denied. Voice input is unavailable.";
+      return { message: "Microphone access was denied. Voice input is unavailable.", code: "not-allowed" };
     case "no-speech":
-      return "No speech was detected. Please try again.";
+      return { message: "No speech was detected. Please try again.", code: "no-speech" };
     case "audio-capture":
-      return "No microphone was found. Check your audio input settings.";
+      return { message: "No microphone was found. Check your audio input settings.", code: "audio-capture" };
     case "network":
-      return "A network error interrupted speech recognition.";
+      return { message: "A network error interrupted speech recognition.", code: "network" };
     case "language-not-supported":
-      return "The requested speech recognition language is not supported.";
+      return {
+        message: "The requested speech recognition language is not supported.",
+        code: "language-not-supported",
+      };
     default:
-      return "An unknown speech recognition error occurred.";
+      return { message: "An unknown speech recognition error occurred.", code: "unknown" };
   }
 }
 
@@ -119,7 +125,8 @@ export function createSpeechRecognitionController(
 
       if (!Ctor) {
         options.onError?.(
-          "Speech recognition is not supported in this environment."
+          "Speech recognition is not supported in this environment.",
+          "unsupported"
         );
         return;
       }
@@ -168,7 +175,8 @@ export function createSpeechRecognitionController(
       recognition.onerror = (event) => {
         // Recognition sessions typically terminate after an error
         listening = false;
-        options.onError?.(getRecognitionErrorMessage(event?.error));
+        const { message, code } = describeRecognitionError(event?.error);
+        options.onError?.(message, code);
       };
 
       recognition.onend = () => {

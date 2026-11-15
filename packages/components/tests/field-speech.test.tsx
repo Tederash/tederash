@@ -353,6 +353,18 @@ describe("Field speech: review before insert", () => {
     expect(screen.getByRole("dialog", { name: "Edit profile" })).toBeTruthy();
   });
 
+  it("explains when the browser cannot take voice input in the profile language", () => {
+    const { getAssertiveAnnouncement } = renderWithA11y(<AccessibleInput label="ስም" speechInput />, {
+      defaultProfile: withSpeech({ speechInput: true }, AMHARIC_PRESET),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "ወደ ስም በድምፅ አስገባ" }));
+    act(() => MockSpeechRecognition.lastInstance?.simulateError("language-not-supported"));
+
+    const expected = "ይህ አሳሽ በአማርኛ የድምፅ ግቤት አይቀበልም። እባክዎ በምትኩ ይተይቡ።";
+    expect(getAssertiveAnnouncement()).toContain(expected);
+    expect(document.querySelector('[data-slot="dictation-status"]')?.textContent).toBe(expected);
+  });
+
   it("localizes the review in Amharic", () => {
     renderWithA11y(<AccessibleInput label="ስም" speechInput />, {
       defaultProfile: withSpeech({ speechInput: true }, AMHARIC_PRESET),
@@ -507,6 +519,46 @@ describe("Field speech: spoken announcements", () => {
 });
 
 describe("Field speech: read aloud", () => {
+  it("says when no voice speaks the profile language instead of reading it with the wrong voice", () => {
+    // Desktop browsers ship no Amharic voice: only the English voice is installed.
+    const voicesSpy = vi
+      .spyOn(window.speechSynthesis, "getVoices")
+      .mockReturnValue([{ name: "English (US)", lang: "en-US", default: true }] as SpeechSynthesisVoice[]);
+    const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
+    const { getPoliteAnnouncement } = renderWithA11y(<AccessibleInput label="ስም" speechOutput />, {
+      defaultProfile: withSpeech({ speechOutput: true }, AMHARIC_PRESET),
+    });
+
+    const speaker = screen.getByRole("button", { name: "የስም መመሪያዎችን በድምፅ አንብብ" });
+    const expected = "በዚህ መሣሪያ ላይ የአማርኛ ድምፅ ስላልተጫነ በድምፅ ማንበብ እዚህ አይገኝም።";
+    expect(speaker.getAttribute("aria-disabled")).toBe("true");
+    const status = document.querySelector('[data-slot="voice-missing-status"]');
+    expect(status?.textContent).toBe(expected);
+    expect(speaker.getAttribute("aria-describedby")).toBe(status?.id);
+
+    fireEvent.click(speaker);
+    expect(speakSpy).not.toHaveBeenCalled();
+    expect(getPoliteAnnouncement()).toContain(expected);
+
+    voicesSpy.mockRestore();
+    speakSpy.mockRestore();
+  });
+
+  it("reads Amharic through the Amharic voice when one is installed", () => {
+    const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
+    renderWithA11y(<AccessibleInput label="ስም" speechOutput />, {
+      defaultProfile: withSpeech({ speechOutput: true }, AMHARIC_PRESET),
+    });
+    const speaker = screen.getByRole("button", { name: "የስም መመሪያዎችን በድምፅ አንብብ" });
+    expect(speaker.getAttribute("aria-disabled")).toBeNull();
+    expect(document.querySelector('[data-slot="voice-missing-status"]')).toBeNull();
+    fireEvent.click(speaker);
+    const utterance = speakSpy.mock.calls[0]?.[0] as unknown as { lang: string; voice?: { lang: string } };
+    expect(utterance.lang).toBe("am-ET");
+    expect(utterance.voice?.lang).toBe("am-ET");
+    speakSpy.mockRestore();
+  });
+
   it("reads label, required state, instructions and error with the profile language and rate", async () => {
     const speakSpy = vi.spyOn(window.speechSynthesis, "speak");
     renderWithA11y(

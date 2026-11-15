@@ -7,10 +7,12 @@
 import {
   SpeechSynthesisController,
   SpeechSynthesisControllerOptions,
+  SpeechSynthesisErrorCode,
   SpeechSynthesisOptions,
   VoiceInfo,
 } from "./types";
 import { isSpeechSynthesisSupported } from "./capabilities";
+import { findVoiceForLanguage } from "./voices";
 
 /** Minimal utterance shape to avoid relying on non-standard DOM typings */
 interface UtteranceLike {
@@ -61,20 +63,27 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getSpeechErrorMessage(error?: string): string {
+function describeSpeechError(error?: string): { message: string; code: SpeechSynthesisErrorCode } {
   switch (error) {
     case "canceled":
-      return "Speech was canceled.";
+      return { message: "Speech was canceled.", code: "canceled" };
     case "interrupted":
-      return "Speech was interrupted.";
+      return { message: "Speech was interrupted.", code: "interrupted" };
     case "not-allowed":
-      return "Speech synthesis is not allowed on this page.";
+      return { message: "Speech synthesis is not allowed on this page.", code: "not-allowed" };
     case "language-not-supported":
-      return "The requested speech language is not supported.";
+      return { message: "The requested speech language is not supported.", code: "language-not-supported" };
     default:
-      return "An unknown speech synthesis error occurred.";
+      return { message: "An unknown speech synthesis error occurred.", code: "unknown" };
   }
 }
+
+const toVoiceInfo = (v: { name: string; lang: string; default?: boolean; localService?: boolean }): VoiceInfo => ({
+  name: v.name,
+  lang: v.lang,
+  default: Boolean(v.default),
+  localService: Boolean(v.localService),
+});
 
 export function createSpeechSynthesisController(
   options: SpeechSynthesisControllerOptions = {}
@@ -96,7 +105,26 @@ export function createSpeechSynthesisController(
         speaking = false;
         paused = false;
         merged.onError?.(
-          "Speech synthesis is not supported in this environment."
+          "Speech synthesis is not supported in this environment.",
+          "unsupported"
+        );
+        return;
+      }
+
+      const voices = w.speechSynthesis.getVoices();
+      // Refuse to read text in a language no installed voice speaks: an English
+      // voice "reading" Amharic is noise, and the caller can tell the user instead.
+      // An empty list means the browser has not loaded voices yet, so let it try.
+      const voiceForLang =
+        merged.voiceName === undefined && merged.lang && voices.length > 0
+          ? findVoiceForLanguage(voices, merged.lang)
+          : undefined;
+      if (merged.voiceName === undefined && merged.lang && voices.length > 0 && !voiceForLang) {
+        speaking = false;
+        paused = false;
+        merged.onError?.(
+          `No voice is installed for ${merged.lang}.`,
+          "no-voice-for-language"
         );
         return;
       }
@@ -107,10 +135,10 @@ export function createSpeechSynthesisController(
       if (merged.pitch !== undefined) utterance.pitch = clamp(merged.pitch, 0, 2);
       if (merged.volume !== undefined) utterance.volume = clamp(merged.volume, 0, 1);
       if (merged.voiceName !== undefined) {
-        const voice = w.speechSynthesis
-          .getVoices()
-          .find((v) => v.name === merged.voiceName);
+        const voice = voices.find((v) => v.name === merged.voiceName);
         if (voice) utterance.voice = voice;
+      } else if (voiceForLang) {
+        utterance.voice = voiceForLang;
       }
 
       speaking = true;
@@ -124,7 +152,20 @@ export function createSpeechSynthesisController(
       utterance.onerror = (event) => {
         speaking = false;
         paused = false;
-        merged.onError?.(getSpeechErrorMessage(event?.error));
+        const described = describeSpeechError(event?.error);
+        // No voices at all when we spoke (Linux browsers without speech-dispatcher,
+        // devices with no voice for the language): a failure is a missing voice,
+        // which callers can explain, not an "unknown" error.
+        const noVoices =
+          voices.length === 0 &&
+          w.speechSynthesis.getVoices().length === 0 &&
+          described.code !== "canceled" &&
+          described.code !== "interrupted";
+        if (noVoices) {
+          merged.onError?.(`No voice is installed for ${merged.lang ?? "this language"}.`, "no-voice-for-language");
+        } else {
+          merged.onError?.(described.message, described.code);
+        }
       };
 
       w.speechSynthesis.speak(utterance);
@@ -162,12 +203,14 @@ export function createSpeechSynthesisController(
     getVoices() {
       const w = getSynthWindow();
       if (!w) return [];
-      return w.speechSynthesis.getVoices().map((v) => ({
-        name: v.name,
-        lang: v.lang,
-        default: Boolean(v.default),
-        localService: Boolean(v.localService),
-      }));
+      return w.speechSynthesis.getVoices().map(toVoiceInfo);
+    },
+
+    getVoiceForLanguage(lang) {
+      const w = getSynthWindow();
+      if (!w) return undefined;
+      const voice = findVoiceForLanguage(w.speechSynthesis.getVoices(), lang);
+      return voice ? toVoiceInfo(voice) : undefined;
     },
   };
 

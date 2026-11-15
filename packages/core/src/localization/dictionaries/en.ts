@@ -59,6 +59,10 @@ export const ENGLISH_DICTIONARY: LocalizationDictionary = {
     },
     errors: {
       dictationFailed: "Voice input isn't available right now. Please type your answer instead.",
+      dictationLanguageUnsupported:
+        "This browser can't take voice input in {language}. Please type your answer instead.",
+      noVoiceForLanguage:
+        "No {language} voice is installed on this device, so read-aloud isn't available here.",
       required: "{field} is required.",
       invalidEmail: "Please enter a valid email address.",
       incompletePhone:

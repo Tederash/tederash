@@ -107,6 +107,29 @@ beforeEach(() => {
 describe("useSpeechSynthesis", () => {
   afterEach(uninstallSpeechSupport);
 
+  it("tells callers when no installed voice speaks a language, and records the refusal", () => {
+    installSpeechSupport(); // English voice only
+    const { result } = renderHook(() => useSpeechSynthesis());
+    expect(result.current.voicesLoaded).toBe(true);
+    expect(result.current.voiceForLanguage("en-GB")?.name).toBe("English Voice");
+    expect(result.current.isVoiceMissing("en-GB")).toBe(false);
+    expect(result.current.isVoiceMissing("am-ET")).toBe(true);
+    expect(result.current.isVoiceMissing(undefined)).toBe(false);
+
+    const onError = vi.fn();
+    act(() => result.current.speak("ሰላም", { lang: "am-ET", onError }));
+    expect(result.current.isSpeaking).toBe(false);
+    expect(result.current.error).toEqual({
+      message: "No voice is installed for am-ET.",
+      code: "no-voice-for-language",
+    });
+    expect(onError).toHaveBeenCalledWith("No voice is installed for am-ET.", "no-voice-for-language");
+
+    act(() => result.current.speak("Hello", { lang: "en-US" }));
+    expect(result.current.error).toBeNull();
+    expect(result.current.isSpeaking).toBe(true);
+  });
+
   it("reports isSupported false and no-ops gracefully without the API", () => {
     const { result } = renderHook(() => useSpeechSynthesis());
     expect(result.current.isSupported).toBe(false);

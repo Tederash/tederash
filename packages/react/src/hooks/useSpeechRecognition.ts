@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   SpeechRecognitionController,
+  SpeechRecognitionErrorCode,
   SpeechRecognitionOptions,
   createSpeechRecognitionController,
   isSpeechRecognitionSupported,
@@ -34,6 +35,8 @@ export interface UseSpeechRecognitionResult {
   isSupported: boolean;
   /** Last error message, or null */
   error: string | null;
+  /** Machine-readable reason for the last error, or null */
+  errorCode: SpeechRecognitionErrorCode | null;
   /** Clear the accumulated transcript and error */
   resetTranscript: () => void;
 }
@@ -51,6 +54,7 @@ export function useSpeechRecognition(
   const [interimTranscript, setInterimTranscript] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [errorCode, setErrorCode] = React.useState<SpeechRecognitionErrorCode | null>(null);
   // false during SSR and hydration (matches server markup), real value after.
   const isSupported = React.useSyncExternalStore(
     subscribeNoop,
@@ -74,8 +78,9 @@ export function useSpeechRecognition(
           setInterimTranscript(result.transcript);
         }
       },
-      onError: (message) => {
+      onError: (message, code) => {
         setError(message);
+        setErrorCode(code);
         setIsListening(false);
       },
       onEnd: () => {
@@ -92,6 +97,7 @@ export function useSpeechRecognition(
   const startListening = React.useCallback(
     (startOptions?: SpeechRecognitionOptions) => {
       setError(null);
+      setErrorCode(null);
       controller.start(startOptions);
       setIsListening(controller.isListening());
     },
@@ -114,6 +120,7 @@ export function useSpeechRecognition(
     setAlternatives([]);
     setInterimTranscript("");
     setError(null);
+    setErrorCode(null);
   }, []);
 
   return {
@@ -126,6 +133,7 @@ export function useSpeechRecognition(
     isListening,
     isSupported,
     error,
+    errorCode,
     resetTranscript,
   };
 }

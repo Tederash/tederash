@@ -1,6 +1,6 @@
 import { type LanguageModel, type ModelMessage, type Tool, streamText } from 'ai';
 import type { PageState, ToolName, ToolResult } from '../../../shared/tools';
-import { normalizeToolArgs } from './args';
+import { normalizeToolArgs, unsupportedEthiopicWords } from './args';
 import { TurnGuards } from './guards';
 import { formatPageState, toModelToolOutput } from './page-model';
 import { getAgentTools, getToolDef } from './tools';
@@ -167,6 +167,26 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
     return { ok: false, code: 'INVALID_ARGUMENTS', message: `Invalid arguments for ${tc.toolName}: ${issues}` };
   }
 
+  if (def.contentTool === 'fill' && typeof args.value === 'string') {
+    const sources = [opts.userGoal, opts.system, ...userTexts(opts.history)];
+    const invented = unsupportedEthiopicWords(args.value, sources);
+    if (invented.length) {
+      return {
+        ok: false,
+        code: 'VALUE_NOT_FROM_USER',
+        message: `The value contains ${invented.map((w) => `“${w}”`).join(', ')}, which the user did not write. Copy the value letter for letter from the user's message: “${opts.userGoal}”. Drop only grammatical endings such as -ን.`,
+      };
+    }
+  }
+
+  if (def.contentTool === 'choose' && typeof args.option === 'string' && isCrossLanguageGuess(args.option, opts)) {
+    return {
+      ok: false,
+      code: 'CONFIRM_OPTION',
+      message: `The user wrote in Amharic and did not name “${args.option}”. Ask them in Amharic whether they mean “${args.option}”, listing the other options, and choose only after they agree.`,
+    };
+  }
+
   const verdict = guards.check(tc.toolName, args, def.kind);
   if (verdict.kind !== 'run') {
     return { ok: false, code: verdict.kind === 'duplicate' ? 'DUPLICATE_CALL' : 'PERCEPTION_BUDGET', message: verdict.note };
@@ -184,4 +204,28 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
     }
   }
   return output;
+}
+
+/** Plain text of earlier user turns, used to check that filled values come from the user. */
+function userTexts(history: ModelMessage[]): string[] {
+  return history
+    .filter((m) => m.role === 'user')
+    .map((m) =>
+      typeof m.content === 'string'
+        ? m.content
+        : m.content.map((p) => ('text' in p && typeof p.text === 'string' ? p.text : '')).join(' ')
+    );
+}
+
+/**
+ * A choose whose option is in a different script from an Amharic request, and which
+ * neither the user nor the assistant has said yet, is a translation guess (gpt-oss
+ * mapped "ድቅል" (hybrid) to "Remote"). Choices run without confirmation, so the
+ * model must ask first; once the option appeared in the conversation it may proceed.
+ */
+function isCrossLanguageGuess(option: string, opts: LoopOptions): boolean {
+  if (!/[\u1200-\u137F]/.test(opts.userGoal) || /[\u1200-\u137F]/.test(option)) return false;
+  const said = [opts.userGoal, ...opts.history.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))];
+  const o = option.toLowerCase();
+  return !said.some((t) => t.toLowerCase().includes(o));
 }

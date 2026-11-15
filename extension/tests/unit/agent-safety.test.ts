@@ -46,6 +46,12 @@ describe('policy', () => {
     expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'Delete draft' }).risk).toBe('destructive');
     expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ሰርዝ' }).risk).toBe('destructive');
     expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ላክ' }).requiresConfirmation).toBe(true);
+    // Polite forms and nouns used on Ethiopian sites
+    expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ማመልከቻ ያስገቡ' }).risk).toBe('consequential');
+    expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ክፍያ ፈጽም' }).risk).toBe('consequential');
+    expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'መለያውን ዝጋ' }).risk).toBe('destructive');
+    expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ፎርሙን አጽዳ' }).risk).toBe('destructive');
+    expect(evaluatePolicy({ name: 'click', args: { target: 'x' } }, { text: 'ቀጣይ' }).requiresConfirmation).toBe(false);
   });
 
   it('matches English words on word boundaries', () => {

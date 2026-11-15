@@ -211,7 +211,8 @@ describe("Speech synthesis controller", () => {
 
     expect(controller.isSpeaking()).toBe(false);
     expect(onError).toHaveBeenCalledWith(
-      "Speech synthesis is not allowed on this page."
+      "Speech synthesis is not allowed on this page.",
+      "not-allowed"
     );
     expect(onEnd).not.toHaveBeenCalled();
   });
@@ -255,7 +256,8 @@ describe("Speech synthesis controller", () => {
     controller.speak("Hello", { onError, onEnd });
 
     expect(onError).toHaveBeenCalledWith(
-      "Speech synthesis is not supported in this environment."
+      "Speech synthesis is not supported in this environment.",
+      "unsupported"
     );
     expect(onEnd).not.toHaveBeenCalled();
     expect(controller.isSpeaking()).toBe(false);
@@ -394,7 +396,8 @@ describe("Speech recognition controller", () => {
     instance.onerror?.({ error: "not-allowed" });
 
     expect(onError).toHaveBeenCalledWith(
-      "Microphone access was denied. Voice input is unavailable."
+      "Microphone access was denied. Voice input is unavailable.",
+      "not-allowed"
     );
     expect(controller.isListening()).toBe(false);
   });
@@ -416,7 +419,8 @@ describe("Speech recognition controller", () => {
 
     expect(controller.isListening()).toBe(false);
     expect(onError).toHaveBeenCalledWith(
-      "Speech recognition is not supported in this environment."
+      "Speech recognition is not supported in this environment.",
+      "unsupported"
     );
   });
 });

@@ -157,3 +157,51 @@ describe('runModelLoop', () => {
     expect((toolOutputs(requests[1]!)[0] as any).newPageState).toContain('Step 2');
   });
 });
+
+describe('Amharic value integrity', () => {
+  it('flags Ge\'ez words the user never wrote, accepting object endings and page text', async () => {
+    const { unsupportedEthiopicWords } = await import('../../src/extension/background/agent/args');
+    const said = ['ስሜን ጸጋዬ ሸዋማሬ ብለህ ሙላልኝ'];
+    expect(unsupportedEthiopicWords('ጸጋዬ ሸዋረ', said)).toEqual(['ሸዋረ']);
+    expect(unsupportedEthiopicWords('ጸጋዬ ሸዋማሬ', said)).toEqual([]);
+    expect(unsupportedEthiopicWords('አበበ ቢቂላ', ['አበበ ቢቂላን አስገባ'])).toEqual([]);
+    expect(unsupportedEthiopicWords('abebe@example.com', said)).toEqual([]);
+    expect(unsupportedEthiopicWords('ርቀት', said)).toEqual(['ርቀት']);
+    expect(unsupportedEthiopicWords('ርቀት', [...said, 'options: ርቀት, ቢሮ'])).toEqual([]);
+  });
+
+  it('never sends a respelled Amharic name to the page; the model gets one chance to copy it exactly', async () => {
+    const goal = 'ስሜን ጸጋዬ ሸዋማሬ ብለህ ሙላልኝ';
+    const { execTool, requests } = await run(
+      (_req, step) =>
+        step === 0
+          ? { toolCalls: [call('fill', { target: 'fld:ሙሉ-ስም', value: 'ጸጋዬ ሸዋረ' })] }
+          : step === 1
+            ? { toolCalls: [call('fill', { target: 'fld:ሙሉ-ስም', value: 'ጸጋዬ ሸዋማሬ' })] }
+            : { text: 'ተከናውኗል።' },
+      vi.fn(async () => okResult()),
+      { userGoal: goal }
+    );
+    expect(execTool).toHaveBeenCalledTimes(1);
+    expect(execTool).toHaveBeenCalledWith('fill', { target: 'fld:ሙሉ-ስም', value: 'ጸጋዬ ሸዋማሬ' });
+    expect(toolOutputs(requests[1]!)[0]).toMatchObject({ ok: false, code: 'VALUE_NOT_FROM_USER' });
+  });
+
+  it('asks before choosing an English option the Amharic request never named, then allows it', async () => {
+    const goal = 'የሥራ ቦታውን ድቅል አድርገው';
+    const first = await run(
+      (_req, step) => (step === 0 ? { toolCalls: [call('choose', { target: 'Work Location Preference', option: 'Remote' })] } : { text: '“Hybrid (Addis Ababa)” ማለትዎ ነው?' }),
+      vi.fn(async () => okResult()),
+      { userGoal: goal }
+    );
+    expect(first.execTool).not.toHaveBeenCalled();
+    expect(toolOutputs(first.requests[1]!)[0]).toMatchObject({ ok: false, code: 'CONFIRM_OPTION' });
+
+    const second = await run(
+      (_req, step) => (step === 0 ? { toolCalls: [call('choose', { target: 'Work Location Preference', option: 'Hybrid (Addis Ababa)' })] } : { text: 'ተከናውኗል።' }),
+      vi.fn(async () => okResult()),
+      { userGoal: 'አዎ', history: [{ role: 'user', content: goal }, { role: 'assistant', content: '“Hybrid (Addis Ababa)” ማለትዎ ነው?' }] }
+    );
+    expect(second.execTool).toHaveBeenCalledWith('choose', { target: 'Work Location Preference', option: 'Hybrid (Addis Ababa)' });
+  });
+});

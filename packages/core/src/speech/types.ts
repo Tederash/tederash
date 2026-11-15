@@ -10,6 +10,26 @@ export interface SpeechCapabilities {
   recognition: boolean;
 }
 
+/** Why synthesis did not run or stopped. */
+export type SpeechSynthesisErrorCode =
+  | "unsupported"
+  | "no-voice-for-language"
+  | "canceled"
+  | "interrupted"
+  | "not-allowed"
+  | "language-not-supported"
+  | "unknown";
+
+/** Why recognition did not start or stopped. */
+export type SpeechRecognitionErrorCode =
+  | "unsupported"
+  | "not-allowed"
+  | "no-speech"
+  | "audio-capture"
+  | "network"
+  | "language-not-supported"
+  | "unknown";
+
 export interface SpeechSynthesisOptions {
   /** Speech rate multiplier (0.1 - 10, default 1.0) */
   rate?: number;
@@ -24,7 +44,7 @@ export interface SpeechSynthesisOptions {
   /** Called when the utterance finishes speaking successfully */
   onEnd?: () => void;
   /** Called when synthesis fails or is unavailable */
-  onError?: (message: string) => void;
+  onError?: (message: string, code: SpeechSynthesisErrorCode) => void;
 }
 
 export interface SpeechRecognitionOptions {
@@ -59,7 +79,7 @@ export interface SpeechRecognitionResultInfo {
 }
 
 export type SpeechRecognitionResultHandler = (result: SpeechRecognitionResultInfo) => void;
-export type SpeechErrorHandler = (message: string) => void;
+export type SpeechErrorHandler = (message: string, code: SpeechRecognitionErrorCode) => void;
 
 export interface SpeechSynthesisControllerOptions {
   /** Defaults applied to every speak() call unless explicitly overridden */
@@ -81,6 +101,11 @@ export interface SpeechSynthesisController {
   isPaused(): boolean;
   /** Available synthesis voices */
   getVoices(): VoiceInfo[];
+  /**
+   * The voice that would speak `lang`, or undefined when none is installed.
+   * Also undefined while the browser has not loaded its voice list yet.
+   */
+  getVoiceForLanguage(lang?: string): VoiceInfo | undefined;
 }
 
 export interface SpeechRecognitionControllerOptions {

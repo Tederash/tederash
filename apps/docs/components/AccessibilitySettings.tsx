@@ -5,6 +5,7 @@ import {
   PRESET_PROFILES,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
+  useSpeechSynthesis,
   useTederash,
   type TargetSize,
   type TederashProfile,
@@ -35,6 +36,10 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
   const targetSize = profile.motor?.targetSize ?? "normal";
   const locale = profile.locale ?? "en";
   const speechRate = profile.speech?.speechRate ?? 1;
+  const speechLanguage = profile.speech?.language ?? (locale === "am" ? "am-ET" : "en-US");
+  const synthesis = useSpeechSynthesis();
+  const voiceMissing = Boolean(profile.speech?.speechOutput) && synthesis.isVoiceMissing(speechLanguage);
+  const languageName = locale === "am" ? "Amharic" : "English";
   const id = (name: string) => `${idPrefix}-${name}`;
 
   return (
@@ -232,6 +237,13 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
           checked={Boolean(profile.speech?.speechOutput)}
           onCheckedChange={(v) => updatePreferences({ speech: { speechOutput: v } })}
         />
+        {voiceMissing && (
+          <p role="status" className="pl-6 text-sm text-muted-foreground">
+            No {languageName} voice is installed on this device. Messages still appear on screen and
+            reach screen readers, but nothing will be spoken until a {languageName} voice is added to
+            the system.
+          </p>
+        )}
         {profile.speech?.speechOutput && (
           <div className="flex flex-col gap-1.5 pl-6">
             <div className="flex justify-between text-sm font-medium">

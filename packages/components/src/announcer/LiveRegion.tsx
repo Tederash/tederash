@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Announcement } from "@tederash/core";
+import { Announcement, findVoiceForLanguage } from "@tederash/core";
 import { useAccessibility } from "@tederash/react";
 import { cn } from "../ui/utils";
 import { AlertCircle, CheckCircle, Info } from "lucide-react";
@@ -52,10 +52,18 @@ export const TederashLiveRegion = React.forwardRef<
         "speechSynthesis" in window
       ) {
         try {
+          const lang = profile.speech.language || (profile.locale === "am" ? "am-ET" : "en-US");
+          const voices = window.speechSynthesis.getVoices();
+          const voice = findVoiceForLanguage(voices, lang);
+          // No installed voice speaks this language (common for Amharic on desktop):
+          // keep the message visual and in the live region rather than reading
+          // it through a wrong-language voice. An empty list means voices are
+          // still loading, so let the browser try.
+          if (voices.length > 0 && !voice) throw new Error("no-voice-for-language");
           window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(announcement.message);
-          utterance.lang =
-            profile.speech.language || (profile.locale === "am" ? "am-ET" : "en-US");
+          utterance.lang = lang;
+          if (voice) utterance.voice = voice;
           utterance.rate = profile.speech.speechRate || 1.0;
           window.speechSynthesis.speak(utterance);
         } catch {

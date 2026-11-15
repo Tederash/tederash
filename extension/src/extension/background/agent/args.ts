@@ -18,3 +18,17 @@ export function normalizeToolArgs(args: unknown): Record<string, unknown> {
   }
   return out;
 }
+
+const ETHIOPIC_WORD = /[ሀ-፿]+/g;
+
+/**
+ * Ge'ez-script words in a model-proposed value that appear nowhere in what the user
+ * wrote (or on the page). Models tokenise Amharic into many pieces and can silently
+ * drop or swap syllables in names ("ሸዋማሬ" → "ሸዋረ"); a filled name must be the
+ * user's own spelling. A word counts as supported when it is a substring of a source,
+ * so "ቢቂላ" is supported by "ቢቂላን" (object ending). Latin text is not checked.
+ */
+export function unsupportedEthiopicWords(value: string, sources: string[]): string[] {
+  const words = value.match(ETHIOPIC_WORD) ?? [];
+  return words.filter((w) => !sources.some((s) => s.includes(w)));
+}
