@@ -155,7 +155,8 @@ async function listenForAgent(
 ): Promise<ToolResult> {
   const language = args.language ?? config.speechLanguage;
   // Speak the question first so a user who is not reading the panel hears it.
-  await speakText(args.prompt, undefined, { lang: language });
+  // Wait for the question to finish: opening the mic mid-sentence records the assistant itself.
+  await speakText(args.prompt, undefined, { lang: language ?? undefined, wait: true });
 
   const id = `listen_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   onEvent({

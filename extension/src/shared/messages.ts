@@ -190,7 +190,12 @@ export const TtsReadPageSchema = makeEnvelopeSchema(
 );
 export const TtsSpeakSchema = makeEnvelopeSchema(
   'tts/speak',
-  z.object({ text: z.string().min(1).max(5000) })
+  z.object({
+    text: z.string().min(1).max(5000),
+    lang: z.string().max(16).optional(),
+    /** Resolve only once speech has finished, so the caller can open the mic without hearing it. */
+    wait: z.boolean().optional(),
+  })
 );
 export const TtsStopSchema = makeEnvelopeSchema('tts/stop', z.object({}));
 
@@ -202,6 +207,8 @@ export const OffscreenSpeakSchema = makeEnvelopeSchema(
     rate: z.number().min(0.5).max(2.5).optional(),
     pitch: z.number().min(0.5).max(2.0).optional(),
     lang: z.string().max(16).optional(),
+    /** Reply only after the utterance has finished (so a mic can open safely). */
+    wait: z.boolean().optional(),
   })
 );
 export const OffscreenStopSchema = makeEnvelopeSchema('offscreen/stop', z.object({}));
@@ -238,6 +245,22 @@ export const AgentClearHistorySchema = makeEnvelopeSchema(
 export const AgentStopSchema = makeEnvelopeSchema(
   'agent/stop',
   z.object({ runId: z.string().optional() })
+);
+
+/**
+ * Runs one page tool through the agent executor (policy, confirmation, sensitive-field
+ * refusal all apply). Used by the panel's guided spoken form filling, which is a fixed
+ * script rather than a model loop. `userConfirmed` is set only after the user said
+ * yes to the exact action out loud or with a button; without it, gated actions decline.
+ */
+export const AgentExecSchema = makeEnvelopeSchema(
+  'agent/exec',
+  z.object({
+    tabId: z.number().int().nonnegative(),
+    tool: z.enum(['page_state', 'fill', 'choose', 'set_checked', 'click', 'describe_target']),
+    args: z.record(z.string(), z.unknown()).default({}),
+    userConfirmed: z.boolean().optional(),
+  })
 );
 
 export const AiGetConfigSchema = makeEnvelopeSchema('ai/getConfig', z.object({}));
@@ -293,6 +316,7 @@ export const UiToBgSchema = z.discriminatedUnion('type', [
   AgentGetHistorySchema,
   AgentClearHistorySchema,
   AgentStopSchema,
+  AgentExecSchema,
   AiGetConfigSchema,
   AiSetConfigSchema,
   SpeechTranscribeSchema,

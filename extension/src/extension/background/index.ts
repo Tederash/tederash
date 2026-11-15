@@ -10,7 +10,8 @@ import {
 import { resolveConfirmation } from './agent/confirm';
 import { parseVoiceReplyMessage, resolveVoiceReply } from './agent/voice-reply';
 import { createBatchedListener } from './agent/stream';
-import { ensureSessionsLoaded } from './agent/session';
+import { ensureSessionsLoaded, getOrCreateSession } from './agent/session';
+import { executeContentTool } from './agent/executor';
 import {
   clearSessionHistory,
   getSessionHistory,
@@ -299,7 +300,7 @@ async function handleUiMessage(
     }
 
     case 'tts/speak':
-      return speakText(msg.payload.text);
+      return speakText(msg.payload.text, undefined, { lang: msg.payload.lang, wait: msg.payload.wait });
 
     case 'tts/stop': {
       await stopSpeaking();
@@ -335,6 +336,15 @@ async function handleUiMessage(
     case 'agent/clearHistory': {
       clearSessionHistory(msg.payload.conversationId);
       return { ok: true };
+    }
+
+    case 'agent/exec': {
+      await ensureSessionsLoaded();
+      const { tabId, tool, args, userConfirmed } = msg.payload;
+      const session = getOrCreateSession(tabId);
+      return executeContentTool(tabId, session, tool, args, undefined, undefined, {
+        confirm: async () => userConfirmed === true,
+      });
     }
 
     case 'agent/stop': {
@@ -394,7 +404,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  const isFromTab = Boolean(sender.tab);
+  // A tab sender is a content script, unless the tab is one of our own pages
+  // (dashboard, side panel or microphone page opened as a tab): those are UI.
+  const isExtensionPage =
+    typeof sender.url === 'string' && sender.url.startsWith(chrome.runtime.getURL(''));
+  const isFromTab = Boolean(sender.tab) && !isExtensionPage;
   const promise = isFromTab
     ? handleContentMessage(message, sender)
     : handleUiMessage(message);

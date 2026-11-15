@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useGuidedFill } from './useGuidedFill';
 import { createEnvelope } from '../../shared/envelope';
 import type {
   AgentStreamEvent,
@@ -48,6 +49,11 @@ function useTheme(): [Theme, (t: Theme) => void] {
 }
 
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
+
+
+/** "Help me fill this form" in English, Amharic and Afaan Oromo starts guided filling. */
+const GUIDED_FILL_REQUEST =
+  /^(please\s+)?(help me\s+)?(fill|complete)\s+(in\s+)?(this|the)\s+form(\s+with me)?(\s+by voice)?\.?$|ቅጹን\s+(እንድሞላ\s+)?(አግዘኝ|እርዳኝ|ሙላልኝ|አብረን\s+እንሙላ)|unka\s+(kana\s+)?(akkan\s+guutu\s+)?(na\s+gargaari|guuti)/i;
 
 export function ChatSidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -157,6 +163,38 @@ export function ChatSidebar() {
   });
   const { toggle: toggleVoiceEngine, notifyTurnEnded, notifyListenPending } = voiceMode;
   voiceModeOnRef.current = voiceMode.enabled;
+
+  // Guided form filling, one field at a time, confirmed before anything is written.
+  // Voice tab: spoken questions and spoken answers. Text tab: the same script in chat.
+  const [guidedInterim, setGuidedInterim] = useState('');
+  const guided = useGuidedFill({
+    mode: voiceMode.enabled ? 'voice' : 'text',
+    onSay: (text) =>
+      setMessages((prev) => {
+        // Consecutive lines from the script ("Done." then the next question) share one reply.
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && last.id.startsWith('guided_')) {
+          return [...prev.slice(0, -1), { ...last, content: `${last.content}\n\n${text}` }];
+        }
+        return [...prev, { id: `guided_${Date.now()}_${prev.length}`, role: 'assistant', content: text, timestamp: Date.now() }];
+      }),
+    tabId: activeTabInfo.id,
+    language: aiConfig.speechLanguage,
+    canUpload: aiConfig.hasApiKey !== false || aiConfig.hasSttApiKey === true,
+    onInterim: setGuidedInterim,
+  });
+  const startGuided = () => {
+    const spoken = voiceMode.enabled;
+    if (spoken) {
+      // One listener at a time: voice mode's always-on mic would take the answers
+      // as new requests. Suspend it (the tab stays on Voice) and resume afterwards.
+      voiceMode.suspend(true);
+      voiceMode.notifyTurnEnded();
+    }
+    void guided.start().finally(() => {
+      if (spoken) voiceMode.suspend(false);
+    });
+  };
 
   /** Turns hands-free mode on or off and remembers the choice across sessions. */
   const setVoiceModeEnabled = async (next: boolean) => {
@@ -486,6 +524,26 @@ export function ChatSidebar() {
   const handleSend = async (customText?: string, options: { isVoiceTurn?: boolean } = {}) => {
     const textToSend = customText || input;
     if (!textToSend.trim() || isRunning) return;
+
+    // While guided filling runs in the Text tab, typed messages answer its questions.
+    if (guided.isRunning()) {
+      if (!customText) setInput('');
+      setMessages((prev) => [
+        ...prev,
+        { id: `guided_u_${Date.now()}`, role: 'user', content: textToSend.trim(), timestamp: Date.now() },
+      ]);
+      guided.answer(textToSend.trim());
+      return;
+    }
+    if (GUIDED_FILL_REQUEST.test(textToSend.trim())) {
+      if (!customText) setInput('');
+      setMessages((prev) => [
+        ...prev,
+        { id: `guided_u_${Date.now()}`, role: 'user', content: textToSend.trim(), timestamp: Date.now() },
+      ]);
+      startGuided();
+      return;
+    }
 
     if (!customText) {
       setInput('');
@@ -1269,6 +1327,18 @@ export function ChatSidebar() {
                   onStop={() => void handleStop()}
                   beforeComposer={
                     <>
+                      {guided.running && voiceMode.enabled && guided.ui && (
+                        // Status only, for sighted helpers. The conversation itself is spoken;
+                        // aria-hidden so a screen reader does not talk over the assistant.
+                        <p aria-hidden="true" className="mb-2 text-xs text-fg-muted">
+                          {guided.ui.total ? `Question ${Math.max(1, guided.ui.index)} of ${guided.ui.total} · ` : ''}
+                          {guided.ui.phase === 'listening' || guided.ui.phase === 'confirming'
+                            ? guidedInterim
+                              ? `Hearing “${guidedInterim}”`
+                              : 'Listening'
+                            : 'Speaking'}
+                        </p>
+                      )}
                       {pendingConfirm && (
                         <div
                           ref={confirmRef}

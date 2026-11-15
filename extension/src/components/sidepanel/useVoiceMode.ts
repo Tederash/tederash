@@ -57,6 +57,11 @@ export interface UseVoiceModeResult {
   notifyTurnEnded: () => void;
   /** The panel calls this when a `listen_request` arrives or is resolved. */
   notifyListenPending: (pending: boolean) => void;
+  /**
+   * Hand the microphone to someone else (guided form filling) without turning
+   * voice mode off: while suspended, speech is ignored and local recognition stops.
+   */
+  suspend: (on: boolean) => void;
 }
 
 export function useVoiceMode({
@@ -76,6 +81,7 @@ export function useVoiceMode({
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<ReturnType<typeof createSpeechRecognitionController> | null>(null);
   const metaRef = useRef<VoiceTurnMeta>({ isAnswer: false, isBargeIn: false });
+  const suspendedRef = useRef(false);
 
   // Kept current so callbacks registered once see fresh options.
   const optionsRef = useRef({ language, canUpload, pauseMs, onTranscript, onNotice, onInterim });
@@ -176,6 +182,7 @@ export function useVoiceMode({
         redemptionMs: optionsRef.current.pauseMs ?? DEFAULT_PAUSE_MS,
         preSpeechPadMs: 400,
         onSpeechStart: () => {
+          if (suspendedRef.current) return;
           if (stateRef.current.status === 'busy') {
             // Barge-in: stop whatever is being spoken right away.
             void stopAssistantSpeech();
@@ -185,7 +192,11 @@ export function useVoiceMode({
           dispatchRef.current({ type: 'speechStart' });
         },
         onSpeechEnd: (audio) => {
-          if (busyCaptureRef.current) return;
+          if (suspendedRef.current || busyCaptureRef.current) return;
+          // Move capturing -> transcribing. Without this the transcript that comes
+          // back is discarded (it is only accepted while transcribing) and the panel
+          // sits on "Hearing you…" forever.
+          dispatchRef.current({ type: 'speechEnd' });
           busyCaptureRef.current = true;
           void (async () => {
             const res = await sendForTranscription(audio);
@@ -195,7 +206,9 @@ export function useVoiceMode({
             if (res.ok && res.text) handleTranscript(res.text);
           })();
         },
-        onVADMisfire: () => dispatchRef.current({ type: 'misfire' }),
+        onVADMisfire: () => {
+          if (!suspendedRef.current) dispatchRef.current({ type: 'misfire' });
+        },
       });
       await vad.start();
       vadRef.current = vad;
@@ -213,6 +226,7 @@ export function useVoiceMode({
     try {
       const controller = createSpeechRecognitionController({
         onResult: (result) => {
+          if (suspendedRef.current) return;
           if (!result.isFinal) {
             optionsRef.current.onInterim?.(result.transcript);
             return;
@@ -230,7 +244,7 @@ export function useVoiceMode({
         onEnd: () => {
           // Continuous recognition ends on silence; restart it while we are
           // still listening so the mic never needs a second grant.
-          if (stateRef.current.status === 'listening') {
+          if (stateRef.current.status === 'listening' && !suspendedRef.current) {
             try {
               recognitionRef.current?.start({
                 lang: optionsRef.current.language,
@@ -318,6 +332,23 @@ export function useVoiceMode({
     }
   }, [state.status]);
 
+  const suspend = useCallback((on: boolean) => {
+    suspendedRef.current = on;
+    if (vadRef.current) return; // The VAD keeps running; its handlers ignore speech while suspended.
+    try {
+      if (on) recognitionRef.current?.abort();
+      else if (stateRef.current.status === 'listening') {
+        recognitionRef.current?.start({
+          lang: optionsRef.current.language,
+          continuous: true,
+          interimResults: true,
+        });
+      }
+    } catch {
+      // Already in that state.
+    }
+  }, []);
+
   const notifyTurnEnded = useCallback(() => dispatchRef.current({ type: 'turnEnded' }), []);
   const notifyListenPending = useCallback(
     (pending: boolean) => dispatchRef.current({ type: 'listenPending', pending }),
@@ -331,6 +362,7 @@ export function useVoiceMode({
     toggle,
     notifyTurnEnded,
     notifyListenPending,
+    suspend,
   };
 }
 
@@ -347,7 +379,7 @@ function stopAssistantSpeech(): Promise<void> {
 }
 
 /** Packages 16 kHz mono samples as a 16-bit PCM WAV blob for the worker. */
-function encodeWavBlob(samples: Float32Array): Blob | undefined {
+export function encodeWavBlob(samples: Float32Array): Blob | undefined {
   if (typeof samples !== 'object' || samples.length === 0) return undefined;
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
