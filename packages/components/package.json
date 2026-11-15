@@ -1,6 +1,6 @@
 {
   "name": "@tederash/components",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Accessible, adaptive React UI components that adapt to individual accessibility profiles",
   "license": "MIT",
   "author": "Tsegaye Shewamare <shewamaretsegaye@gmail.com>",

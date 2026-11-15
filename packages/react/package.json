@@ -1,6 +1,6 @@
 {
   "name": "@tederash/react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React integration, context and hooks for the Tederash Adaptive Accessibility Framework",
   "license": "MIT",
   "author": "Tsegaye Shewamare <shewamaretsegaye@gmail.com>",

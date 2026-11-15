@@ -1,6 +1,6 @@
 {
   "name": "@tederash/assistance",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Contextual form assistance engine with deterministic offline heuristics and pluggable AI providers",
   "license": "MIT",
   "author": "Tsegaye Shewamare <shewamaretsegaye@gmail.com>",
