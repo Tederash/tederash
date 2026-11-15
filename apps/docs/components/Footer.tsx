@@ -37,7 +37,6 @@ export function Footer() {
                 className="w-6 h-6 rounded-md object-contain shrink-0"
               />
               <span className="tederash-brand">Tederash</span>
-              <span className="tederash-brand-sub">Adaptive Framework</span>
             </Link>
 
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
@@ -165,7 +164,7 @@ export function Footer() {
         {/* Bottom Tier: Copyright, badges, and tech stack */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} Tederash Adaptive Accessibility Framework. Open source under the MIT License.
+            © {new Date().getFullYear()} Tederash. Open source under the MIT License.
           </p>
 
           <div className="flex items-center gap-4 text-[11px]">

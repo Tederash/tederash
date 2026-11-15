@@ -49,7 +49,7 @@ export function NavigationDemo() {
         <TederashNavigation
           links={sampleLinks}
           activeRoute={active}
-          brandName="Tederash UI"
+          brandName="Tederash"
           brandHref="#"
           showSkipLink={false}
           actions={

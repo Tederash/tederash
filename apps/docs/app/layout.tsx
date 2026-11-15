@@ -47,8 +47,7 @@ export default async function RootLayout({
           <Layout
             banner={
               <Banner storageKey="tederash-docs-banner" key="banner">
-                ♿ Tederash Adaptive Accessibility Framework: runtime-adaptive
-                accessibility for React
+                ♿ Tederash: runtime-adaptive accessibility for React
               </Banner>
             }
             navbar={
@@ -63,8 +62,7 @@ export default async function RootLayout({
                       className="w-6 h-6 rounded-md object-contain shrink-0"
                       priority
                     />
-                    <span className="tederash-brand">Tederash</span>
-                    <span className="tederash-brand-sub">Adaptive Accessibility</span>
+                    <span className="tederash-brand font-semibold text-base tracking-tight">Tederash</span>
                   </div>
                 }
                 projectLink="https://github.com/Tederash/tederash"
