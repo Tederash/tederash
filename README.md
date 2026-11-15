@@ -64,9 +64,27 @@ pnpm add @tederash/core @tederash/react @tederash/components
 npm install @tederash/core @tederash/react @tederash/components
 ```
 
-### 2. Configure Tailwind CSS
+### 2. Import the stylesheet
 
-Ensure your `tailwind.config.ts` includes the Tederash component paths and CSS variable mappings:
+`@tederash/components` ships its own precompiled CSS, so the adaptive styling
+(touch target sizing, high-contrast borders, focus rings, font scale, reduced
+motion) works out of the box — no Tailwind setup required in your app:
+
+```ts
+import "@tederash/components/style.css";
+```
+
+Import it once, near your app's root (e.g. alongside your other global CSS
+imports). Without it, the components still *behave* correctly (ARIA,
+announcements, confirmations, keyboard handling), but they render unstyled.
+
+<details>
+<summary>Already using Tailwind yourself?</summary>
+
+The stylesheet is self-contained and safe to import alongside your own
+Tailwind build. If you'd rather have Tailwind generate the component classes
+itself (e.g. to theme them with your own config), add the package to your
+content sources instead of importing the stylesheet:
 
 ```ts
 import type { Config } from "tailwindcss";
@@ -87,6 +105,8 @@ export default {
   },
 } satisfies Config;
 ```
+
+</details>
 
 ### 3. Wrap Your Application
 

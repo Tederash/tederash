@@ -1,6 +1,6 @@
 {
   "name": "@tederash/components",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Accessible, adaptive React UI components that adapt to individual accessibility profiles",
   "license": "MIT",
   "author": "Tsegaye Shewamare <shewamaretsegaye@gmail.com>",
@@ -29,7 +29,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist",
@@ -39,7 +40,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && pnpm run build:css",
+    "build:css": "tailwindcss -i src/style.css -o dist/style.css --minify",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "pnpm run build && pnpm run test"
@@ -62,10 +64,12 @@
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
