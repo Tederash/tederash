@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { Download, Bot } from "lucide-react";
 import { DitheringShader } from "../ui/dithering-shader";
 import { CodeBlock } from "./CodeBlock";
 
@@ -41,6 +42,32 @@ export function Hero() {
           >
             Read the docs
           </Link>
+        </div>
+
+        {/* AI Coding Agent Skill & Prompt Downloads */}
+        <div className="mt-6 flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Bot className="w-4 h-4 text-primary" aria-hidden="true" />
+            AI Coding Agents:
+          </span>
+          <a
+            href="/skills/tederash-skill.md"
+            download="SKILL.md"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card/60 hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            title="Download the Tederash Agent Skill (SKILL.md) for Antigravity, Claude Code, and Codex"
+          >
+            <Download className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+            Download Skill (SKILL.md)
+          </a>
+          <a
+            href="/skills/tederash-prompt.md"
+            download="tederash-prompt.md"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card/60 hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            title="Download the Tederash Agent Prompt markdown file for system instructions"
+          >
+            <Download className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+            Download Prompt (.md)
+          </a>
         </div>
 
         <div className="mt-10 max-w-xl">
