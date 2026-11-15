@@ -34,6 +34,15 @@ export type AgentStreamEvent =
       title: string;
       detail: string;
       risk: 'consequential' | 'destructive';
+    }
+  /** The assistant asked something and is waiting for a spoken answer. */
+  | {
+      type: 'listen_request';
+      id: string;
+      prompt: string;
+      language?: string;
+      /** False when no speech key is set, so the panel transcribes locally instead. */
+      canUploadAudio: boolean;
     };
 
 export interface ChatMessage {
@@ -61,6 +70,20 @@ export interface AiConfig {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  /** Which speech-to-text service to use; inferred from the available keys when unset. */
+  sttProvider?: 'elevenlabs' | 'groq';
+  /** Key for a dedicated speech service (ElevenLabs). Never sent to UI pages. */
+  sttApiKey?: string;
+  /** Speech-to-text model override; each provider has a sensible default. */
+  sttModel?: string;
+  /** BCP-47 tag used for dictation and spoken replies; defaults to the browser language. */
+  speechLanguage?: string;
+  /** Set by the background when reporting config to UI pages. */
+  hasSttApiKey?: boolean;
+  /** Hands-free voice mode is on: the assistant listens and answers aloud. */
+  voiceMode?: boolean;
+  /** Silence in ms that ends a spoken turn. Longer is kinder to slower speech. */
+  speechPauseMs?: number;
   /** Set by the background when reporting config to UI pages (the key itself is never sent). */
   hasApiKey?: boolean;
   apiKeySource?: 'saved' | 'dev' | 'none';
@@ -226,8 +249,30 @@ export const AiSetConfigSchema = makeEnvelopeSchema(
     apiKey: z.string().max(300).optional(),
     model: z.string().max(100).optional(),
     baseUrl: z.string().max(300).optional(),
+    sttProvider: z.enum(['elevenlabs', 'groq']).optional(),
+    sttApiKey: z.string().max(300).optional(),
+    sttModel: z.string().max(100).optional(),
+    speechLanguage: z.string().max(20).optional(),
+    voiceMode: z.boolean().optional(),
+    speechPauseMs: z.number().int().min(400).max(5000).optional(),
   })
 );
+
+/** Dictation from a UI page: base64 audio in, text out. ~24MB of audio is ~32MB base64. */
+export const SpeechTranscribeSchema = makeEnvelopeSchema(
+  'speech/transcribe',
+  z.object({
+    audioBase64: z.string().min(1).max(34_000_000),
+    mimeType: z.string().max(100).optional(),
+    language: z.string().max(20).optional(),
+  })
+);
+
+export interface SpeechTranscribeResponse {
+  ok: boolean;
+  text?: string;
+  error?: string;
+}
 
 export const UiToBgSchema = z.discriminatedUnion('type', [
   SystemPingSchema,
@@ -250,6 +295,7 @@ export const UiToBgSchema = z.discriminatedUnion('type', [
   AgentStopSchema,
   AiGetConfigSchema,
   AiSetConfigSchema,
+  SpeechTranscribeSchema,
 ]);
 
 export type UiToBgMessage = z.infer<typeof UiToBgSchema>;

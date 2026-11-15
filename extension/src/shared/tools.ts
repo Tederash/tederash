@@ -65,6 +65,12 @@ export const SayArgsSchema = z.object({
 });
 export type SayArgs = z.infer<typeof SayArgsSchema>;
 
+export const ListenArgsSchema = z.object({
+  prompt: z.string().min(1).max(500),
+  language: z.string().max(20).optional(),
+});
+export type ListenArgs = z.infer<typeof ListenArgsSchema>;
+
 export const FinishArgsSchema = z.object({
   summary: z.string().min(1).max(2000),
   status: z.enum(['success', 'partial', 'failed']).default('success'),
@@ -149,6 +155,19 @@ export const SetCheckedArgsSchema = z.object({
 });
 export type SetCheckedArgs = z.infer<typeof SetCheckedArgsSchema>;
 
+export const FillFormEntrySchema = z.object({
+  target: z.string().min(1).max(200),
+  kind: z.enum(['text', 'choice', 'checked']),
+  /** For `checked`, "true"/"false"; otherwise the text or the visible option. */
+  value: z.string().max(5000),
+});
+export type FillFormEntry = z.infer<typeof FillFormEntrySchema>;
+
+export const FillFormArgsSchema = z.object({
+  entries: z.array(FillFormEntrySchema).min(1).max(40),
+});
+export type FillFormArgs = z.infer<typeof FillFormArgsSchema>;
+
 export type PageFieldKind =
   | 'text' | 'email' | 'tel' | 'url' | 'number' | 'password' | 'search' | 'date'
   | 'datetime-local' | 'month' | 'week' | 'time' | 'color' | 'range'
@@ -194,6 +213,7 @@ export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('fill'), args: FillArgsSchema }),
   z.object({ name: z.literal('choose'), args: ChooseArgsSchema }),
   z.object({ name: z.literal('set_checked'), args: SetCheckedArgsSchema }),
+  z.object({ name: z.literal('fill_form'), args: FillFormArgsSchema }),
   z.object({ name: z.literal('observe_page'), args: ObservePageArgsSchema }),
   z.object({ name: z.literal('inspect_page'), args: InspectPageArgsSchema }),
   z.object({ name: z.literal('inspect_form'), args: InspectFormArgsSchema }),
@@ -204,6 +224,7 @@ export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('read_text'), args: ReadTextArgsSchema }),
   z.object({ name: z.literal('set_adaptation'), args: SetAdaptationArgsSchema }),
   z.object({ name: z.literal('say'), args: SayArgsSchema }),
+  z.object({ name: z.literal('listen'), args: ListenArgsSchema }),
   z.object({ name: z.literal('finish'), args: FinishArgsSchema }),
   z.object({ name: z.literal('tederash_detect'), args: TederashDetectArgsSchema }),
   z.object({ name: z.literal('tederash_get_tree'), args: TederashGetTreeArgsSchema }),

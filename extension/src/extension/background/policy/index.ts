@@ -108,6 +108,8 @@ export function evaluatePolicy(call: ToolCall, elementContext?: ElementContext):
     case 'read_text':
     case 'set_adaptation':
     case 'say':
+    // Asking the user a question out loud: it changes nothing on the page.
+    case 'listen':
     case 'finish':
     case 'page_state':
     case 'find':
@@ -119,6 +121,9 @@ export function evaluatePolicy(call: ToolCall, elementContext?: ElementContext):
     case 'choose':
     case 'set_checked':
     case 'fill_field':
+    // A batch of field writes: nothing here submits, and each entry runs through
+    // the same per-field blocks (sensitive fields, disabled, read-only).
+    case 'fill_form':
       return LOW;
 
     case 'click': {

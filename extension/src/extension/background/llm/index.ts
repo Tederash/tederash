@@ -8,7 +8,19 @@ export const FALLBACK_GROQ_MODEL = 'openai/gpt-oss-20b';
 const STORAGE_KEY = 'tederash.aiConfig';
 
 /** What the user saved (persisted). The dev key is never persisted. */
-type StoredAiConfig = Pick<AiConfig, 'provider' | 'apiKey' | 'model' | 'baseUrl'>;
+type StoredAiConfig = Pick<
+  AiConfig,
+  | 'provider'
+  | 'apiKey'
+  | 'model'
+  | 'baseUrl'
+  | 'sttProvider'
+  | 'sttApiKey'
+  | 'sttModel'
+  | 'speechLanguage'
+  | 'voiceMode'
+  | 'speechPauseMs'
+>;
 
 let stored: StoredAiConfig | null = null;
 let loading: Promise<void> | null = null;
@@ -29,6 +41,12 @@ function sanitize(config: Partial<StoredAiConfig>): StoredAiConfig {
     apiKey: trim(config.apiKey),
     model: trim(config.model),
     baseUrl: trim(config.baseUrl),
+    sttProvider: config.sttProvider,
+    sttApiKey: trim(config.sttApiKey),
+    sttModel: trim(config.sttModel),
+    speechLanguage: trim(config.speechLanguage),
+    voiceMode: config.voiceMode,
+    speechPauseMs: config.speechPauseMs,
   };
 }
 
@@ -44,14 +62,21 @@ export function getAiConfig(): AiConfig {
     apiKey,
     model,
     baseUrl: base.baseUrl,
+    sttProvider: base.sttProvider,
+    sttApiKey: base.sttApiKey,
+    sttModel: base.sttModel,
+    speechLanguage: base.speechLanguage,
+    voiceMode: base.voiceMode,
+    speechPauseMs: base.speechPauseMs,
     hasApiKey: Boolean(apiKey),
+    hasSttApiKey: Boolean(base.sttApiKey),
     apiKeySource: base.apiKey ? 'saved' : usesDevKey ? 'dev' : 'none',
   };
 }
 
-/** Config safe to send to UI pages: never includes the key itself. */
+/** Config safe to send to UI pages: never includes either key itself. */
 export function getPublicAiConfig(): AiConfig {
-  const { apiKey: _omit, ...rest } = getAiConfig();
+  const { apiKey: _omitChat, sttApiKey: _omitStt, ...rest } = getAiConfig();
   return rest;
 }
 
@@ -82,6 +107,10 @@ export async function setAiConfig(config: Partial<StoredAiConfig>): Promise<AiCo
   const next = sanitize(config);
   if (!next.apiKey && stored?.apiKey && stored.provider === next.provider) {
     next.apiKey = stored.apiKey;
+  }
+  // The settings form never receives either key back, so an empty field means "keep".
+  if (!next.sttApiKey && stored?.sttApiKey) {
+    next.sttApiKey = stored.sttApiKey;
   }
   stored = next;
   try {

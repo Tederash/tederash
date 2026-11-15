@@ -98,6 +98,51 @@ async function buildAll() {
     fs.copyFileSync(offscreenSrc, offscreenDst);
   }
 
+  /**
+   * Voice activity detector assets for hands-free voice mode. The VAD worklet,
+   * the Silero model and the ONNX Runtime WASM must live inside the extension
+   * origin: the CSP allows no CDN fetches, so they are copied next to the
+   * bundles and addressed with chrome.runtime.getURL('vad/…').
+   */
+  const vadDir = path.join(OUT_DIR, 'vad');
+  fs.mkdirSync(vadDir, { recursive: true });
+  const vadWebDist = path.join(ROOT, 'node_modules/@ricky0123/vad-web/dist');
+  // v5 is the model the hook selects; legacy is kept so the version can be
+  // swapped without another build change.
+  const vadAssets = [
+    path.join(vadWebDist, 'vad.worklet.bundle.min.js'),
+    path.join(vadWebDist, 'silero_vad_v5.onnx'),
+    path.join(vadWebDist, 'silero_vad_legacy.onnx'),
+  ];
+  // ONNX Runtime is installed transitively; resolve it through pnpm's store.
+  const ortDist = (() => {
+    const direct = path.join(vadWebDist, 'node_modules/onnxruntime-web/dist');
+    if (fs.existsSync(direct)) return direct;
+    const store = path.join(ROOT, '../node_modules/.pnpm');
+    if (!fs.existsSync(store)) return undefined;
+    const entry = fs
+      .readdirSync(store)
+      .filter((name) => name.startsWith('onnxruntime-web@'))
+      .sort()
+      .pop();
+    return entry ? path.join(store, entry, 'node_modules/onnxruntime-web/dist') : undefined;
+  })();
+  if (ortDist) {
+    // The CPU runtime pair the bundle asks for; the heavier WebGPU variants are
+    // not needed for a 1.7 MB audio model.
+    for (const name of ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']) {
+      const src = path.join(ortDist, name);
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(vadDir, name));
+      else console.warn(`[build-extension] Missing ONNX Runtime asset: ${name}`);
+    }
+  } else {
+    console.warn('[build-extension] onnxruntime-web not found; voice mode VAD will not start.');
+  }
+  for (const src of vadAssets) {
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(vadDir, path.basename(src)));
+    else console.warn(`[build-extension] Missing VAD asset: ${path.basename(src)}`);
+  }
+
   if (isWatch) {
     const contexts = await Promise.all(
       targets.map((cfg) => esbuild.context({ ...common, ...cfg }))

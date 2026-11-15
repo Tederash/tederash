@@ -20,8 +20,15 @@ export interface ConfirmationRequest {
 /** Asks the user; resolves true only on explicit approval. */
 export type ConfirmFn = (req: ConfirmationRequest) => Promise<boolean>;
 
+/**
+ * Runs a tool that belongs to the assistant rather than the page (speaking, listening).
+ * Returns undefined for tools it does not handle, which then go to the content script.
+ */
+export type LocalToolFn = (call: ToolCall) => Promise<ToolResult | undefined>;
+
 export interface ExecuteOptions {
   confirm?: ConfirmFn;
+  runLocal?: LocalToolFn;
 }
 
 async function sendToTab(tabId: number, call: ToolCall): Promise<ToolResult> {
@@ -131,6 +138,9 @@ export async function executeContentTool(
       );
     }
   }
+
+  const local = await options.runLocal?.(call);
+  if (local) return settle(local, formatStepSummary(call, local));
 
   const result = await sendToTab(tabId, call);
   return settle(result, formatStepSummary(call, result));

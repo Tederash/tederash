@@ -3,6 +3,7 @@ import type { PageState, ToolName, ToolResult } from '../../../shared/tools';
 import { normalizeToolArgs, unsupportedEthiopicWords } from './args';
 import { TurnGuards } from './guards';
 import { formatPageState, toModelToolOutput } from './page-model';
+import { SAVED_DETAIL_KEYS, substituteSavedDetails } from './saved-details';
 import { getAgentTools, getToolDef } from './tools';
 
 export interface ModelToolCall {
@@ -71,11 +72,23 @@ export interface LoopOptions {
   callModel: CallModel;
   execTool: ExecTool;
   onText: (delta: string) => void;
+  /**
+   * Personal details saved on this device. Swapped into `{{saved:…}}` placeholders
+   * just before a field is filled, so the plaintext never reaches the model.
+   */
+  savedDetails?: Record<string, string>;
+  /** Called with the values that were actually filled, so they can be remembered. */
+  onFilled?: (entries: Array<{ target: string; value: string }>) => void;
   /** Re-reads the Page Model (after navigation). */
   readPageState?: () => Promise<PageState | undefined>;
   initialPageVersion?: number;
   signal?: AbortSignal;
   now?: () => number;
+  /**
+   * The user is speaking to the assistant: the voice tools (`say`, `listen`) are
+   * offered, so it can answer aloud and ask follow-up questions out loud.
+   */
+  voiceTurn?: boolean;
 }
 
 export interface LoopResult {
@@ -97,7 +110,7 @@ function versionOf(result: ToolResult): number | undefined {
  * every step passes through guards and policy. Always ends with a text answer.
  */
 export async function runModelLoop(opts: LoopOptions): Promise<LoopResult> {
-  const tools = getAgentTools();
+  const tools = getAgentTools({ voiceTurn: opts.voiceTurn });
   const guards = new TurnGuards(opts.userGoal, opts.now);
   guards.notePageVersion(opts.initialPageVersion);
   const messages: ModelMessage[] = [...opts.history, { role: 'user', content: opts.userGoal }];
@@ -167,7 +180,10 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
     return { ok: false, code: 'INVALID_ARGUMENTS', message: `Invalid arguments for ${tc.toolName}: ${issues}` };
   }
 
-  if (def.contentTool === 'fill' && typeof args.value === 'string') {
+  const resolved = resolveSavedDetails(args, opts.savedDetails ?? {});
+  if ('error' in resolved) return resolved.error;
+
+  if (def.contentTool === 'fill' && typeof args.value === 'string' && !resolved.fromSaved.has(args.value)) {
     const sources = [opts.userGoal, opts.system, ...userTexts(opts.history)];
     const invented = unsupportedEthiopicWords(args.value, sources);
     if (invented.length) {
@@ -194,6 +210,7 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
 
   const result = await opts.execTool(def.contentTool, args);
   guards.notePageVersion(versionOf(result));
+  if (result.ok && resolved.filled.length) opts.onFilled?.(resolved.filled);
   const output = toModelToolOutput(def.contentTool, result);
 
   if (result.ok && result.outcome?.urlChanged && opts.readPageState) {
@@ -204,6 +221,64 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
     }
   }
   return output;
+}
+
+interface ResolvedValues {
+  /** Substituted values, which are the user's own saved text rather than the model's. */
+  fromSaved: Set<string>;
+  /** Target/value pairs this call writes into the page. */
+  filled: Array<{ target: string; value: string }>;
+}
+
+/**
+ * Swaps `{{saved:…}}` placeholders in the call's values for the real saved details,
+ * in place, so the model can reuse a detail it was never shown. A placeholder that
+ * names something unsaved is refused rather than typed into the page literally.
+ */
+function resolveSavedDetails(
+  args: Record<string, unknown>,
+  saved: Record<string, string>
+): ResolvedValues | { error: unknown } {
+  const fromSaved = new Set<string>();
+  const filled: Array<{ target: string; value: string }> = [];
+  const unknown = new Set<string>();
+
+  const resolve = (raw: unknown, target: unknown): string | undefined => {
+    if (typeof raw !== 'string') return undefined;
+    const out = substituteSavedDetails(raw, saved);
+    out.unknown.forEach((key) => unknown.add(key));
+    if (out.usedSaved) fromSaved.add(out.value);
+    if (typeof target === 'string') filled.push({ target, value: out.value });
+    return out.value;
+  };
+
+  if (typeof args.value === 'string') {
+    const next = resolve(args.value, args.target);
+    if (next !== undefined) args.value = next;
+  }
+  if (typeof args.option === 'string') {
+    const next = resolve(args.option, args.target);
+    if (next !== undefined) args.option = next;
+  }
+  if (Array.isArray(args.entries)) {
+    for (const entry of args.entries) {
+      if (!entry || typeof entry !== 'object') continue;
+      const row = entry as Record<string, unknown>;
+      const next = resolve(row.value, row.target);
+      if (next !== undefined) row.value = next;
+    }
+  }
+
+  if (unknown.size) {
+    return {
+      error: {
+        ok: false,
+        code: 'NOT_SAVED',
+        message: `Nothing is saved under ${[...unknown].map((k) => `“${k}”`).join(', ')}. Ask the user for it, then fill in what they answer. Saved names are: ${SAVED_DETAIL_KEYS.join(', ')}.`,
+      },
+    };
+  }
+  return { fromSaved, filled };
 }
 
 /** Plain text of earlier user turns, used to check that filled values come from the user. */

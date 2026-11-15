@@ -53,6 +53,25 @@ export const AGENT_TOOL_DEFS = {
     contentTool: 'fill',
     kind: 'act',
   },
+  fill_form: {
+    description:
+      'Fill several controls in ONE step. Use this whenever more than one field needs a value — never repeat fill/choose/set_checked field by field.',
+    inputSchema: z.object({
+      entries: z
+        .array(
+          z.object({
+            target,
+            kind: z
+              .enum(['text', 'choice', 'checked'])
+              .describe('"text" for text fields, "choice" for dropdowns/radios, "checked" for checkboxes'),
+            value: z.string().describe('Text to enter, the visible option text, or "true"/"false" for a checkbox'),
+          })
+        )
+        .describe('One entry per control, in the order they appear on the page'),
+    }),
+    contentTool: 'fill_form',
+    kind: 'act',
+  },
   choose: {
     description: 'Pick an option in a dropdown, select or radio group.',
     inputSchema: z.object({ target, option: z.string().describe('Visible option text') }),
@@ -108,6 +127,19 @@ export const AGENT_TOOL_DEFS = {
     contentTool: 'say',
     kind: 'adapt',
   },
+  listen: {
+    description:
+      'Ask the user something out loud and wait for their spoken answer, which is returned as text. Use this when the user is talking to you rather than typing, to collect everything you still need in one question.',
+    inputSchema: z.object({
+      prompt: z.string().describe('The question to speak and show, in the user’s language'),
+      language: z
+        .string()
+        .nullish()
+        .describe('BCP-47 tag of the answer, e.g. "en-US" or "am-ET"; null lets it be detected'),
+    }),
+    contentTool: 'listen',
+    kind: 'perceive',
+  },
 } satisfies Record<string, AgentToolDef>;
 
 export type AgentToolName = keyof typeof AGENT_TOOL_DEFS;
@@ -119,10 +151,16 @@ export function getToolDef(name: string): AgentToolDef | undefined {
 /**
  * Tool definitions for the model, without `execute`: the orchestrator loop runs tools
  * itself so it can apply guards, policy and confirmation between steps.
+ *
+ * `say` and `listen` are voice tools: offered only on spoken turns, where the user
+ * can actually hear the question and answer it. Offering them on typed turns is how
+ * a click-to-speak prompt once appeared inside a plain text conversation.
  */
-export function getAgentTools(): Record<string, Tool> {
+export function getAgentTools(options: { voiceTurn?: boolean } = {}): Record<string, Tool> {
+  const voiceTurn = options.voiceTurn === true;
   const tools: Record<string, Tool> = {};
   for (const [name, def] of Object.entries(AGENT_TOOL_DEFS as Record<string, AgentToolDef>)) {
+    if (!voiceTurn && (name === 'say' || name === 'listen')) continue;
     tools[name] = tool({ description: def.description, inputSchema: def.inputSchema });
   }
   return tools;

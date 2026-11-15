@@ -8,6 +8,7 @@ import {
   type VaultGetResponse,
 } from '../../shared/messages';
 import { resolveConfirmation } from './agent/confirm';
+import { parseVoiceReplyMessage, resolveVoiceReply } from './agent/voice-reply';
 import { createBatchedListener } from './agent/stream';
 import { ensureSessionsLoaded } from './agent/session';
 import {
@@ -18,7 +19,16 @@ import {
   stopSession,
 } from './agent/runner';
 import { getPublicAiConfig, loadAiConfig, setAiConfig } from './llm';
+import { speakText, stopSpeaking } from './speech/output';
+import { transcribeAudio } from './speech/transcribe';
 import { storageService } from './storage/service';
+
+function base64ToBlob(value: string, mimeType: string): Blob {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
 
 function isAllowedOrigin(url?: string): string | undefined {
   if (!url) return undefined;
@@ -43,96 +53,6 @@ async function buildSettingsResponse(origin?: string, tabId?: number): Promise<S
     onboardingCompleted: state.onboardingCompleted,
     siteOverrides: state.siteOverrides,
     globalPatch: state.globalPatch,
-  };
-}
-
-async function ensureOffscreenDocument(): Promise<boolean> {
-  if (typeof chrome.offscreen !== 'object' || chrome.offscreen === null) {
-    return false;
-  }
-  try {
-    if (typeof chrome.runtime.getContexts === 'function') {
-      const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-      if (Array.isArray(contexts) && contexts.length > 0) {
-        return true;
-      }
-    }
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: ['AUDIO_PLAYBACK'],
-      justification: 'Speak page text when chrome.tts has no available voice.',
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function offscreenDocumentExists(): Promise<boolean> {
-  if (typeof chrome.offscreen !== 'object' || chrome.offscreen === null) {
-    return false;
-  }
-  if (typeof chrome.runtime.getContexts !== 'function') {
-    return true; // Cannot check; assume it may exist and let the message fail silently.
-  }
-  try {
-    const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-    return Array.isArray(contexts) && contexts.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-/** chrome.tts with proper error detection (lastError), resolving false on failure. */
-function speakViaChromeTts(
-  text: string,
-  opts: { rate: number; pitch: number; lang: string }
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      chrome.tts.speak(text, opts, () => {
-        const err = chrome.runtime.lastError;
-        resolve(!err);
-      });
-    } catch {
-      resolve(false);
-    }
-  });
-}
-
-async function speakText(text: string, origin?: string): Promise<TtsResponse> {
-  const { effective } = await storageService.getEffectiveSettings(origin);
-  const opts = {
-    rate: effective.voice.ttsRate,
-    pitch: effective.voice.ttsPitch,
-    lang: effective.voice.language,
-  };
-
-  // Primary: chrome.tts (only trust it if the callback reports no error).
-  if (typeof chrome.tts === 'object' && typeof chrome.tts.speak === 'function') {
-    chrome.tts.stop();
-    const spoke = await speakViaChromeTts(text, opts);
-    if (spoke) {
-      return { ok: true, spoken: true, chars: text.length };
-    }
-  }
-
-  // Fallback: Web Speech synthesis in the offscreen document.
-  const ready = await ensureOffscreenDocument();
-  if (ready) {
-    try {
-      await chrome.runtime.sendMessage(
-        createEnvelope('offscreen/speak', { text, ...opts })
-      );
-      return { ok: true, spoken: true, chars: text.length };
-    } catch {
-      // Fall through to the failure message.
-    }
-  }
-
-  return {
-    ok: false,
-    error: 'No speech engine is available on this device. Install a system voice or try Chrome with built-in voices.',
   };
 }
 
@@ -368,17 +288,19 @@ async function handleUiMessage(
       return speakText(msg.payload.text);
 
     case 'tts/stop': {
-      if (typeof chrome.tts === 'object' && typeof chrome.tts.stop === 'function') {
-        chrome.tts.stop();
-      }
-      if (await offscreenDocumentExists()) {
-        try {
-          await chrome.runtime.sendMessage(createEnvelope('offscreen/stop', {}));
-        } catch {
-          // Offscreen document may be gone; nothing to stop.
-        }
-      }
+      await stopSpeaking();
       return { ok: true };
+    }
+
+    case 'speech/transcribe': {
+      const config = await loadAiConfig();
+      const result = await transcribeAudio({
+        audio: base64ToBlob(msg.payload.audioBase64, msg.payload.mimeType ?? 'audio/webm'),
+        config,
+        language: msg.payload.language ?? config.speechLanguage,
+        model: config.sttModel,
+      });
+      return result.ok ? { ok: true, text: result.text } : { ok: false, error: result.error };
     }
 
     case 'agent/chat': {
@@ -473,8 +395,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; // keep message channel open for async response
 });
 
-chrome.commands.onCommand.addListener((command) => {
-  // Wired incrementally in P2/P4
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'stop-all') {
+    await stopSpeaking();
+    return;
+  }
+
+  if (command === 'start-listening') {
+    // A command counts as a user gesture, so the panel may be opened here.
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.windowId !== undefined && typeof chrome.sidePanel?.open === 'function') {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      }
+    } catch {
+      // The panel may already be open, or opening may not be permitted here.
+    }
+    try {
+      // Only the side panel listens for this: Alt+Shift+V toggles hands-free
+      // voice mode, so a blind user never has to find the panel's controls.
+      await chrome.runtime.sendMessage({ type: 'panel/toggleVoiceMode' });
+      await chrome.storage.local.remove('pendingVoiceModeToggle');
+    } catch {
+      // The panel was closed when the shortcut fired, and Next's pages take a
+      // moment to hydrate, so the message would be lost. Remember it for a
+      // minute: a panel that opens right after picks it up on mount.
+      try {
+        await chrome.storage.local.set({ pendingVoiceModeToggle: { ts: Date.now() } });
+      } catch {
+        // Storage unavailable; the shortcut just does nothing this once.
+      }
+    }
+    return;
+  }
+
   if (process.env.NODE_ENV === 'development') {
     console.debug('[Tederash SW] Command received:', command);
   }
@@ -494,6 +448,10 @@ if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
           resolveConfirmation(msg.id, msg.approved === true);
           return;
         }
+        if (msg?.type === 'agent/voiceReply' && typeof msg.id === 'string') {
+          resolveVoiceReply(msg.id, parseVoiceReplyMessage(msg));
+          return;
+        }
         if (msg?.type === 'agent/stream/start') {
           const { tabId, text, conversationId } = msg;
           await runAgentTaskStream(
@@ -507,7 +465,8 @@ if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
                 // Port may have disconnected
               }
             }),
-            abortController.signal
+            abortController.signal,
+            { isVoiceTurn: msg.isVoiceTurn === true }
           );
         }
       });

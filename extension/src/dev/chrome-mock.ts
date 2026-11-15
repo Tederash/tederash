@@ -8,6 +8,12 @@ import {
   type TtsResponse,
   type VaultGetResponse,
 } from '../shared/messages';
+import {
+  decryptJson,
+  encryptJson,
+  getVaultKey,
+  isEncryptedPayload,
+} from '../extension/background/storage/crypto';
 
 const STORAGE_KEY = 'tederash_dev_state_v1';
 const VAULT_KEY = 'tederash_dev_vault_v1';
@@ -129,12 +135,18 @@ export async function handleDevMockMessage(
     }
     case 'vault/get': {
       if (typeof window === 'undefined') return { ok: true, entries: {} };
-      const raw2 = window.localStorage.getItem(VAULT_KEY);
-      return { ok: true, entries: raw2 ? (JSON.parse(raw2) as Record<string, string>) : {} };
+      const stored = window.localStorage.getItem(VAULT_KEY);
+      if (!stored) return { ok: true, entries: {} };
+      const parsed = JSON.parse(stored) as unknown;
+      if (!isEncryptedPayload(parsed)) return { ok: true, entries: parsed as Record<string, string> };
+      const entries = (await decryptJson(await getVaultKey(), parsed)) as Record<string, string>;
+      return { ok: true, entries };
     }
     case 'vault/set': {
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(VAULT_KEY, JSON.stringify(msg.payload.entries));
+        // Encrypted in dev too, so the dashboard behaves like the real extension.
+        const payload = await encryptJson(await getVaultKey(), msg.payload.entries);
+        window.localStorage.setItem(VAULT_KEY, JSON.stringify(payload));
       }
       return { ok: true, entries: msg.payload.entries };
     }

@@ -7,6 +7,7 @@ import type {
   Profile,
   SettingsPatch,
 } from '../../../shared/settings/schema';
+import { decryptJson, encryptJson, getVaultKey, isEncryptedPayload } from './crypto';
 
 const LOCAL_STATE_KEY = 'tederash_state_v1';
 const SESSION_OVERRIDES_KEY = 'tederash_session_overrides_v1';
@@ -150,21 +151,55 @@ export class StorageService {
   async getVault(): Promise<Record<string, string>> {
     const res = await chrome.storage.local.get(VAULT_KEY);
     const raw = res[VAULT_KEY];
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-    return raw as Record<string, string>;
+    if (isEncryptedPayload(raw)) {
+      const decrypted = await decryptJson(await getVaultKey(), raw);
+      return asEntries(decrypted);
+    }
+    // Vaults written before encryption was added are plain objects; they are
+    // re-saved encrypted by the next write.
+    return asEntries(raw);
   }
 
   async setVault(entries: Record<string, string>): Promise<Record<string, string>> {
     // Replace-all semantics: the dashboard always sends the complete vault.
-    const sanitized: Record<string, string> = {};
-    for (const [key, value] of Object.entries(entries)) {
-      if (typeof value === 'string' && value.trim() !== '') {
-        sanitized[key] = value;
-      }
-    }
-    await chrome.storage.local.set({ [VAULT_KEY]: sanitized });
-    return sanitized;
+    return this.writeVault(sanitizeEntries(entries));
   }
+
+  /**
+   * Adds or updates single entries without touching the rest, for values the
+   * assistant learns while filling a form.
+   */
+  async mergeVaultEntries(partial: Record<string, string>): Promise<Record<string, string>> {
+    const additions = sanitizeEntries(partial);
+    if (Object.keys(additions).length === 0) return this.getVault();
+    const current = await this.getVault();
+    return this.writeVault({ ...current, ...additions });
+  }
+
+  private async writeVault(entries: Record<string, string>): Promise<Record<string, string>> {
+    const payload = await encryptJson(await getVaultKey(), entries);
+    await chrome.storage.local.set({ [VAULT_KEY]: payload });
+    return entries;
+  }
+}
+
+function asEntries(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const entries: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'string') entries[key] = value;
+  }
+  return entries;
+}
+
+function sanitizeEntries(entries: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(entries)) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      sanitized[key] = value.trim();
+    }
+  }
+  return sanitized;
 }
 
 function mergeSettingsPatches(base: SettingsPatch, next: SettingsPatch): SettingsPatch {

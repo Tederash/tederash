@@ -1,6 +1,7 @@
 import type {
   ChooseArgs,
   FillArgs,
+  FillFormArgs,
   FindArgs,
   PageButton,
   PageField,
@@ -287,6 +288,57 @@ export async function setChecked(args: SetCheckedArgs): Promise<ToolResult> {
   return read() === args.checked
     ? ok(`"${info.label}" ${args.checked ? 'checked' : 'unchecked'}.`)
     : fail('VALUE_REJECTED', `"${info.label}" did not change.`);
+}
+
+export interface FillFormEntryResult {
+  target: string;
+  ok: boolean;
+  message: string;
+  code?: string;
+}
+
+/**
+ * Fills several controls in one round-trip, so a whole form costs one model step
+ * instead of one per field. Every entry is attempted: a failure is reported with
+ * the others rather than hiding the rest of the work.
+ */
+export async function fillForm(args: FillFormArgs): Promise<ToolResult> {
+  const results: FillFormEntryResult[] = [];
+
+  for (const entry of args.entries) {
+    const result =
+      entry.kind === 'checked'
+        ? await setChecked({ target: entry.target, checked: entry.value.trim().toLowerCase() === 'true' })
+        : entry.kind === 'choice'
+          ? await choose({ target: entry.target, option: entry.value })
+          : await fill({ target: entry.target, value: entry.value });
+
+    results.push(
+      result.ok
+        ? { target: entry.target, ok: true, message: result.outcome?.message ?? 'Done.' }
+        : { target: entry.target, ok: false, message: result.error.message, code: result.error.code }
+    );
+  }
+
+  const done = results.filter((r) => r.ok);
+  const failed = results.filter((r) => !r.ok);
+  const summary = [
+    `Filled ${done.length} of ${results.length}: ${done.map((r) => r.message).join('; ') || 'none'}.`,
+    failed.length ? `Not filled: ${failed.map((r) => `${r.target} — ${r.message}`).join('; ')}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return {
+    ok: true,
+    data: { results, filled: done.length, failed: failed.length, pageVersion: getPageVersion() },
+    outcome: {
+      ok: failed.length === 0,
+      message: summary,
+      domChanged: done.length > 0,
+      data: { pageVersion: getPageVersion() },
+    },
+  };
 }
 
 export interface ClickTarget {

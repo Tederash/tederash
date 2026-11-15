@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { choose, clickTarget, fill, setChecked } from '../../src/extension/content/interact';
+import { choose, clickTarget, fill, fillForm, setChecked } from '../../src/extension/content/interact';
 import { buildPageState, resolveTarget } from '../../src/extension/content/resolver';
 import { formatPageState, toModelToolOutput } from '../../src/extension/background/agent/page-model';
 
@@ -231,5 +231,82 @@ describe('Tederash bridge path', () => {
     expect(page.calls).toHaveLength(1);
     page.stop();
     document.documentElement.removeAttribute('data-tederash-root');
+  });
+});
+
+describe('fillForm (one round-trip for a whole form)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = FORM;
+  });
+
+  it('fills text, choice and checkbox controls in one call', async () => {
+    const res = await fillForm({
+      entries: [
+        { target: 'Full Legal Name', kind: 'text', value: 'Zenebech Tufa' },
+        { target: 'Seniority', kind: 'choice', value: 'Senior' },
+        { target: 'Work location', kind: 'choice', value: 'Remote' },
+        { target: 'I agree to the terms', kind: 'checked', value: 'true' },
+      ],
+    });
+
+    expect(res.ok).toBe(true);
+    expect((document.getElementById('n') as HTMLInputElement).value).toBe('Zenebech Tufa');
+    expect((document.getElementById('s') as HTMLSelectElement).value).toBe('sr');
+    expect(document.querySelector<HTMLInputElement>('input[value="r"]')!.checked).toBe(true);
+    expect((document.getElementById('t') as HTMLInputElement).checked).toBe(true);
+    if (res.ok) {
+      expect(res.outcome?.ok).toBe(true);
+      expect((res.data as { filled: number; failed: number }).filled).toBe(4);
+      expect((res.data as { failed: number }).failed).toBe(0);
+    }
+  });
+
+  it('unchecks a checkbox when asked for "false"', async () => {
+    (document.getElementById('t') as HTMLInputElement).checked = true;
+    await fillForm({ entries: [{ target: 'I agree to the terms', kind: 'checked', value: 'false' }] });
+    expect((document.getElementById('t') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('keeps going after a failure and reports which entries did not land', async () => {
+    const res = await fillForm({
+      entries: [
+        { target: 'Full Legal Name', kind: 'text', value: 'Zenebech Tufa' },
+        { target: 'Nonexistent Field', kind: 'text', value: 'nope' },
+        { target: 'Seniority', kind: 'choice', value: 'Senior' },
+      ],
+    });
+
+    expect(res.ok).toBe(true);
+    // The two valid entries still ran.
+    expect((document.getElementById('n') as HTMLInputElement).value).toBe('Zenebech Tufa');
+    expect((document.getElementById('s') as HTMLSelectElement).value).toBe('sr');
+    if (res.ok) {
+      const data = res.data as { filled: number; failed: number; results: Array<{ target: string; ok: boolean; code?: string }> };
+      expect(data.filled).toBe(2);
+      expect(data.failed).toBe(1);
+      expect(data.results.find((r) => r.target === 'Nonexistent Field')).toMatchObject({
+        ok: false,
+        code: 'NOT_FOUND',
+      });
+      // outcome.ok is false so the model knows the batch was only partly applied.
+      expect(res.outcome?.ok).toBe(false);
+      expect(res.outcome?.message).toContain('Not filled');
+    }
+  });
+
+  it('refuses a password entry but still fills the rest', async () => {
+    const res = await fillForm({
+      entries: [
+        { target: 'Password', kind: 'text', value: 'secret' },
+        { target: 'Full Legal Name', kind: 'text', value: 'Zenebech Tufa' },
+      ],
+    });
+
+    expect((document.getElementById('p') as HTMLInputElement).value).toBe('');
+    expect((document.getElementById('n') as HTMLInputElement).value).toBe('Zenebech Tufa');
+    if (res.ok) {
+      const data = res.data as { results: Array<{ target: string; code?: string }> };
+      expect(data.results.find((r) => r.target === 'Password')?.code).toBe('POLICY_BLOCKED');
+    }
   });
 });

@@ -494,7 +494,7 @@ Tests: scripted-model unit tests covering a model that repeats a call, never ans
    - axe check of the sidepanel timeline.
    - Offline-mode browser test with no key.
 
-**Out of scope here:** multi-tab tasks, cross-site generic-page agents (blocked by the AGENTS.md gate), voice-driven turns. Voice can reuse protocol v2 unchanged later.
+**Out of scope here:** multi-tab tasks, cross-site generic-page agents (blocked by the AGENTS.md gate). Voice-driven turns were out of scope for phases 0–5 and were added afterwards on protocol v2 unchanged, as phase 6 (§9).
 
 ### Files touched (expected)
 
@@ -532,3 +532,90 @@ All six phases are implemented and unit-tested (extension 114 tests, `@tederash/
 - **Deterministic router:** it replaces the keyword heuristic as offline mode and as the last fallback. There is no pre-LLM fast path, so the model stays in charge whenever it is available.
 - **Resume after a worker restart:** an interrupted turn is marked interrupted and the user is asked to retry. There is no automatic "Continue".
 - **Browser verification:** done for phase 0 only (the 3-turn `/jobs` repro passed with `gpt-oss-120b`). Phases 1–5 are verified by unit and component tests only, so a manual run in the browser is still needed.
+
+---
+
+## 9. Phase 6: voice turns, batch filling and saved details (2026-11-15)
+
+Three capabilities were added on top of the loop above. Nothing in §1–§7 changed shape:
+the new tools go through the same single-step loop, guards, policy and transcript.
+
+### 9.1 `fill_form`: one call for a whole form
+
+`fill_form { entries: [{ target, kind: 'text' | 'choice' | 'checked', value }] }` is now
+implemented (it was spec'd in §4.1 and skipped). The content script loops its own
+`fill` / `choose` / `setChecked` per entry (`content/interact.ts`), and — unlike the
+original spec, which stopped at the first failure — **attempts every entry** and returns
+per-entry results. A batch where one target is missing still fills the rest, and
+`outcome.ok` is false so the model knows it was only partly applied.
+
+Policy: `low`, no confirmation. Each entry passes the same per-field blocks as a single
+fill, so a password or one-time-code field inside a batch is still refused.
+
+The system prompt now carries a "filling a whole form" protocol: work out every field
+first, ask for everything missing in **one** message (never field by field), then call
+`fill_form` **once**, then read back what was filled and state that nothing was submitted.
+
+### 9.2 Saved details: remembered, and never sent to the model
+
+The extension's Vault (`storage/service.ts`) was previously plaintext and never read by
+the agent. Now:
+
+- **Encrypted at rest.** `storage/crypto.ts` holds a non-extractable AES-GCM-256 key in
+  IndexedDB; `chrome.storage.local` holds only `{ iv, ciphertext }`. A pre-encryption
+  plaintext vault is read once and re-saved encrypted on the next write. This protects
+  the values on disk, not against code running inside this extension's own context.
+- **Values never enter the prompt.** The model is told only the *names* that exist
+  (`SAVED DETAILS: fullName, email…`) and writes a `{{saved:email}}` placeholder as a
+  tool value. `loop.ts` substitutes the real value on this device immediately before the
+  field is filled. A placeholder naming something unsaved is refused (`NOT_SAVED`) rather
+  than typed into the page literally.
+- **Learned from use.** After a successful fill, `classifySavedDetail` (`saved-details.ts`)
+  decides whether a filled field was an identity field — only `fullName` / `email` /
+  `phone` / `address` are ever remembered, via `mergeVaultEntries`. One-off answers (cover
+  notes, per-application choices) are used for the turn and never stored. Separate
+  First/Last name boxes are deliberately *not* matched: splitting a full name is unsafe to
+  guess, and wrong for naming systems that use a father's name rather than a surname.
+
+Substituted values are exempt from the `unsupportedEthiopicWords` check — they are the
+user's own saved text, not something the model invented.
+
+### 9.3 Voice: `listen` and `speak`
+
+- **`listen { prompt, language }`** speaks a question, then suspends the turn for a spoken
+  answer and returns it as text — so asking the user something no longer ends the turn.
+  It reuses the confirmation interrupt pattern exactly: `listen_request` event →
+  panel records → `agent/voiceReply` → `awaitVoiceReply` (`agent/voice-reply.ts`).
+  Capped at `LISTEN_BUDGET = 2` per turn, on its own counter so it does not compete with
+  the perception budget.
+- **Execution is local, not in the page.** `ExecuteOptions.runLocal` lets a tool run in the
+  background instead of the content script (the page has no microphone), keeping the same
+  timeline, policy and transcript handling.
+- **`say`** was a no-op that only echoed text. It now actually speaks, through
+  `speech/output.ts` (extracted from `background/index.ts`): `chrome.tts` → Web Speech in
+  the offscreen document. A language with no installed voice is reported, never read aloud
+  in the wrong voice.
+- **Transcription** (`speech/transcribe.ts`) posts to Groq's OpenAI-compatible Whisper
+  endpoint (`whisper-large-v3-turbo`) with the same key the chat model uses. With no key,
+  the panel recognises locally with the Web Speech API and sends text, so no audio leaves
+  the device in that tier.
+- **The panel** gets a mic button that drops dictation into the box **un-sent** (same
+  review-before-insert stance as `FieldSpeech.tsx`), a live interim preview, a Listening
+  panel for `listen` with Done/Cancel, and a voice-language setting. The dormant
+  `start-listening` command (Alt+Shift+V) now opens the panel and starts dictation.
+- A turn that began as dictation is flagged `isVoiceTurn`, which adds a VOICE block to the
+  system prompt: keep replies short, finish by calling `say`, and ask with `listen`.
+
+**Not done / known gaps:**
+
+- **Microphone permission from an MV3 side panel is unverified in a real browser.** If the
+  panel cannot reliably prompt for mic access, recording must move to the offscreen
+  document (`reason: USER_MEDIA`) with the panel keeping only the UI. This is the first
+  thing to check in a manual run.
+- Groq's TTS models (`canopylabs/orpheus-*`) are **not** wired up: the catalogue is English
+  and Saudi Arabic only, while the existing chrome.tts/Web Speech chain covers whatever
+  voices the device has, including Amharic. Worth adding only for English voice quality.
+- The deterministic offline router (`router.ts`) still parses one action per utterance; it
+  has no batch-fill or saved-details support.
+- Phase 6 is covered by unit tests only (`vault-storage`, `form-fill`, `voice` and the
+  `fillForm` DOM cases in `resolver-interact`): 201 extension tests pass. No browser run yet.

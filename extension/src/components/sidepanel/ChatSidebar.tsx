@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createEnvelope } from '../../shared/envelope';
-import type { AgentStreamEvent, AiConfig, ChatMessage } from '../../shared/messages';
+import type {
+  AgentStreamEvent,
+  AiConfig,
+  ChatMessage,
+  SpeechTranscribeResponse,
+} from '../../shared/messages';
 import { Button } from '../ui/Button';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { ThoughtProcess } from './ThoughtProcess';
+import { type CaptureResult, useVoice, queryMicrophonePermission } from './useVoice';
+import { useVoiceMode, type VoiceTurnMeta } from './useVoiceMode';
 
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
@@ -20,6 +27,7 @@ export function ChatSidebar() {
   // The background never sends the saved key back; an empty input keeps it.
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [modelInput, setModelInput] = useState(DEFAULT_MODEL);
+  const [speechLanguageInput, setSpeechLanguageInput] = useState('');
   const [tederashState, setTederashState] = useState<{
     checked: boolean;
     isTederash: boolean;
@@ -42,6 +50,22 @@ export function ChatSidebar() {
   >(null);
   const confirmRef = useRef<HTMLDivElement>(null);
 
+  // Voice: dictation into the box, and the assistant's own spoken questions.
+  const [interim, setInterim] = useState('');
+  /** The pending draft was dictated, so the reply should be spoken back. */
+  const [draftIsSpoken, setDraftIsSpoken] = useState(false);
+  const [pendingListen, setPendingListen] = useState<
+    Extract<AgentStreamEvent, { type: 'listen_request' }> | null
+  >(null);
+  const listenRef = useRef<HTMLDivElement>(null);
+  /** Kept current so the keyboard-command listener can stay registered once. */
+  const handleDictateRef = useRef<(() => Promise<void>) | null>(null);
+  const voice = useVoice({
+    language: aiConfig.speechLanguage,
+    canUpload: aiConfig.hasApiKey !== false,
+    onInterim: setInterim,
+  });
+
   // Screen-reader announcements: the transcript itself is not a live region (it would
   // read every streamed token); status changes are debounced, answers read once.
   const [announcement, setAnnouncement] = useState('');
@@ -60,6 +84,109 @@ export function ChatSidebar() {
   useEffect(() => {
     if (pendingConfirm) confirmRef.current?.focus();
   }, [pendingConfirm]);
+
+  /** Spoken status for voice mode, so a blind user hears state changes. */
+  const speakNotice = (text: string) => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
+    void chrome.runtime.sendMessage(createEnvelope('tts/speak', { text })).catch(() => undefined);
+  };
+
+  // Hands-free voice mode: the mic stays live, speech starts and ends turns,
+  // and speech during a spoken answer barges in. Kept in refs so the port
+  // listener and the keyboard-command listener can stay registered once.
+  const pendingListenRef = useRef(false);
+  const voiceModeOnRef = useRef(false);
+  const voiceTranscriptRef = useRef<(text: string, meta: VoiceTurnMeta) => void>(() => {});
+  const voiceModeToggleRef = useRef<(() => void) | null>(null);
+  const resumeVoiceModeRef = useRef<(() => void) | null>(null);
+  const voiceMode = useVoiceMode({
+    language: aiConfig.speechLanguage,
+    canUpload: aiConfig.hasApiKey !== false || aiConfig.hasSttApiKey === true,
+    pauseMs: aiConfig.speechPauseMs,
+    onTranscript: (text, meta) => voiceTranscriptRef.current(text, meta),
+    onNotice: (text) => {
+      announce(text);
+      speakNotice(text);
+    },
+    onInterim: setInterim,
+    pendingListenRef,
+  });
+  const { toggle: toggleVoiceEngine, notifyTurnEnded, notifyListenPending } = voiceMode;
+  voiceModeOnRef.current = voiceMode.enabled;
+
+  /** Turns hands-free mode on or off and remembers the choice across sessions. */
+  const setVoiceModeEnabled = async (next: boolean) => {
+    toggleVoiceEngine(next);
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        // Keys are never sent back; the background keeps what it has.
+        await chrome.runtime.sendMessage(
+          createEnvelope('ai/setConfig', {
+            provider: aiConfig.provider,
+            model: aiConfig.model,
+            speechLanguage: aiConfig.speechLanguage,
+            sttProvider: aiConfig.sttProvider,
+            sttModel: aiConfig.sttModel,
+            speechPauseMs: aiConfig.speechPauseMs,
+            voiceMode: next,
+          })
+        );
+      }
+    } catch {
+      // Persistence is best-effort; the mode still works this session.
+    }
+  };
+  voiceModeToggleRef.current = () => void setVoiceModeEnabled(!voiceModeOnRef.current);
+  // A voice-first user gets hands-free back on panel open, but only if the mic
+  // permission is already granted: raising Chrome's prompt without a gesture
+  // would open a permission tab on every panel open.
+  resumeVoiceModeRef.current = () => {
+    if (voiceModeOnRef.current || aiConfig.voiceMode !== true) return;
+    void queryMicrophonePermission().then((state) => {
+      if (state === 'granted') void setVoiceModeEnabled(true);
+    });
+  };
+
+  // Applies an Alt+Shift+V pressed while the panel was closed: the background
+  // could not deliver the toggle to a page that was not yet hydrated.
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
+    void (async () => {
+      try {
+        const { pendingVoiceModeToggle } = await chrome.storage.local.get('pendingVoiceModeToggle');
+        const request = pendingVoiceModeToggle as { ts?: number } | undefined;
+        if (!request) return;
+        await chrome.storage.local.remove('pendingVoiceModeToggle');
+        if (typeof request.ts === 'number' && Date.now() - request.ts < 60_000) {
+          voiceModeToggleRef.current?.();
+        }
+      } catch {
+        // No stored request; nothing to apply.
+      }
+    })();
+  }, []);
+
+  // Same for a spoken question: move focus so Done/Cancel are reachable at once.
+  useEffect(() => {
+    if (pendingListen) listenRef.current?.focus();
+  }, [pendingListen]);
+
+  // Alt+Shift+V (the start-listening command) toggles hands-free voice mode
+  // from anywhere; the mic button remains for dictation in text mode.
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.onMessage) return;
+    const onCommand = (msg: unknown) => {
+      const type = (msg as { type?: string } | null)?.type;
+      if (type === 'panel/startListening') {
+        void handleDictateRef.current?.();
+      }
+      if (type === 'panel/toggleVoiceMode') {
+        voiceModeToggleRef.current?.();
+      }
+    };
+    chrome.runtime.onMessage.addListener(onCommand);
+    return () => chrome.runtime.onMessage.removeListener(onCommand);
+  }, []);
 
   const answerConfirm = (approved: boolean) => {
     if (!pendingConfirm) return;
@@ -165,6 +292,8 @@ export function ChatSidebar() {
             setAiConfigState(configRes.config);
             setApiKeyInput('');
             setModelInput(configRes.config.model || DEFAULT_MODEL);
+            setSpeechLanguageInput(configRes.config.speechLanguage || '');
+            resumeVoiceModeRef.current?.();
           }
         }
       } catch {
@@ -198,7 +327,103 @@ export function ChatSidebar() {
     }
   }, []);
 
-  const handleSend = async (customText?: string) => {
+  /** Turns a finished capture into text, transcribing in the worker when needed. */
+  const resolveTranscript = async (result: CaptureResult): Promise<string | undefined> => {
+    if (result.text) return result.text;
+    if (!result.audioBase64) return undefined;
+    if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return undefined;
+    const res = (await chrome.runtime.sendMessage(
+      createEnvelope('speech/transcribe', {
+        audioBase64: result.audioBase64,
+        mimeType: result.mimeType,
+        language: aiConfig.speechLanguage,
+      })
+    )) as SpeechTranscribeResponse;
+    if (!res?.ok) throw new Error(res?.error ?? 'That could not be transcribed.');
+    return res.text;
+  };
+
+  /**
+   * Mic button: dictation lands in the box rather than sending straight away, so a
+   * misheard phrase can be corrected before it becomes an action on the page.
+   */
+  const handleDictate = async () => {
+    if (voice.isCapturing) {
+      voice.stop();
+      return;
+    }
+    setInterim('');
+    announce('Listening. Press the microphone again to stop.');
+    const result = await voice.capture();
+    setInterim('');
+    if (result.cancelled) return;
+    if (result.error) {
+      announce(result.error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `asst_${Date.now()}`,
+          role: 'assistant',
+          content: result.error!,
+          timestamp: Date.now(),
+          status: 'error',
+        },
+      ]);
+      return;
+    }
+    try {
+      const text = await resolveTranscript(result);
+      if (!text) {
+        announce('Nothing was heard.');
+        return;
+      }
+      setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+      setDraftIsSpoken(true);
+      announce('Dictation ready. Check it, then press Enter to send.');
+      inputRef.current?.focus();
+    } catch (err) {
+      announce(err instanceof Error ? err.message : 'That could not be transcribed.');
+    }
+  };
+
+  handleDictateRef.current = handleDictate;
+
+  /** The assistant asked out loud: record the answer and send it back into the turn. */
+  const answerListen = async (request: Extract<AgentStreamEvent, { type: 'listen_request' }>) => {
+    const reply = (payload: Record<string, unknown>) => {
+      try {
+        activePortRef.current?.postMessage({ type: 'agent/voiceReply', id: request.id, ...payload });
+      } catch {
+        // The turn is gone; nothing to answer.
+      }
+      setPendingListen(null);
+      setInterim('');
+    };
+
+    const result = await voice.capture();
+    setInterim('');
+    if (result.cancelled) {
+      reply({ kind: 'cancelled', reason: 'cancelled' });
+      return;
+    }
+    if (result.error) {
+      announce(result.error);
+      reply({ kind: 'cancelled', reason: result.error });
+      return;
+    }
+    if (result.text) {
+      reply({ kind: 'text', text: result.text, language: request.language });
+      return;
+    }
+    reply({
+      kind: 'audio',
+      audioBase64: result.audioBase64,
+      mimeType: result.mimeType,
+      language: request.language,
+    });
+  };
+
+  const handleSend = async (customText?: string, options: { isVoiceTurn?: boolean } = {}) => {
     const textToSend = customText || input;
     if (!textToSend.trim() || isRunning) return;
 
@@ -267,6 +492,19 @@ export function ChatSidebar() {
             announce(`Confirmation needed. ${event.title} ${event.detail}`);
             return;
           }
+          if (event.type === 'listen_request') {
+            setPendingListen(event);
+            announce(`${event.prompt} Listening for your answer.`);
+            if (voiceModeOnRef.current) {
+              // Hands-free: the next utterance the mic hears is the answer; no
+              // separate recording session and no button press.
+              pendingListenRef.current = true;
+              notifyListenPending(true);
+              return;
+            }
+            void answerListen(event);
+            return;
+          }
           if (event.type === 'thought') announce(event.activeVerb, 1000);
           if (event.type === 'done') setPendingConfirm(null);
           if (event.type === 'tool_call') {
@@ -333,6 +571,13 @@ export function ChatSidebar() {
             );
             setIsRunning(false);
           } else if (event.type === 'done') {
+            setPendingListen(null);
+            if (pendingListenRef.current) {
+              pendingListenRef.current = false;
+              notifyListenPending(false);
+            }
+            // Hands the microphone back to the user in voice mode.
+            notifyTurnEnded();
             // The background's final message is authoritative (status and full text).
             const final = [...(event.messages ?? [])].reverse().find((m) => m.role === 'assistant');
             const finalContent = final?.content || 'Task completed.';
@@ -356,6 +601,12 @@ export function ChatSidebar() {
 
         port.onDisconnect.addListener(() => {
           setPendingConfirm(null);
+          setPendingListen(null);
+          if (pendingListenRef.current) {
+            pendingListenRef.current = false;
+            notifyListenPending(false);
+          }
+          notifyTurnEnded();
           setIsRunning(false);
           activePortRef.current = null;
         });
@@ -364,6 +615,7 @@ export function ChatSidebar() {
           type: 'agent/stream/start',
           tabId,
           text: textToSend,
+          isVoiceTurn: options.isVoiceTurn === true,
         });
         return;
       } catch (err) {
@@ -432,6 +684,60 @@ export function ChatSidebar() {
     }
   };
 
+  /**
+   * A hands-free utterance: either an answer to a question the assistant asked
+   * out loud, or a new request. The decision is made here, at transcript time,
+   * not at speech start: a user may barge in while the question is still being
+   * spoken, and the `listen_request` only arrives once the audio finishes — that
+   * utterance is still the answer to it. Speech that arrived with no question
+   * pending stops the interrupted turn first, so two turns never run at once.
+   */
+  const handleVoiceTranscript = async (text: string, meta: VoiceTurnMeta) => {
+    announce(`You said: ${text}`);
+    if (pendingListenRef.current) {
+      const request = pendingListen;
+      pendingListenRef.current = false;
+      notifyListenPending(false);
+      setPendingListen(null);
+      try {
+        activePortRef.current?.postMessage({
+          type: 'agent/voiceReply',
+          id: request?.id ?? '',
+          kind: 'text',
+          text,
+          language: aiConfig.speechLanguage,
+        });
+      } catch {
+        // The turn is gone; the transcript is still visible in the panel.
+      }
+      return;
+    }
+    if (isRunning || meta.isBargeIn) await handleStop();
+    await handleSend(text, { isVoiceTurn: true });
+  };
+  voiceTranscriptRef.current = (text, meta) => void handleVoiceTranscript(text, meta);
+
+  /** Backs out of a spoken question: in voice mode that answers "cancelled" into the turn. */
+  const cancelListen = () => {
+    if (voiceMode.enabled && pendingListen) {
+      pendingListenRef.current = false;
+      notifyListenPending(false);
+      try {
+        activePortRef.current?.postMessage({
+          type: 'agent/voiceReply',
+          id: pendingListen.id,
+          kind: 'cancelled',
+          reason: 'cancelled',
+        });
+      } catch {
+        // The turn is gone; nothing to answer.
+      }
+      setPendingListen(null);
+      return;
+    }
+    voice.cancel();
+  };
+
   const handleStop = async () => {
     if (!isRunning) return;
     try {
@@ -466,6 +772,7 @@ export function ChatSidebar() {
             provider: aiConfig.provider,
             apiKey: apiKeyInput.trim() || undefined,
             model: modelInput.trim() || undefined,
+            speechLanguage: speechLanguageInput.trim() || undefined,
           })
         )) as { ok: boolean; config?: AiConfig };
         if (res?.ok && res.config) {
@@ -481,7 +788,7 @@ export function ChatSidebar() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      void handleSend();
+      void handleSend(undefined, { isVoiceTurn: draftIsSpoken });
     }
   };
 
@@ -492,6 +799,15 @@ export function ChatSidebar() {
     'Scan accessibility layout',
     'Explain required fields',
   ];
+
+  /** The hands-free status line: never colour-only, always named. */
+  const VOICE_STATUS_LABEL: Record<string, string> = {
+    starting: 'Voice mode: starting the microphone…',
+    listening: 'Voice mode: listening — just speak',
+    capturing: 'Hearing you…',
+    transcribing: 'Understanding…',
+    busy: 'Working…',
+  };
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-bg text-fg font-sans antialiased select-none">
@@ -527,6 +843,37 @@ export function ChatSidebar() {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Text/Voice mode switch: the anchor of hands-free interaction. */}
+          <div
+            role="group"
+            aria-label="Interaction mode"
+            className="flex items-center rounded-md border border-border overflow-hidden shrink-0"
+          >
+            <button
+              type="button"
+              aria-pressed={!voiceMode.enabled}
+              onClick={() => void setVoiceModeEnabled(false)}
+              className={`px-2 py-1 text-xs font-medium transition-colors ${
+                voiceMode.enabled
+                  ? 'text-fg-muted hover:bg-surface-elevated'
+                  : 'bg-accent/15 text-accent font-semibold'
+              }`}
+            >
+              Text
+            </button>
+            <button
+              type="button"
+              aria-pressed={voiceMode.enabled}
+              onClick={() => void setVoiceModeEnabled(true)}
+              className={`px-2 py-1 text-xs font-medium transition-colors ${
+                voiceMode.enabled
+                  ? 'bg-accent/15 text-accent font-semibold'
+                  : 'text-fg-muted hover:bg-surface-elevated'
+              }`}
+            >
+              Voice
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}
@@ -630,6 +977,27 @@ export function ChatSidebar() {
               </div>
             </>
           )}
+
+          <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+            <label htmlFor="speech-language" className="text-xs font-medium text-fg-muted">
+              Voice language
+            </label>
+            <input
+              id="speech-language"
+              type="text"
+              placeholder="Browser default (e.g. en-US, am-ET, om-ET)"
+              value={speechLanguageInput}
+              onChange={(e) => setSpeechLanguageInput(e.target.value)}
+              className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <p className="text-[11px] text-fg-muted">
+              {voice.isSupported
+                ? voice.mode === 'upload'
+                  ? 'Dictation is transcribed with your API key. Spoken replies use the voices installed on this device, and stay silent for a language with no voice rather than reading it in the wrong one.'
+                  : 'Dictation runs in this browser, so no audio leaves the device. Add an API key for more accurate transcription.'
+                : 'This browser has no microphone support available to the panel.'}
+            </p>
+          </div>
 
           <div className="flex justify-end gap-2 pt-1">
             <Button size="compact" variant="ghost" onClick={() => setShowSettings(false)}>
@@ -869,12 +1237,58 @@ export function ChatSidebar() {
             </div>
           )}
 
+          {/* The assistant asked a question out loud and is waiting for the answer. */}
+          {pendingListen && (
+            <div
+              ref={listenRef}
+              tabIndex={-1}
+              role="group"
+              aria-label="Answering by voice"
+              className="mx-3 mb-2 p-3 rounded-md border border-accent/60 bg-accent/10 text-sm flex flex-col gap-2"
+            >
+              <p className="font-medium text-fg">{pendingListen.prompt}</p>
+              <p className="text-xs text-fg-muted">
+                {voiceMode.enabled
+                  ? 'Just say your answer out loud.'
+                  : voice.needsPermission
+                    ? 'Allow the microphone on the tab that just opened, then come back here.'
+                    : voice.isCapturing
+                      ? interim || 'Listening… speak your answer, then press Done.'
+                      : 'Starting the microphone…'}
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button size="compact" variant="ghost" onClick={cancelListen}>
+                  Cancel
+                </Button>
+                {!voiceMode.enabled && (
+                  <Button size="compact" variant="primary" onClick={() => voice.stop()}>
+                    Done
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Input Tray */}
           <footer className="p-3 border-t border-border bg-surface shrink-0 flex flex-col gap-2">
+            {voiceMode.enabled && (
+              <p
+                role="status"
+                className="text-[11px] font-medium text-accent flex items-center gap-1.5"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full inline-block ${
+                    voiceMode.status === 'busy' ? 'bg-amber-500' : 'bg-success'
+                  }`}
+                  aria-hidden="true"
+                />
+                {interim || VOICE_STATUS_LABEL[voiceMode.status] || 'Voice mode'}
+              </p>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void handleSend();
+                void handleSend(undefined, { isVoiceTurn: draftIsSpoken });
               }}
               className="flex flex-col gap-2"
             >
@@ -883,40 +1297,70 @@ export function ChatSidebar() {
                   ref={inputRef}
                   rows={2}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    setDraftIsSpoken(false);
+                  }}
                   onKeyDown={handleKeyDown}
                   disabled={isRunning}
                   placeholder="Ask Tederash or type an action... (Press Enter to send)"
                   aria-label="Message prompt for assistant"
                   className="w-full px-3 py-2 rounded-md border border-border bg-surface text-fg placeholder:text-fg-muted text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                 />
+                {voice.needsPermission ? (
+                  <p className="mt-1 text-[11px] text-fg-muted" role="status">
+                    Allow the microphone on the tab that just opened, then come back here.
+                  </p>
+                ) : (
+                  !pendingListen &&
+                  voice.isCapturing && (
+                    <p className="mt-1 text-[11px] text-fg-muted italic" aria-hidden="true">
+                      {interim || 'Listening…'}
+                    </p>
+                  )
+                )}
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] text-fg-muted font-mono">
                   Enter to send · Shift+Enter for newline
                 </span>
-                {isRunning ? (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="compact"
-                    onClick={handleStop}
-                    aria-label="Stop running task"
-                  >
-                    Stop
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="compact"
-                    disabled={!input.trim()}
-                    aria-label="Send message"
-                  >
-                    Send
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {voice.isSupported && !pendingListen && !voiceMode.enabled && (
+                    <Button
+                      type="button"
+                      variant={voice.isCapturing ? 'danger' : 'ghost'}
+                      size="compact"
+                      onClick={() => void handleDictate()}
+                      disabled={isRunning}
+                      aria-pressed={voice.isCapturing}
+                      aria-label={voice.isCapturing ? 'Stop dictating' : 'Dictate a message'}
+                    >
+                      {voice.isCapturing ? 'Stop mic' : 'Speak'}
+                    </Button>
+                  )}
+                  {isRunning ? (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="compact"
+                      onClick={handleStop}
+                      aria-label="Stop running task"
+                    >
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="compact"
+                      disabled={!input.trim()}
+                      aria-label="Send message"
+                    >
+                      Send
+                    </Button>
+                  )}
+                </div>
               </div>
             </form>
           </footer>

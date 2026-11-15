@@ -23,9 +23,12 @@ export function VaultSection({ dashboard }: { dashboard: DashboardState }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-md border border-border bg-surface-elevated p-3 text-sm text-fg-muted">
-        These values help Tederash fill forms for you. They are stored <strong>only on this
-        device</strong> and are never sent to any website or AI service. Encryption with a
-        passphrase is planned; until then avoid storing passwords or card numbers here.
+        These values help Tederash fill forms for you. They are <strong>encrypted and stored only
+        on this device</strong>, and the assistant never sends them to an AI service: it asks for
+        them by name and the value is inserted here, on your machine. Once a value is typed into a
+        page it becomes part of that page, like anything you type yourself. Encryption protects the
+        saved values at rest, not against software that can already run inside this extension, so
+        avoid storing passwords or card numbers here.
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
