@@ -4,6 +4,8 @@ import { Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import type { Metadata } from "next";
+import Image from "next/image";
+import brandIcon from "./icon.png";
 
 import config from "../config";
 import { ClientProviders } from "../components/ClientProviders";
@@ -53,13 +55,13 @@ export default async function RootLayout({
               <Navbar
                 logo={
                   <div className="tederash-navbar flex items-center gap-2.5" aria-label="Tederash Home">
-                    <img
-                      src="/icon.png"
-                      alt=""
-                      width={24}
-                      height={24}
+                    <Image
+                      src={brandIcon}
+                      alt="Tederash"
+                      width={26}
+                      height={26}
                       className="w-6 h-6 rounded-md object-contain shrink-0"
-                      aria-hidden="true"
+                      priority
                     />
                     <span className="tederash-brand">Tederash</span>
                     <span className="tederash-brand-sub">Adaptive Accessibility</span>
