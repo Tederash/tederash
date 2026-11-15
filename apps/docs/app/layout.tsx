@@ -47,6 +47,7 @@ export default async function RootLayout({
           <Layout
             navbar={
               <Navbar
+                key="navbar"
                 logo={
                   <div className="tederash-navbar flex items-center gap-2.5" aria-label="Tederash Home">
                     <Image
@@ -88,7 +89,7 @@ export default async function RootLayout({
               content: "Questions? Give feedback",
               labels: "feedback",
             }}
-            footer={<Footer />}
+            footer={<Footer key="footer" />}
           >
             {children}
           </Layout>
