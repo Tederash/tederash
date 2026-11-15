@@ -4,7 +4,7 @@ const config = {
   metadata: {
     metadataBase: new URL(siteUrl),
     title: {
-      default: "Tederash Adaptive Accessibility",
+      default: "Tederash",
       template: "%s | Tederash Docs",
     },
     description:

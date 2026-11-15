@@ -30,7 +30,7 @@ export function Hero() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/jobs"
+            href="/test"
             className="inline-flex items-center px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
           >
             Try the demo

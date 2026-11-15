@@ -27,7 +27,14 @@ export function Footer() {
               href="/"
               className="flex items-center gap-2.5 text-lg font-bold tracking-tight w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded"
             >
-              <span className="tederash-logo" aria-hidden="true" />
+              <img
+                src="/icon.png"
+                alt=""
+                width={24}
+                height={24}
+                className="w-6 h-6 rounded-md object-contain shrink-0"
+                aria-hidden="true"
+              />
               <span className="tederash-brand">Tederash</span>
               <span className="tederash-brand-sub">Adaptive Framework</span>
             </Link>

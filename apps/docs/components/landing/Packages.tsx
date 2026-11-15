@@ -68,8 +68,8 @@ export function Packages() {
             Documentation
           </Link>
           {" · "}
-          <Link href="/jobs" className="underline underline-offset-4 text-foreground hover:text-primary">
-            Job application demo
+          <Link href="/test" className="underline underline-offset-4 text-foreground hover:text-primary">
+            Interactive demo
           </Link>
         </p>
       </div>

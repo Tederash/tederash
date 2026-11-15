@@ -52,8 +52,15 @@ export default async function RootLayout({
             navbar={
               <Navbar
                 logo={
-                  <div className="tederash-navbar" aria-label="Tederash Home">
-                    <span className="tederash-logo" aria-hidden="true" />
+                  <div className="tederash-navbar flex items-center gap-2.5" aria-label="Tederash Home">
+                    <img
+                      src="/icon.png"
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 rounded-md object-contain shrink-0"
+                      aria-hidden="true"
+                    />
                     <span className="tederash-brand">Tederash</span>
                     <span className="tederash-brand-sub">Adaptive Accessibility</span>
                   </div>
@@ -66,11 +73,8 @@ export default async function RootLayout({
                   <a href="/docs" className="hover:opacity-80 transition-opacity">
                     Documentation
                   </a>
-                  <a href="/jobs" className="hover:opacity-80 transition-opacity">
-                    Careers & Demo
-                  </a>
-                  <a href="/subscription" className="hover:opacity-80 transition-opacity">
-                    Pricing
+                  <a href="/test" className="hover:opacity-80 transition-opacity">
+                    Demo
                   </a>
                 </div>
                 <ThemeSwitcher />

@@ -12,7 +12,7 @@ export function NavigationDemo() {
     { href: "/", label: "Home" },
     { href: "/docs", label: "Documentation" },
     { href: "/docs/components", label: "Components", badge: "9" },
-    { href: "/subscription", label: "Pricing" },
+    { href: "/test", label: "Demo" },
   ];
 
   return (
