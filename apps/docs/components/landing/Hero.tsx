@@ -13,7 +13,7 @@ export function Hero() {
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <DitheringShader className="h-full w-full" />
         {/* Fade the pattern so headline text stays legible. */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/75 via-background/50 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/55 via-background/30 to-background" />
       </div>
 
       <div className="relative z-10 max-w-3xl lg:max-w-5xl mx-auto px-6 pt-16 pb-14 md:pt-24 md:pb-20">
@@ -21,11 +21,12 @@ export function Hero() {
           id="hero-heading"
           className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] lg:max-w-4xl"
         >
-          Interfaces that dynamically adapt to individual accessibility needs.
+          Let people choose how your app should look and behave.
         </h1>
 
-        <p className="mt-6 text-lg md:text-xl text-black dark:text-white leading-relaxed max-w-2xl lg:max-w-3xl font-medium">
-          Tederash is an open-source, runtime-adaptive React framework. When a user activates an accessibility profile, components dynamically scale touch targets, typography, contrast, screen reader announcements, and cognitive guidance — while you write standard, idiomatic React.
+        <p className="mt-6 text-lg text-foreground leading-relaxed max-w-2xl lg:max-w-3xl">
+          Tederash is a React library for accessibility. A user picks a profile, such as larger text,
+          bigger buttons or plain-language help, and every component follows it. You write normal React.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
