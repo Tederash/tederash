@@ -4,11 +4,6 @@ export const MAX_STEPS = 8;
 export const TURN_BUDGET_MS = 60_000;
 /** Perception calls allowed per turn while PAGE STATE is fresh. */
 export const PERCEPTION_BUDGET = 2;
-/**
- * Spoken questions allowed per turn. The point of asking out loud is to collect
- * everything at once, so a model that keeps interrogating the user is stopped.
- */
-export const LISTEN_BUDGET = 2;
 
 const ACTION_INTENT =
   /\b(type|enter|insert|fill|put|write|change|set|update|replace|choose|select|pick|check|uncheck|tick|untick|click|press|tap|submit|scroll|open)\b/i;
@@ -39,7 +34,6 @@ export type GuardVerdict =
 export class TurnGuards {
   private seen = new Set<string>();
   private perceptionCalls = 0;
-  private listenCalls = 0;
   private duplicates = 0;
   private actionsTaken = 0;
   private nudged = false;
@@ -61,17 +55,6 @@ export class TurnGuards {
         kind: 'duplicate',
         note: 'You already ran this exact call and the page has not changed since. Use the earlier result; do not repeat it.',
       };
-    }
-    if (tool === 'listen') {
-      if (this.listenCalls >= LISTEN_BUDGET) {
-        return {
-          kind: 'over_budget',
-          note: 'You have already asked the user twice this turn. Ask for everything that is left in one written message instead, or act on what you have.',
-        };
-      }
-      this.seen.add(key);
-      this.listenCalls++;
-      return { kind: 'run' };
     }
     if (kind === 'perceive' && this.perceptionCalls >= PERCEPTION_BUDGET) {
       return {

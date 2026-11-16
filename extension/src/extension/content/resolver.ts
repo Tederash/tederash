@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import type { PageButton, PageField, PageFieldKind, PageState } from '../../shared/tools';
+import type { PageButton, PageDialog, PageField, PageFieldKind, PageState } from '../../shared/tools';
 import { getAccessibleName, isElementVisible } from './snapshot';
 
 /**
@@ -251,6 +251,40 @@ export function collectButtons(root: ParentNode = document): Entry<PageButton>[]
   return entries;
 }
 
+const DIALOG_TEXT_CAP = 400;
+
+/**
+ * The dialog currently open over the page, if any. Its own title and message are
+ * not otherwise in the Page Model — only its buttons and fields are — so without
+ * this the assistant cannot say what it just opened.
+ */
+function collectDialog(): PageDialog | undefined {
+  const open = Array.from(
+    document.querySelectorAll<HTMLElement>('dialog[open], [role="dialog"], [role="alertdialog"]')
+  ).filter((el) => isElementVisible(el) && el.getAttribute('aria-hidden') !== 'true');
+  // The last one in document order is the topmost when dialogs stack.
+  const el = open[open.length - 1];
+  if (!el) return undefined;
+
+  const described = el.getAttribute('aria-describedby');
+  const describedText = described
+    ? described
+        .split(/\s+/)
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' ')
+    : '';
+  const title =
+    cleanLabel(getAccessibleName(el) || '') ||
+    el.querySelector('h1, h2, h3')?.textContent?.replace(/\s+/g, ' ').trim() ||
+    'Dialog';
+  const body = (describedText || el.textContent || '').replace(/\s+/g, ' ').trim();
+
+  return {
+    title,
+    text: body.length > DIALOG_TEXT_CAP ? `${body.slice(0, DIALOG_TEXT_CAP)}…` : body,
+  };
+}
+
 /** Compact picture of the page for the model's working memory. */
 export function buildPageState(): PageState {
   const fields = collectFields().map((e) => e.info);
@@ -263,6 +297,7 @@ export function buildPageState(): PageState {
     .map((h) => h.textContent?.replace(/\s+/g, ' ').trim() ?? '')
     .filter(Boolean)
     .slice(0, 8);
+  const dialog = collectDialog();
   return {
     url: location.href,
     title: document.title || 'Untitled',
@@ -270,6 +305,7 @@ export function buildPageState(): PageState {
     headings,
     fields: fields.slice(0, 40),
     buttons,
+    ...(dialog ? { dialog } : {}),
   };
 }
 

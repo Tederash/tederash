@@ -96,18 +96,20 @@ describe('fill_form tool', () => {
     });
   });
 
-  it('asks once, touching nothing, then fills the whole form in one step', async () => {
+  it('names what it cannot fill, then fills in one step once the user supplies it', async () => {
     const savedDetails = { fullName: 'Zenebech Tufa', email: 'zenebech@example.com' };
 
-    // Turn 1: the only missing values are asked for together, and nothing is filled yet.
-    const ask = await run(
-      () => ({ text: 'I need two things:\n1. Experience level\n2. Work location' }),
+    // Turn 1: it reports the gaps and stops. It does not ask, and it fills nothing.
+    const report = await run(
+      () => ({
+        text: 'Filled Full Name and Email. I have nothing saved for Experience level or Work location.',
+      }),
       { savedDetails }
     );
-    expect(ask.execTool).not.toHaveBeenCalled();
-    expect(ask.result.text).toContain('1.');
+    expect(report.execTool).not.toHaveBeenCalled();
+    expect(report.result.text).not.toMatch(/\?/);
 
-    // Turn 2: the user's single reply completes the set, so one batch call does it all.
+    // Turn 2: the user volunteers the values, so one batch call completes the form.
     const fill = await run(
       (_req, step) =>
         step === 0
@@ -172,7 +174,7 @@ describe('saved details', () => {
 
   it('says so when nothing is saved yet', () => {
     expect(formatSavedDetails({})).toBeUndefined();
-    expect(buildSystemPrompt()).toContain('none saved yet');
+    expect(buildSystemPrompt()).toContain('nothing saved yet');
   });
 
   it('substitutes a placeholder with the saved value', () => {
@@ -388,25 +390,30 @@ describe('classifySavedDetail', () => {
     expect(classifySavedDetail('Mobile')).toBe('phone');
     expect(classifySavedDetail('Full Legal Name')).toBe('fullName');
     expect(classifySavedDetail('Name')).toBe('fullName');
-    expect(classifySavedDetail('Street address')).toBe('address');
+    expect(classifySavedDetail('Street address')).toBe('addressStreet');
   });
 
   it('reads "Email Address" as an email, not an address', () => {
     expect(classifySavedDetail('Email Address')).toBe('email');
   });
 
-  it('leaves one-off and non-personal fields alone', () => {
+  it('leaves one-off and free-text fields alone', () => {
     expect(classifySavedDetail('Cover note')).toBeUndefined();
-    expect(classifySavedDetail('Experience level')).toBeUndefined();
-    expect(classifySavedDetail('Company name')).toBeUndefined();
-    expect(classifySavedDetail('Username')).toBeUndefined();
     expect(classifySavedDetail('Why do you want this role?')).toBeUndefined();
     expect(classifySavedDetail('')).toBeUndefined();
   });
 
-  it('does not treat a separate First/Last name box as the full name', () => {
-    expect(classifySavedDetail('First name')).toBeUndefined();
-    expect(classifySavedDetail('Last name')).toBeUndefined();
-    expect(classifySavedDetail('Family name')).toBeUndefined();
+  it('never reads someone else\u2019s name as the user\u2019s own', () => {
+    expect(classifySavedDetail('Username')).toBeUndefined();
+    // "Company name" is about an employer, not the person.
+    expect(classifySavedDetail('Company name')).toBe('employer');
+  });
+
+  it('maps separate First/Last name boxes to their own saved fields', () => {
+    // Safe now that the user types them separately in the profile: nothing is guessed
+    // by splitting a full name, which is wrong for names that use a father's name.
+    expect(classifySavedDetail('First name')).toBe('firstName');
+    expect(classifySavedDetail('Last name')).toBe('lastName');
+    expect(classifySavedDetail('Family name')).toBe('lastName');
   });
 });

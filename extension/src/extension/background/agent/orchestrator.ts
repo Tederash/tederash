@@ -6,7 +6,6 @@ import { createChatModel, resolveModelId } from '../llm/model';
 import { speakText } from '../speech/output';
 import { transcribeAudio } from '../speech/transcribe';
 import { storageService } from '../storage/service';
-import { awaitVoiceReply } from './voice-reply';
 import { describeProviderError } from './errors';
 import { type LocalToolFn, executeContentTool } from './executor';
 import { toModelHistory } from './history';
@@ -142,81 +141,6 @@ async function speakForAgent(text: string, config: AiConfig): Promise<ToolResult
   };
 }
 
-/**
- * Asks the user out loud and waits for the spoken answer. The side panel records;
- * the audio is transcribed here with the configured key, or the panel sends text it
- * transcribed locally when there is no key.
- */
-async function listenForAgent(
-  args: { prompt: string; language?: string | null },
-  config: AiConfig,
-  onEvent: AgentStreamListener,
-  signal?: AbortSignal
-): Promise<ToolResult> {
-  const language = args.language ?? config.speechLanguage;
-  // Speak the question first so a user who is not reading the panel hears it.
-  // Wait for the question to finish: opening the mic mid-sentence records the assistant itself.
-  await speakText(args.prompt, undefined, { lang: language ?? undefined, wait: true });
-
-  const id = `listen_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  onEvent({
-    type: 'listen_request',
-    id,
-    prompt: args.prompt,
-    language: language ?? undefined,
-    canUploadAudio: Boolean(config.apiKey),
-  });
-
-  const reply = await awaitVoiceReply(id, signal);
-
-  if (reply.kind === 'cancelled') {
-    return {
-      ok: false,
-      error: {
-        code: 'NO_ANSWER',
-        message:
-          reply.reason === 'timeout'
-            ? 'The user did not answer out loud.'
-            : 'Listening was stopped.',
-        hint: 'Ask them to type the answer instead.',
-      },
-    };
-  }
-
-  if (reply.kind === 'text') {
-    return {
-      ok: true,
-      data: { text: reply.text, source: 'web-speech', language: reply.language },
-      outcome: { ok: true, message: `The user said: “${reply.text}”` },
-    };
-  }
-
-  const transcript = await transcribeAudio({
-    audio: new Blob([reply.audio], { type: reply.mimeType }),
-    config,
-    language: reply.language ?? language ?? undefined,
-    model: config.sttModel,
-    signal,
-  });
-
-  if (!transcript.ok) {
-    return {
-      ok: false,
-      error: {
-        code: transcript.code,
-        message: transcript.error,
-        hint: 'Ask the user to type the answer instead.',
-      },
-    };
-  }
-
-  return {
-    ok: true,
-    data: { text: transcript.text, source: transcript.source, language },
-    outcome: { ok: true, message: `The user said: “${transcript.text}”` },
-  };
-}
-
 async function loadSavedDetails(): Promise<Record<string, string>> {
   try {
     return await storageService.getVault();
@@ -254,8 +178,10 @@ async function rememberFilledDetails(
 
   try {
     const current = await storageService.getVault();
+    // Only fills gaps. What the user typed into their profile is theirs, and a value
+    // picked up off a page must never quietly replace it.
     const changed = Object.fromEntries(
-      Object.entries(additions).filter(([key, value]) => current[key] !== value)
+      Object.entries(additions).filter(([key]) => !current[key]?.trim())
     );
     if (Object.keys(changed).length) await storageService.mergeVaultEntries(changed);
   } catch {
@@ -356,22 +282,10 @@ export async function runAgentTaskStream(
     return awaitConfirmation(id, session.abortController?.signal);
   };
 
-  // Speaking and listening belong to the assistant, not the page, so they bypass the
-  // content script while keeping the same timeline, policy and transcript handling.
+  // Speaking belongs to the assistant, not the page, so it bypasses the content
+  // script while keeping the same timeline, policy and transcript handling.
   const runLocal: LocalToolFn = async (call) => {
     if (call.name === 'say') return speakForAgent(call.args.text, aiConfig);
-    if (call.name === 'listen') {
-      if (!onEvent) {
-        return {
-          ok: false,
-          error: {
-            code: 'NO_VOICE_CHANNEL',
-            message: 'Voice is only available while the side panel is open. Ask in text instead.',
-          },
-        };
-      }
-      return listenForAgent(call.args, aiConfig, onEvent, session.abortController?.signal);
-    }
     return undefined;
   };
 

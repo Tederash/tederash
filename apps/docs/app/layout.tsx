@@ -12,6 +12,7 @@ import { ClientProviders } from "../components/ClientProviders";
 import { Footer } from "../components/Footer";
 import { NpmIcon } from "../components/NpmIcon";
 import { ThemeSwitcher } from "../components/ThemeSwitcher";
+import { NavbarLinks } from "../components/NavbarLinks";
 
 export const metadata: Metadata = config.metadata;
 
@@ -65,14 +66,7 @@ export default async function RootLayout({
                 chatLink="https://www.npmjs.com/package/@tederash/core"
                 chatIcon={<NpmIcon className="w-5 h-5" />}
               >
-                <div className="flex items-center gap-4 text-xs font-semibold mr-2 max-md:hidden">
-                  <a href="/docs" className="hover:opacity-80 transition-opacity">
-                    Documentation
-                  </a>
-                  <a href="/test" className="hover:opacity-80 transition-opacity">
-                    Demo
-                  </a>
-                </div>
+                <NavbarLinks />
                 <ThemeSwitcher />
               </Navbar>
             }

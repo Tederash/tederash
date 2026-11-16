@@ -3,12 +3,14 @@
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
-import { Sparkles, Github, BookOpen, Heart, Globe, ShieldCheck } from "lucide-react";
+import { Github, BookOpen, Globe, ShieldCheck } from "lucide-react";
 import { useAccessibility } from "@tederash/react";
 import brandIcon from "../app/icon.png";
+import { useLandingTranslation } from "./landing/translations";
 
 export function Footer() {
   const { adaptations } = useAccessibility();
+  const { t } = useLandingTranslation();
 
   const linkClass = `text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded py-0.5 inline-flex items-center gap-1 ${
     adaptations.underlineLinks ? "underline font-medium" : ""
@@ -40,9 +42,7 @@ export function Footer() {
             </Link>
 
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-              An open-source, runtime-adaptive accessibility framework and component SDK for React and TypeScript.
-              Web applications dynamically adapt their touch targets, typography, contrast, assistive announcements,
-              and cognitive instructions to individual human preferences.
+              {t.footer.brandDescription}
             </p>
 
             <div className="flex items-center gap-3 pt-1">
@@ -68,7 +68,7 @@ export function Footer() {
           {/* Column 1: Framework Packages */}
           <div className="flex flex-col gap-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Framework SDK
+              {t.footer.columns.framework}
             </h3>
             <ul className="flex flex-col gap-2" role="list">
               <li>
@@ -97,27 +97,27 @@ export function Footer() {
           {/* Column 2: Documentation */}
           <div className="flex flex-col gap-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Documentation
+              {t.footer.columns.docs}
             </h3>
             <ul className="flex flex-col gap-2" role="list">
               <li>
                 <Link href="/docs/quick-start" className={linkClass}>
-                  Quick Start Guide
+                  {t.footer.links.quickStart}
                 </Link>
               </li>
               <li>
                 <Link href="/docs/profiles" className={linkClass}>
-                  Profile Schema
+                  {t.footer.links.overview}
                 </Link>
               </li>
               <li>
-                <Link href="/docs/runtime" className={linkClass}>
-                  Precedence Resolution
+                <Link href="/docs/components" className={linkClass}>
+                  {t.footer.links.components}
                 </Link>
               </li>
               <li>
-                <Link href="/docs/decisions/0001-framework-independent-core-runtime" className={linkClass}>
-                  ADRs &amp; Decisions
+                <Link href="/test" className={linkClass}>
+                  {t.footer.links.interactiveDemo}
                 </Link>
               </li>
             </ul>
@@ -126,24 +126,24 @@ export function Footer() {
           {/* Column 3: Standards & Quality */}
           <div className="flex flex-col gap-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Standards &amp; Quality
+              {t.footer.columns.standards}
             </h3>
             <ul className="flex flex-col gap-2" role="list">
               <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-                <span>WCAG 2.2 AA Target</span>
+                <span>{t.footer.links.wcagGuidelines}</span>
               </li>
               <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-                <span>WAI-ARIA 1.2 Compliant</span>
+                <span>{t.footer.links.ethiopicTypography}</span>
               </li>
               <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Globe className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
-                <span>100% Offline Capable</span>
+                <span>English · አማርኛ · Afaan Oromoo</span>
               </li>
               <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-                <span>282 Automated Tests Passing</span>
+                <span>{t.footer.designedForEveryone}</span>
               </li>
             </ul>
           </div>
@@ -152,19 +152,15 @@ export function Footer() {
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
-        {/* Built with Tederash — the docs demo the product */}
+        {/* Built with Tederash */}
         <p className="mb-6 text-center text-xs text-muted-foreground">
-          This documentation is built with{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">@tederash/components</code>{" "}
-          and adapts to your accessibility profile in real time — open the{" "}
-          <span aria-hidden="true">♿</span>
-          <span className="sr-only">accessibility</span> control panel to try it.
+          {t.footer.builtWith}
         </p>
 
         {/* Bottom Tier: Copyright, badges, and tech stack */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} Tederash. Open source under the MIT License.
+            © {new Date().getFullYear()} Tederash. {t.footer.license}
           </p>
 
           <div className="flex items-center gap-4 text-[11px]">
@@ -172,7 +168,7 @@ export function Footer() {
             <span aria-hidden="true">•</span>
             <span>Next.js 15</span>
             <span aria-hidden="true">•</span>
-            <span>Nextra</span>
+            <span>Tailwind CSS</span>
             <span aria-hidden="true">•</span>
             <span>axe-core</span>
           </div>

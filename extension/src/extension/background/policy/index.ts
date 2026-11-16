@@ -108,8 +108,6 @@ export function evaluatePolicy(call: ToolCall, elementContext?: ElementContext):
     case 'read_text':
     case 'set_adaptation':
     case 'say':
-    // Asking the user a question out loud: it changes nothing on the page.
-    case 'listen':
     case 'finish':
     case 'page_state':
     case 'find':

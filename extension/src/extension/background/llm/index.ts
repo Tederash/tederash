@@ -99,22 +99,24 @@ export function loadAiConfig(): Promise<AiConfig> {
 }
 
 /**
- * Saves settings from the UI. An omitted/empty apiKey keeps the previously saved key
- * (the settings form never receives the key back, so it cannot resend it).
+ * Saves settings from the UI, merging into what is already stored.
+ *
+ * Merging matters: the panel has several places that save a single setting (the
+ * voice-mode switch, the settings drawer), and a wholesale replace meant whichever
+ * saved last silently wiped the fields it did not know about. An omitted field now
+ * means "leave it alone" — including the keys, which are never sent back to a UI
+ * page and so could never be resent.
  */
 export async function setAiConfig(config: Partial<StoredAiConfig>): Promise<AiConfig> {
   await loadAiConfig();
-  const next = sanitize(config);
-  if (!next.apiKey && stored?.apiKey && stored.provider === next.provider) {
-    next.apiKey = stored.apiKey;
+  const incoming = sanitize({ ...stored, ...config });
+  // A provider switch must not carry the previous provider's key over to it.
+  if (config.apiKey === undefined && stored?.provider !== incoming.provider) {
+    incoming.apiKey = undefined;
   }
-  // The settings form never receives either key back, so an empty field means "keep".
-  if (!next.sttApiKey && stored?.sttApiKey) {
-    next.sttApiKey = stored.sttApiKey;
-  }
-  stored = next;
+  stored = incoming;
   try {
-    await storageArea()?.set({ [STORAGE_KEY]: next });
+    await storageArea()?.set({ [STORAGE_KEY]: incoming });
   } catch {
     // Keep the in-memory value even if persistence fails.
   }

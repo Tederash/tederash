@@ -1,52 +1,40 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
+import { useLandingTranslation } from "./translations";
 
-const PACKAGES = [
-  {
-    name: "@tederash/core",
-    text: "The profile model, the runtime that holds and saves it, and the rules that turn a profile into CSS variables. No React.",
-  },
-  {
-    name: "@tederash/react",
-    text: "The provider and hooks. Also the bridge that lets the Tederash browser extension talk to your page.",
-  },
-  {
-    name: "@tederash/components",
-    text: "Button, input, textarea, select, checkbox, form, dialog and navigation. Built on Radix and shadcn/ui.",
-  },
-  {
-    name: "@tederash/assistance",
-    text: "Plain-language explanations for fields and errors. Works offline, and an AI provider can be plugged in.",
-  },
-];
-
-const FACTS = [
-  "Works offline. Preferences stay in the browser.",
-  "English, Amharic, and Afaan Oromoo out of the box, with Ge'ez-aware typography.",
-  "Speech input and read-aloud where the browser supports it.",
-  "Confirmation before destructive actions when the profile asks for it.",
+const PACKAGE_NAMES = [
+  "@tederash/core",
+  "@tederash/react",
+  "@tederash/components",
+  "@tederash/assistance",
 ];
 
 export function Packages() {
+  const { t } = useLandingTranslation();
+
   return (
     <section aria-labelledby="packages-heading" className="border-b border-border">
       <div className="max-w-5xl mx-auto px-6 py-14 md:py-20 grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-8 md:gap-12">
         <div>
           <h2 id="packages-heading" className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            What you get
+            {t.packages.heading}
           </h2>
           <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground leading-relaxed">
-            {FACTS.map((fact) => (
+            {t.packages.facts.map((fact) => (
               <li key={fact}>{fact}</li>
             ))}
           </ul>
         </div>
 
         <dl className="divide-y divide-border">
-          {PACKAGES.map((pkg) => (
-            <div key={pkg.name} className="py-4 first:pt-0 last:pb-0">
-              <dt className="font-mono text-sm text-foreground">{pkg.name}</dt>
-              <dd className="mt-1 text-sm text-muted-foreground leading-relaxed">{pkg.text}</dd>
+          {PACKAGE_NAMES.map((name) => (
+            <div key={name} className="py-4 first:pt-0 last:pb-0">
+              <dt className="font-mono text-sm text-foreground">{name}</dt>
+              <dd className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                {t.packages.descriptions[name] ?? ""}
+              </dd>
             </div>
           ))}
         </dl>
@@ -54,22 +42,22 @@ export function Packages() {
 
       <div className="max-w-5xl mx-auto px-6 pb-14 md:pb-20">
         <p className="text-sm text-muted-foreground">
-          Open source.{" "}
+          {t.packages.openSource}{" "}
           <a
             href="https://github.com/tederash/tederash-ui-library"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-4 text-foreground hover:text-primary"
           >
-            Source on GitHub
+            {t.packages.sourceOnGithub}
           </a>
           {" · "}
           <Link href="/docs" className="underline underline-offset-4 text-foreground hover:text-primary">
-            Documentation
+            {t.packages.docsLink}
           </Link>
           {" · "}
           <Link href="/test" className="underline underline-offset-4 text-foreground hover:text-primary">
-            Interactive demo
+            {t.packages.demoLink}
           </Link>
         </p>
       </div>

@@ -98,12 +98,14 @@ describe('voice mode state machine', () => {
     ).toBe('busy');
   });
 
-  it('a spoken question marks the next utterance as an answer, not a new request', () => {
+  it('every utterance is simply a new turn: the assistant never has a pending question', () => {
     const state = drive([
       { type: 'toggle' },
       { type: 'engineStarted' },
+      { type: 'speechStart' },
+      { type: 'speechEnd' },
       { type: 'transcribed', ok: true, hasText: true },
-      { type: 'listenPending', pending: true },
+      { type: 'turnEnded' },
       { type: 'speechStart' },
       { type: 'speechEnd' },
       { type: 'transcribed', ok: true, hasText: true },
@@ -112,20 +114,16 @@ describe('voice mode state machine', () => {
     expect(state.bargeIn).toBeUndefined();
   });
 
-  it('an answer that fails to transcribe returns to the turn so it can ask again', () => {
+  it('an unusable utterance outside a turn goes back to listening', () => {
     expect(
       drive([
         { type: 'toggle' },
         { type: 'engineStarted' },
         { type: 'speechStart' },
         { type: 'speechEnd' },
-        { type: 'transcribed', ok: true, hasText: true },
-        { type: 'listenPending', pending: true },
-        { type: 'speechStart' },
-        { type: 'speechEnd' },
         { type: 'transcribed', ok: false },
       ]).status
-    ).toBe('busy');
+    ).toBe('listening');
   });
 
   it('toggling off always wins, even while speech is being captured', () => {
@@ -164,16 +162,13 @@ describe('voice mode state machine', () => {
 });
 
 describe('voice-gated tool set', () => {
-  it('offers say and listen on a spoken turn', () => {
-    const names = Object.keys(getAgentTools({ voiceTurn: true }));
-    expect(names).toContain('say');
-    expect(names).toContain('listen');
+  it('offers say on a spoken turn, so the reply can be heard', () => {
+    expect(Object.keys(getAgentTools({ voiceTurn: true }))).toContain('say');
   });
 
-  it('hides them from a typed turn, where the user cannot hear a spoken question', () => {
+  it('hides it from a typed turn, where there is nobody listening', () => {
     const names = Object.keys(getAgentTools({ voiceTurn: false }));
     expect(names).not.toContain('say');
-    expect(names).not.toContain('listen');
     // The page tools are untouched either way.
     expect(names).toContain('find');
     expect(names).toContain('fill');

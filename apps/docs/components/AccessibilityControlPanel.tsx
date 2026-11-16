@@ -34,6 +34,25 @@ export function AccessibilityControlPanel() {
     else if (wasOpenRef.current) triggerRef.current?.focus();
     wasOpenRef.current = isOpen;
   }, [isOpen]);
+  const isAmharic = profile.locale === "am";
+  const isOromo = profile.locale === "om";
+
+  const triggerLabel = isAmharic ? "ተደራሽነት" : isOromo ? "Qaqqabamummaa" : "A11y";
+  const drawerTitle = isAmharic
+    ? "ተላማጅ የተደራሽነት ራንታይም"
+    : isOromo
+      ? "Raantaayimii Qaqqabamummaa Walmadaalu"
+      : "Adaptive Accessibility Runtime";
+  const drawerSubtitle = isAmharic
+    ? "የራንታይም ምርጫዎች እና የመገለጫ መቆጣጠሪያ ፓነል"
+    : isOromo
+      ? "Filannoo yeroo hojii fi gabatee to'annoo piroofaayilii"
+      : "Runtime preference & profile control panel";
+  const adaptationsTitle = isAmharic
+    ? "ተግባራዊ የተደረጉ ማስተካከያዎች"
+    : isOromo
+      ? "Walmadaalchisa Hojjataa Jiru"
+      : "Active Resolved Adaptations";
   const [auditResults, setAuditResults] = React.useState<AuditViolation[] | null>(null);
   const [isAuditing, setIsAuditing] = React.useState(false);
 
@@ -72,7 +91,7 @@ export function AccessibilityControlPanel() {
           className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs tracking-wide shadow-xl transition-all border border-primary/30 bg-primary text-primary-foreground hover:scale-105 hover:shadow-2xl focus-visible:ring-4 focus-visible:ring-amber-500 focus-visible:outline-none"
         >
           <span aria-hidden="true" className="text-base">♿</span>
-          <span>A11y: <strong>{profile.name}</strong></span>
+          <span>{triggerLabel}: <strong>{profile.name}</strong></span>
         </button>
       </div>
 
@@ -91,9 +110,9 @@ export function AccessibilityControlPanel() {
         >
           <div className="flex items-center justify-between border-b pb-4">
             <div>
-              <h2 className="text-lg font-bold">Adaptive Accessibility Runtime</h2>
+              <h2 className="text-lg font-bold">{drawerTitle}</h2>
               <p className="text-xs text-muted-foreground">
-                Runtime preference & profile control panel
+                {drawerSubtitle}
               </p>
             </div>
             <button
@@ -109,7 +128,7 @@ export function AccessibilityControlPanel() {
 
           {/* Active Adaptations Inspector */}
           <section className="border-t pt-4 flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">Active Resolved Adaptations</h3>
+            <h3 className="text-sm font-semibold">{adaptationsTitle}</h3>
             <div className="bg-muted/50 p-3 rounded-lg text-[11px] font-mono space-y-1">
               <div>fontScale: {adaptations.fontScale}</div>
               <div>minTargetHeight: {adaptations.minTargetHeight}</div>

@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGuidedFill } from './useGuidedFill';
 import { createEnvelope } from '../../shared/envelope';
 import type {
   AgentStreamEvent,
   AiConfig,
   ChatMessage,
+  SettingsGetResponse,
   SpeechTranscribeResponse,
+  VaultGetResponse,
 } from '../../shared/messages';
+import { ProfileForm } from '../profile/ProfileForm';
+import { SettingsDrawer } from './SettingsDrawer';
 import { Button } from '../ui/Button';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { type CaptureResult, useVoice, queryMicrophonePermission } from './useVoice';
 import { useVoiceMode, type VoiceTurnMeta } from './useVoiceMode';
 import { Contrast, Moon, Sun } from '../ui/icons';
+import { VoicePoweredOrb } from '../ui/voice-powered-orb';
 import {
   ThinkingPromptInput,
   type ThinkingStatus,
@@ -51,10 +55,6 @@ function useTheme(): [Theme, (t: Theme) => void] {
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 
-/** "Help me fill this form" in English, Amharic and Afaan Oromo starts guided filling. */
-const GUIDED_FILL_REQUEST =
-  /^(please\s+)?(help me\s+)?(fill|complete)\s+(in\s+)?(this|the)\s+form(\s+with me)?(\s+by voice)?\.?$|ቅጹን\s+(እንድሞላ\s+)?(አግዘኝ|እርዳኝ|ሙላልኝ|አብረን\s+እንሙላ)|unka\s+(kana\s+)?(akkan\s+guutu\s+)?(na\s+gargaari|guuti)/i;
-
 export function ChatSidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -65,10 +65,15 @@ export function ChatSidebar() {
     provider: 'groq',
     model: DEFAULT_MODEL,
   });
-  // The background never sends the saved key back; an empty input keeps it.
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [modelInput, setModelInput] = useState(DEFAULT_MODEL);
-  const [speechLanguageInput, setSpeechLanguageInput] = useState('');
+  /**
+   * The profile the assistant fills forms from. Collected once on first run, so it
+   * never has to interrogate the user mid-task. `undefined` until loaded, so the
+   * first-run screen does not flash for someone who already has a profile.
+   */
+  const [profile, setProfile] = useState<Record<string, string>>({});
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const hasProfile = Object.keys(profile).length > 0;
   const [tederashState, setTederashState] = useState<{
     checked: boolean;
     isTederash: boolean;
@@ -95,10 +100,6 @@ export function ChatSidebar() {
   const [interim, setInterim] = useState('');
   /** The pending draft was dictated, so the reply should be spoken back. */
   const [draftIsSpoken, setDraftIsSpoken] = useState(false);
-  const [pendingListen, setPendingListen] = useState<
-    Extract<AgentStreamEvent, { type: 'listen_request' }> | null
-  >(null);
-  const listenRef = useRef<HTMLDivElement>(null);
   /** Kept current so the keyboard-command listener can stay registered once. */
   const handleDictateRef = useRef<(() => Promise<void>) | null>(null);
   const voice = useVoice({
@@ -135,8 +136,62 @@ export function ChatSidebar() {
     if (pendingConfirm) confirmRef.current?.focus();
   }, [pendingConfirm]);
 
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+  const [activeSpeakingText, setActiveSpeakingText] = useState('');
+  const speakingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const markAgentSpeaking = (text: string, durationMs?: number) => {
+    setIsAgentSpeaking(true);
+    setActiveSpeakingText(text);
+    if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
+    const ms = durationMs ?? Math.max(1800, Math.min(12000, text.length * 75 + 1000));
+    speakingTimerRef.current = setTimeout(() => {
+      setIsAgentSpeaking(false);
+      setActiveSpeakingText('');
+    }, ms);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const interval = window.setInterval(() => {
+      if (window.speechSynthesis?.speaking) {
+        setIsAgentSpeaking(true);
+      }
+    }, 150);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  /** Marks the first run done so the profile screen is offered only once. */
+  const completeOnboarding = async () => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        await chrome.runtime.sendMessage(createEnvelope('onboarding/complete', { completed: true }));
+      }
+    } catch {
+      // Best effort: the screen is dismissed either way.
+    }
+    setShowProfileSetup(false);
+  };
+
+  const saveProfile = async (values: Record<string, string>) => {
+    setSavingProfile(true);
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        const res = (await chrome.runtime.sendMessage(
+          createEnvelope('vault/set', { entries: values })
+        )) as VaultGetResponse;
+        if (res?.ok) setProfile(res.entries);
+      }
+      await completeOnboarding();
+      announce('Your details are saved.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   /** Spoken status for voice mode, so a blind user hears state changes. */
   const speakNotice = (text: string) => {
+    markAgentSpeaking(text);
     if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
     void chrome.runtime.sendMessage(createEnvelope('tts/speak', { text })).catch(() => undefined);
   };
@@ -144,7 +199,6 @@ export function ChatSidebar() {
   // Hands-free voice mode: the mic stays live, speech starts and ends turns,
   // and speech during a spoken answer barges in. Kept in refs so the port
   // listener and the keyboard-command listener can stay registered once.
-  const pendingListenRef = useRef(false);
   const voiceModeOnRef = useRef(false);
   const voiceTranscriptRef = useRef<(text: string, meta: VoiceTurnMeta) => void>(() => {});
   const voiceModeToggleRef = useRef<(() => void) | null>(null);
@@ -159,42 +213,9 @@ export function ChatSidebar() {
       speakNotice(text);
     },
     onInterim: setInterim,
-    pendingListenRef,
   });
-  const { toggle: toggleVoiceEngine, notifyTurnEnded, notifyListenPending } = voiceMode;
+  const { toggle: toggleVoiceEngine, notifyTurnEnded } = voiceMode;
   voiceModeOnRef.current = voiceMode.enabled;
-
-  // Guided form filling, one field at a time, confirmed before anything is written.
-  // Voice tab: spoken questions and spoken answers. Text tab: the same script in chat.
-  const [guidedInterim, setGuidedInterim] = useState('');
-  const guided = useGuidedFill({
-    mode: voiceMode.enabled ? 'voice' : 'text',
-    onSay: (text) =>
-      setMessages((prev) => {
-        // Consecutive lines from the script ("Done." then the next question) share one reply.
-        const last = prev[prev.length - 1];
-        if (last?.role === 'assistant' && last.id.startsWith('guided_')) {
-          return [...prev.slice(0, -1), { ...last, content: `${last.content}\n\n${text}` }];
-        }
-        return [...prev, { id: `guided_${Date.now()}_${prev.length}`, role: 'assistant', content: text, timestamp: Date.now() }];
-      }),
-    tabId: activeTabInfo.id,
-    language: aiConfig.speechLanguage,
-    canUpload: aiConfig.hasApiKey !== false || aiConfig.hasSttApiKey === true,
-    onInterim: setGuidedInterim,
-  });
-  const startGuided = () => {
-    const spoken = voiceMode.enabled;
-    if (spoken) {
-      // One listener at a time: voice mode's always-on mic would take the answers
-      // as new requests. Suspend it (the tab stays on Voice) and resume afterwards.
-      voiceMode.suspend(true);
-      voiceMode.notifyTurnEnded();
-    }
-    void guided.start().finally(() => {
-      if (spoken) voiceMode.suspend(false);
-    });
-  };
 
   /** Turns hands-free mode on or off and remembers the choice across sessions. */
   const setVoiceModeEnabled = async (next: boolean) => {
@@ -247,11 +268,6 @@ export function ChatSidebar() {
       }
     })();
   }, []);
-
-  // Same for a spoken question: move focus so Done/Cancel are reachable at once.
-  useEffect(() => {
-    if (pendingListen) listenRef.current?.focus();
-  }, [pendingListen]);
 
   // Alt+Shift+V (the start-listening command) toggles hands-free voice mode
   // from anywhere; the mic button remains for dictation in text mode.
@@ -388,10 +404,18 @@ export function ChatSidebar() {
           )) as { ok: boolean; config?: AiConfig };
           if (configRes?.ok && configRes.config) {
             setAiConfigState(configRes.config);
-            setApiKeyInput('');
-            setModelInput(configRes.config.model || DEFAULT_MODEL);
-            setSpeechLanguageInput(configRes.config.speechLanguage || '');
             resumeVoiceModeRef.current?.();
+          }
+
+          // The saved profile, and whether to offer to set one up.
+          const [vaultRes, settingsRes] = await Promise.all([
+            chrome.runtime.sendMessage(createEnvelope('vault/get', {})) as Promise<VaultGetResponse>,
+            chrome.runtime.sendMessage(createEnvelope('settings/get', {})) as Promise<SettingsGetResponse>,
+          ]);
+          if (vaultRes?.ok) setProfile(vaultRes.entries);
+          const hasProfile = Object.keys(vaultRes?.ok ? vaultRes.entries : {}).length > 0;
+          if (settingsRes?.ok && !settingsRes.onboardingCompleted && !hasProfile) {
+            setShowProfileSetup(true);
           }
         }
       } catch {
@@ -486,64 +510,9 @@ export function ChatSidebar() {
 
   handleDictateRef.current = handleDictate;
 
-  /** The assistant asked out loud: record the answer and send it back into the turn. */
-  const answerListen = async (request: Extract<AgentStreamEvent, { type: 'listen_request' }>) => {
-    const reply = (payload: Record<string, unknown>) => {
-      try {
-        activePortRef.current?.postMessage({ type: 'agent/voiceReply', id: request.id, ...payload });
-      } catch {
-        // The turn is gone; nothing to answer.
-      }
-      setPendingListen(null);
-      setInterim('');
-    };
-
-    const result = await voice.capture();
-    setInterim('');
-    if (result.cancelled) {
-      reply({ kind: 'cancelled', reason: 'cancelled' });
-      return;
-    }
-    if (result.error) {
-      announce(result.error);
-      reply({ kind: 'cancelled', reason: result.error });
-      return;
-    }
-    if (result.text) {
-      reply({ kind: 'text', text: result.text, language: request.language });
-      return;
-    }
-    reply({
-      kind: 'audio',
-      audioBase64: result.audioBase64,
-      mimeType: result.mimeType,
-      language: request.language,
-    });
-  };
-
   const handleSend = async (customText?: string, options: { isVoiceTurn?: boolean } = {}) => {
     const textToSend = customText || input;
     if (!textToSend.trim() || isRunning) return;
-
-    // While guided filling runs in the Text tab, typed messages answer its questions.
-    if (guided.isRunning()) {
-      if (!customText) setInput('');
-      setMessages((prev) => [
-        ...prev,
-        { id: `guided_u_${Date.now()}`, role: 'user', content: textToSend.trim(), timestamp: Date.now() },
-      ]);
-      guided.answer(textToSend.trim());
-      return;
-    }
-    if (GUIDED_FILL_REQUEST.test(textToSend.trim())) {
-      if (!customText) setInput('');
-      setMessages((prev) => [
-        ...prev,
-        { id: `guided_u_${Date.now()}`, role: 'user', content: textToSend.trim(), timestamp: Date.now() },
-      ]);
-      startGuided();
-      return;
-    }
 
     if (!customText) {
       setInput('');
@@ -610,22 +579,13 @@ export function ChatSidebar() {
             announce(`Confirmation needed. ${event.title} ${event.detail}`);
             return;
           }
-          if (event.type === 'listen_request') {
-            setPendingListen(event);
-            announce(`${event.prompt} Listening for your answer.`);
-            if (voiceModeOnRef.current) {
-              // Hands-free: the next utterance the mic hears is the answer; no
-              // separate recording session and no button press.
-              pendingListenRef.current = true;
-              notifyListenPending(true);
-              return;
-            }
-            void answerListen(event);
-            return;
-          }
           if (event.type === 'thought') announce(event.activeVerb, 1000);
           if (event.type === 'done') setPendingConfirm(null);
           if (event.type === 'tool_call') {
+            if (event.toolCall.tool === 'say') {
+              const text = (event.toolCall.arguments as any)?.text || '';
+              markAgentSpeaking(text);
+            }
             setMessages((prev) =>
               prev.map((m) => {
                 if (m.id !== asstMsgId) return m;
@@ -664,6 +624,9 @@ export function ChatSidebar() {
               })
             );
           } else if (event.type === 'token') {
+            if (voiceMode.enabled) {
+              markAgentSpeaking('Speaking answer…', 1500);
+            }
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === asstMsgId
@@ -689,11 +652,6 @@ export function ChatSidebar() {
             );
             setIsRunning(false);
           } else if (event.type === 'done') {
-            setPendingListen(null);
-            if (pendingListenRef.current) {
-              pendingListenRef.current = false;
-              notifyListenPending(false);
-            }
             // Hands the microphone back to the user in voice mode.
             notifyTurnEnded();
             // The background's final message is authoritative (status and full text).
@@ -711,6 +669,9 @@ export function ChatSidebar() {
               )
             );
             announce(finalContent.replace(/[*_`#>|]/g, '').slice(0, 400));
+            if (voiceMode.enabled && finalContent) {
+              markAgentSpeaking(finalContent.slice(0, 200));
+            }
             setIsRunning(false);
             activePortRef.current = null;
             inputRef.current?.focus();
@@ -719,11 +680,6 @@ export function ChatSidebar() {
 
         port.onDisconnect.addListener(() => {
           setPendingConfirm(null);
-          setPendingListen(null);
-          if (pendingListenRef.current) {
-            pendingListenRef.current = false;
-            notifyListenPending(false);
-          }
           notifyTurnEnded();
           setIsRunning(false);
           activePortRef.current = null;
@@ -803,58 +759,17 @@ export function ChatSidebar() {
   };
 
   /**
-   * A hands-free utterance: either an answer to a question the assistant asked
-   * out loud, or a new request. The decision is made here, at transcript time,
-   * not at speech start: a user may barge in while the question is still being
-   * spoken, and the `listen_request` only arrives once the audio finishes — that
-   * utterance is still the answer to it. Speech that arrived with no question
-   * pending stops the interrupted turn first, so two turns never run at once.
+   * A hands-free utterance is always a new request: the assistant never asks
+   * questions of its own, so there is nothing to route an answer into. Speech that
+   * arrives mid-turn stops the interrupted turn first, so two never run at once.
    */
   const handleVoiceTranscript = async (text: string, meta: VoiceTurnMeta) => {
     announce(`You said: ${text}`);
-    if (pendingListenRef.current) {
-      const request = pendingListen;
-      pendingListenRef.current = false;
-      notifyListenPending(false);
-      setPendingListen(null);
-      try {
-        activePortRef.current?.postMessage({
-          type: 'agent/voiceReply',
-          id: request?.id ?? '',
-          kind: 'text',
-          text,
-          language: aiConfig.speechLanguage,
-        });
-      } catch {
-        // The turn is gone; the transcript is still visible in the panel.
-      }
-      return;
-    }
     if (isRunning || meta.isBargeIn) await handleStop();
     await handleSend(text, { isVoiceTurn: true });
   };
   voiceTranscriptRef.current = (text, meta) => void handleVoiceTranscript(text, meta);
 
-  /** Backs out of a spoken question: in voice mode that answers "cancelled" into the turn. */
-  const cancelListen = () => {
-    if (voiceMode.enabled && pendingListen) {
-      pendingListenRef.current = false;
-      notifyListenPending(false);
-      try {
-        activePortRef.current?.postMessage({
-          type: 'agent/voiceReply',
-          id: pendingListen.id,
-          kind: 'cancelled',
-          reason: 'cancelled',
-        });
-      } catch {
-        // The turn is gone; nothing to answer.
-      }
-      setPendingListen(null);
-      return;
-    }
-    voice.cancel();
-  };
 
   const handleStop = async () => {
     if (!isRunning) return;
@@ -882,26 +797,6 @@ export function ChatSidebar() {
     }
   };
 
-  const handleSaveConfig = async () => {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-        const res = (await chrome.runtime.sendMessage(
-          createEnvelope('ai/setConfig', {
-            provider: aiConfig.provider,
-            apiKey: apiKeyInput.trim() || undefined,
-            model: modelInput.trim() || undefined,
-            speechLanguage: speechLanguageInput.trim() || undefined,
-          })
-        )) as { ok: boolean; config?: AiConfig };
-        if (res?.ok && res.config) {
-          setAiConfigState(res.config);
-        }
-      }
-      setShowSettings(false);
-    } catch {
-      setShowSettings(false);
-    }
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -930,27 +825,7 @@ export function ChatSidebar() {
   return (
     <div className="flex flex-col h-screen max-h-screen bg-bg text-fg font-sans antialiased select-none">
       {/* Header */}
-      <header className="px-4 pt-3 pb-2 flex items-center justify-between gap-3 shrink-0">
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-medium text-[15px] tracking-tight text-fg">Tederash</h1>
-            {!tederashState.isTederash && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-border text-fg-muted font-medium">
-                <span
-                  aria-hidden="true"
-                  className="w-1.5 h-1.5 rounded-full inline-block bg-fg-muted"
-                />
-                Inactive
-              </span>
-            )}
-          </div>
-          {activeTabInfo.title && (
-            <span className="text-[11px] text-fg-muted truncate mt-0.5" title={activeTabInfo.url}>
-              {activeTabInfo.title}
-            </span>
-          )}
-        </div>
-
+      <header className="px-4 pt-3 pb-2 flex items-center justify-end gap-1.5 shrink-0">
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Text/Voice mode switch: the anchor of hands-free interaction. */}
           <div
@@ -1011,6 +886,15 @@ export function ChatSidebar() {
           >
             Settings
           </button>
+          <button
+            type="button"
+            onClick={() => setShowProfileSetup(true)}
+            aria-label="Your saved details"
+            title="The details Tederash fills forms from"
+            className="h-8 px-3 text-xs font-medium text-fg-muted hover:text-fg rounded-full border border-border bg-surface transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Your details
+          </button>
           {tederashState.isTederash && messages.length > 0 && (
             <button
               type="button"
@@ -1025,117 +909,36 @@ export function ChatSidebar() {
         </div>
       </header>
 
-      {/* Settings Panel Drawer */}
+      {/* First run: collect the profile once, so the assistant never has to ask mid-task. */}
+      {showProfileSetup ? (
+        <main className="flex-1 overflow-y-auto px-4 pb-4" aria-labelledby="profile-setup-heading">
+          <h2 id="profile-setup-heading" className="text-base font-semibold text-fg mb-1">
+            {hasProfile ? 'Your details' : 'Tell Tederash about you'}
+          </h2>
+          <p className="text-sm text-fg-muted mb-3">
+            Saved once, so filling a form later takes one sentence instead of twenty questions.
+            {hasProfile ? '' : ' You can skip this and add details whenever you like.'}
+          </p>
+          <ProfileForm
+            idPrefix="setup"
+            values={profile}
+            saving={savingProfile}
+            onSave={saveProfile}
+            onSkip={() => void completeOnboarding()}
+            skipLabel={hasProfile ? 'Close' : 'Skip for now'}
+          />
+        </main>
+      ) : (
+      <>
+
       {showSettings && (
-        <section
-          aria-label="AI Provider Settings"
-          className="p-4 border-b border-border bg-surface-elevated text-sm flex flex-col gap-3 shrink-0"
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-xs text-fg">AI Configuration</span>
-            {aiConfig.apiKeySource === 'dev' && (
-              <span className="text-[11px] text-success font-mono">.env key detected</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="ai-provider" className="text-xs font-medium text-fg-muted">
-              Provider
-            </label>
-            <select
-              id="ai-provider"
-              value={aiConfig.provider}
-              onChange={(e) => {
-                const nextProvider = e.target.value as AiConfig['provider'];
-                setAiConfigState((prev) => ({
-                  ...prev,
-                  provider: nextProvider,
-                  model: nextProvider === 'groq' ? DEFAULT_MODEL : prev.model,
-                }));
-                if (nextProvider === 'groq') {
-                  setModelInput(DEFAULT_MODEL);
-                }
-              }}
-              className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
-            >
-              <option value="groq">Groq (gpt-oss-120b)</option>
-              <option value="heuristic">Offline mode (no key needed)</option>
-              <option value="gemini">Google Gemini (OpenAI-compatible)</option>
-              <option value="openai">OpenAI (GPT-4o)</option>
-              <option value="custom">Custom Endpoint / Local LLM</option>
-            </select>
-          </div>
-
-          {aiConfig.provider !== 'heuristic' && (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-apikey" className="text-xs font-medium text-fg-muted">
-                  API Key
-                </label>
-                <input
-                  id="ai-apikey"
-                  type="password"
-                  placeholder={
-                    aiConfig.apiKeySource === 'saved'
-                      ? '•••••••• (saved — leave empty to keep)'
-                      : aiConfig.apiKeySource === 'dev'
-                        ? '•••••••• (dev key from .env)'
-                        : aiConfig.provider === 'groq'
-                        ? 'gsk_...'
-                        : 'API Key'
-                  }
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-model" className="text-xs font-medium text-fg-muted">
-                  Model Override (optional)
-                </label>
-                <input
-                  id="ai-model"
-                  type="text"
-                  placeholder={DEFAULT_MODEL}
-                  value={modelInput}
-                  onChange={(e) => setModelInput(e.target.value)}
-                  className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-            </>
-          )}
-
-          <div className="flex flex-col gap-1.5 border-t border-border pt-3">
-            <label htmlFor="speech-language" className="text-xs font-medium text-fg-muted">
-              Voice language
-            </label>
-            <input
-              id="speech-language"
-              type="text"
-              placeholder="Browser default (e.g. en-US, am-ET, om-ET)"
-              value={speechLanguageInput}
-              onChange={(e) => setSpeechLanguageInput(e.target.value)}
-              className="px-3 py-1.5 rounded-md border border-border bg-surface text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <p className="text-[11px] text-fg-muted">
-              {voice.isSupported
-                ? voice.mode === 'upload'
-                  ? 'Dictation is transcribed with your API key. Spoken replies use the voices installed on this device, and stay silent for a language with no voice rather than reading it in the wrong one.'
-                  : 'Dictation runs in this browser, so no audio leaves the device. Add an API key for more accurate transcription.'
-                : 'This browser has no microphone support available to the panel.'}
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button size="compact" variant="ghost" onClick={() => setShowSettings(false)}>
-              Cancel
-            </Button>
-            <Button size="compact" variant="primary" onClick={handleSaveConfig}>
-              Save
-            </Button>
-          </div>
-        </section>
+        <SettingsDrawer
+          config={aiConfig}
+          onConfigChange={setAiConfigState}
+          onClose={() => setShowSettings(false)}
+          voiceSupported={voice.isSupported}
+          voiceMode={voice.mode}
+        />
       )}
 
       {/* Conditional Rendering: Locked Inactive View vs. Active Agent Interface */}
@@ -1207,6 +1010,50 @@ export function ChatSidebar() {
           >
             Check Tab Again
           </Button>
+        </div>
+      ) : voiceMode.enabled ? (
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-4 pb-6 select-text relative overflow-hidden">
+          <div className="w-56 h-56 sm:w-64 sm:h-64 relative flex items-center justify-center my-auto">
+            <VoicePoweredOrb
+              isSpeaking={isAgentSpeaking}
+              enableVoiceControl={false}
+              className="rounded-full overflow-hidden shadow-2xl"
+            />
+          </div>
+
+          <div className="w-full max-w-sm flex flex-col items-center gap-3 text-center mb-6">
+            {isAgentSpeaking ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/15 text-accent text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                <span className="truncate max-w-[260px]">{activeSpeakingText || 'Speaking…'}</span>
+              </div>
+            ) : voice.isCapturing || interim ? (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">Hearing you</span>
+                <p className="text-sm text-fg italic font-medium px-4 truncate max-w-xs">{interim || 'Listening…'}</p>
+              </div>
+            ) : isRunning ? (
+              <div className="flex items-center gap-2 text-xs font-medium text-fg-muted">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>Thinking…</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Voice Mode Active</span>
+                <p className="text-xs text-fg-muted/80">Hands-free assistant listening — just speak</p>
+              </div>
+            )}
+
+            {(() => {
+              const lastAsst = [...messages].reverse().find((m) => m.role === 'assistant');
+              if (!lastAsst?.content) return null;
+              return (
+                <div className="w-full max-h-32 overflow-y-auto rounded-xl border border-border bg-surface p-3 text-left text-xs leading-relaxed text-fg">
+                  <MarkdownRenderer content={lastAsst.content} />
+                </div>
+              );
+            })()}
+          </div>
         </div>
       ) : (
         <>
@@ -1327,18 +1174,6 @@ export function ChatSidebar() {
                   onStop={() => void handleStop()}
                   beforeComposer={
                     <>
-                      {guided.running && voiceMode.enabled && guided.ui && (
-                        // Status only, for sighted helpers. The conversation itself is spoken;
-                        // aria-hidden so a screen reader does not talk over the assistant.
-                        <p aria-hidden="true" className="mb-2 text-xs text-fg-muted">
-                          {guided.ui.total ? `Question ${Math.max(1, guided.ui.index)} of ${guided.ui.total} · ` : ''}
-                          {guided.ui.phase === 'listening' || guided.ui.phase === 'confirming'
-                            ? guidedInterim
-                              ? `Hearing “${guidedInterim}”`
-                              : 'Listening'
-                            : 'Speaking'}
-                        </p>
-                      )}
                       {pendingConfirm && (
                         <div
                           ref={confirmRef}
@@ -1369,38 +1204,6 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* The assistant asked a question out loud and is waiting for the answer. */}
-                      {pendingListen && (
-                        <div
-                          ref={listenRef}
-                          tabIndex={-1}
-                          role="group"
-                          aria-label="Answering by voice"
-                          className="mb-3 p-3 rounded-2xl border-2 border-accent/60 bg-accent/10 text-sm flex flex-col gap-2"
-                        >
-                          <p className="font-medium text-fg">{pendingListen.prompt}</p>
-                          <p className="text-xs text-fg-muted">
-                            {voiceMode.enabled
-                              ? 'Just say your answer out loud.'
-                              : voice.needsPermission
-                                ? 'Allow the microphone on the tab that just opened, then come back here.'
-                                : voice.isCapturing
-                                  ? interim || 'Listening… speak your answer, then press Done.'
-                                  : 'Starting the microphone…'}
-                          </p>
-                          <div className="flex gap-2 justify-end">
-                            <Button size="compact" variant="ghost" onClick={cancelListen}>
-                              Cancel
-                            </Button>
-                            {!voiceMode.enabled && (
-                              <Button size="compact" variant="primary" onClick={() => voice.stop()}>
-                                Done
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
                       {/* Voice mode status badge or dictation preview */}
                       {voiceMode.enabled && (
                         <div
@@ -1422,7 +1225,6 @@ export function ChatSidebar() {
                           Allow the microphone on the tab that just opened, then come back here.
                         </p>
                       ) : (
-                        !pendingListen &&
                         voice.isCapturing && (
                           <p className="mb-2 text-[11px] text-fg-muted italic px-1" aria-hidden="true">
                             {interim || 'Listening…'}
@@ -1432,7 +1234,7 @@ export function ChatSidebar() {
                     </>
                   }
                   extraActions={
-                    voice.isSupported && !pendingListen && !voiceMode.enabled ? (
+                    voice.isSupported && !voiceMode.enabled ? (
                       <Button
                         type="button"
                         variant={voice.isCapturing ? 'danger' : 'ghost'}
@@ -1452,6 +1254,8 @@ export function ChatSidebar() {
             );
           })()}
         </>
+      )}
+      </>
       )}
     </div>
   );

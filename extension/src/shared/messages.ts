@@ -34,16 +34,8 @@ export type AgentStreamEvent =
       title: string;
       detail: string;
       risk: 'consequential' | 'destructive';
-    }
-  /** The assistant asked something and is waiting for a spoken answer. */
-  | {
-      type: 'listen_request';
-      id: string;
-      prompt: string;
-      language?: string;
-      /** False when no speech key is set, so the panel transcribes locally instead. */
-      canUploadAudio: boolean;
     };
+
 
 export interface ChatMessage {
   id: string;

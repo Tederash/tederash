@@ -76,7 +76,7 @@ beforeEach(() => {
 describe('useVoiceMode with the VAD engine', () => {
   it('delivers the transcript after speech ends instead of hanging on "Hearing you…"', async () => {
     const onTranscript = vi.fn();
-    const { result } = renderVoiceMode({ canUpload: true, language: 'en-US', onTranscript, pendingListenRef: { current: false } });
+    const { result } = renderVoiceMode({ canUpload: true, language: 'en-US', onTranscript });
     act(() => result.current.toggle(true));
     await waitFor(() => expect(result.current.status).toBe('listening'));
 

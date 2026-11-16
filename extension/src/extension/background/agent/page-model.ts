@@ -10,6 +10,9 @@ function quote(v: string): string {
 /** Compact, line-per-control rendering of the Page Model (token-budget friendly). */
 export function formatPageState(state: PageState): string {
   const lines: string[] = [`Page: "${state.title}" (${state.url})`];
+  if (state.dialog) {
+    lines.push(`OPEN DIALOG: "${state.dialog.title}"${state.dialog.text ? ` — ${state.dialog.text}` : ''}`);
+  }
   if (state.headings.length) lines.push(`Headings: ${state.headings.join(' / ')}`);
   if (state.fields.length) {
     lines.push('Fields (handle | label | type | state):');

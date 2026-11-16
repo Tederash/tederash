@@ -140,6 +140,48 @@ describe('AI config persistence', () => {
     expect((await loadAiConfig()).apiKey).toBe('gsk_test');
     expect((await loadAiConfig()).model).toBe('openai/gpt-oss-20b');
   });
+
+  it('merges a partial save instead of wiping the settings it was not told about', async () => {
+    installChrome();
+    await setAiConfig({
+      provider: 'groq',
+      apiKey: 'gsk_test',
+      sttApiKey: 'xi_test',
+      speechLanguage: 'am-ET',
+      speechPauseMs: 2000,
+      voiceMode: true,
+    });
+
+    // The settings drawer saves provider-ish fields only; the voice switch saves
+    // voiceMode only. Neither may clobber the other.
+    await setAiConfig({ provider: 'groq', model: 'openai/gpt-oss-20b' });
+
+    const after = await loadAiConfig();
+    expect(after).toMatchObject({
+      model: 'openai/gpt-oss-20b',
+      apiKey: 'gsk_test',
+      sttApiKey: 'xi_test',
+      speechLanguage: 'am-ET',
+      speechPauseMs: 2000,
+      voiceMode: true,
+    });
+  });
+
+  it('never carries a key over to a different provider', async () => {
+    installChrome();
+    await setAiConfig({ provider: 'groq', apiKey: 'gsk_test' });
+    await setAiConfig({ provider: 'openai' });
+    expect((await loadAiConfig()).apiKey).toBeUndefined();
+  });
+
+  it('keeps the speech key out of what UI pages receive', async () => {
+    installChrome();
+    await setAiConfig({ provider: 'groq', apiKey: 'gsk_test', sttApiKey: 'xi_test' });
+    const published = getPublicAiConfig();
+    expect(published.sttApiKey).toBeUndefined();
+    expect(published.apiKey).toBeUndefined();
+    expect(published.hasSttApiKey).toBe(true);
+  });
 });
 
 describe('LLM orchestration plumbing', () => {

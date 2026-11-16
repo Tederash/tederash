@@ -3,8 +3,10 @@
 import * as React from "react";
 import {
   PRESET_PROFILES,
+  getDictionary,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
+  translate,
   useSpeechSynthesis,
   useTederash,
   type TargetSize,
@@ -45,17 +47,36 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
     locale === "am" ? "Amharic" : locale === "om" ? "Afaan Oromoo" : "English";
   const id = (name: string) => `${idPrefix}-${name}`;
 
+  const isAmharic = locale === "am";
+  const isOromo = locale === "om";
+  const dictionary = React.useMemo(() => getDictionary(locale), [locale]);
+
+  const presetLegend = isAmharic
+    ? "ከቅድመ-ዝግጅት ይጀምሩ"
+    : isOromo
+      ? "Qindaa'ina duraan jiru irraa eegalaa"
+      : "Start from a preset";
+  const presetSubtitle = isAmharic
+    ? "ቅድመ-ዝግጅቶች መነሻዎች ናቸው። ከታች ያሉትን አማራጮች እንደፈለጉ ማስተካከል ይችላሉ።"
+    : isOromo
+      ? "Qindaa'inonni eegumsa qofa. Filannoowwan armaan gadii hunda jijjiiruun ni danda'ama."
+      : "Presets are starting points. Every option below can be changed on top of them.";
+  const languageLegend = isAmharic ? "ቋንቋ" : isOromo ? "Afaan" : "Language";
+
   return (
     <div className="flex flex-col gap-6" data-slot="accessibility-settings">
       {/* Presets */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-semibold mb-2">Start from a preset</legend>
+        <legend className="text-sm font-semibold mb-2">{presetLegend}</legend>
         <p className="text-xs text-muted-foreground -mt-1 mb-1">
-          Presets are starting points. Every option below can be changed on top of them.
+          {presetSubtitle}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {PRESET_PROFILES.map((preset) => {
             const active = profile.id === preset.id;
+            const translatedPreset = translate(dictionary, `presets.${preset.id}`);
+            const presetDisplayName =
+              translatedPreset !== `presets.${preset.id}` ? translatedPreset : preset.name;
             return (
               <button
                 key={preset.id}
@@ -68,7 +89,7 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
                     : "border-border bg-card hover:bg-muted text-foreground"
                 }`}
               >
-                <span className="block font-semibold">{preset.name}</span>
+                <span className="block font-semibold">{presetDisplayName}</span>
                 <span
                   className={`block text-[11px] line-clamp-2 mt-0.5 font-normal ${
                     active ? "text-foreground" : "text-muted-foreground"
@@ -84,7 +105,7 @@ export function AccessibilitySettings({ idPrefix = "a11y" }: { idPrefix?: string
 
       {/* Language */}
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
-        <legend className="text-sm font-semibold mb-2">Language</legend>
+        <legend className="text-sm font-semibold mb-2">{languageLegend}</legend>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="group" aria-label="Interface language">
           {[
             { value: "en", label: "English", lang: "en", speech: "en-US" },

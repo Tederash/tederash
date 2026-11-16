@@ -30,7 +30,6 @@ export type VoiceModeEvent =
   | { type: 'speechEnd' }
   | { type: 'misfire' }
   | { type: 'transcribed'; ok: boolean; hasText?: boolean }
-  | { type: 'listenPending'; pending: boolean }
   | { type: 'turnEnded' };
 
 export interface VoiceModeState {
@@ -39,11 +38,9 @@ export interface VoiceModeState {
   error?: string;
   /**
    * Speech was captured while a turn was running: barge-in. The hook stops the
-   * audio and either answers the pending question or replaces the turn.
+   * audio and replaces the turn.
    */
   bargeIn?: boolean;
-  /** The assistant asked out loud; the next utterance is an answer, not a request. */
-  answeringListen?: boolean;
 }
 
 export const initialVoiceModeState: VoiceModeState = { status: 'off' };
@@ -78,24 +75,18 @@ export function transition(state: VoiceModeState, event: VoiceModeEvent): VoiceM
     case 'misfire':
       // Not enough real speech: go back to waiting without wasting a request.
       if (state.status !== 'capturing') return state;
-      return { ...state, status: state.bargeIn || state.answeringListen ? 'busy' : 'listening' };
+      return { ...state, status: state.bargeIn ? 'busy' : 'listening' };
 
     case 'transcribed': {
       if (state.status !== 'transcribing') return state;
       if (!event.ok || !event.hasText) {
         // Nothing usable was said: keep waiting, or keep the interrupted turn.
-        return { ...state, status: state.bargeIn || state.answeringListen ? 'busy' : 'listening' };
+        return { ...state, status: state.bargeIn ? 'busy' : 'listening' };
       }
-      // A usable utterance is dispatched (new turn, or an answer into the current
-      // one); the turn-running state that follows ends with `turnEnded`.
+      // A usable utterance starts a new turn; the turn-running state that
+      // follows ends with `turnEnded`.
       return { ...state, status: 'busy' };
     }
-
-    case 'listenPending':
-      // The assistant asked something out loud: the next utterance is an answer,
-      // not a new request.
-      if (state.status !== 'busy') return state;
-      return { ...state, answeringListen: event.pending };
 
     case 'turnEnded':
       if (state.status === 'busy') return { ...state, status: 'listening', bargeIn: undefined };

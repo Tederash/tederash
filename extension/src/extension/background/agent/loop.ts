@@ -213,7 +213,10 @@ async function runToolCall(tc: ModelToolCall, guards: TurnGuards, opts: LoopOpti
   if (result.ok && resolved.filled.length) opts.onFilled?.(resolved.filled);
   const output = toModelToolOutput(def.contentTool, result);
 
-  if (result.ok && result.outcome?.urlChanged && opts.readPageState) {
+  // A click that opens a dialog only sets `domChanged`, so without this the model
+  // never sees what it just opened and cannot describe it back to the user.
+  const changedPage = result.ok && (result.outcome?.urlChanged || result.outcome?.domChanged);
+  if (changedPage && def.kind === 'act' && opts.readPageState) {
     const page = await opts.readPageState();
     if (page) {
       guards.notePageVersion(page.pageVersion);

@@ -1,14 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LISTEN_BUDGET, TurnGuards } from '../../src/extension/background/agent/guards';
-import { buildSystemPrompt } from '../../src/extension/background/agent/prompt';
-import { AGENT_TOOL_DEFS } from '../../src/extension/background/agent/tools';
-import {
-  awaitVoiceReply,
-  parseVoiceReplyMessage,
-  resolveVoiceReply,
-} from '../../src/extension/background/agent/voice-reply';
 import { requestMicrophoneAccess } from '../../src/components/sidepanel/useVoice';
-import { evaluatePolicy } from '../../src/extension/background/policy';
 import {
   MAX_AUDIO_BYTES,
   resolveSttProvider,
@@ -23,9 +14,6 @@ import {
 import { GROQ_STT_MODEL } from '../../src/extension/background/speech/providers/groq';
 import { ELEVENLABS_STT_MODEL } from '../../src/extension/background/speech/providers/elevenlabs';
 import { encodeWav } from '../../src/extension/background/speech/wav';
-import { ListenArgsSchema } from '../../src/shared/tools';
-
-const config = { provider: 'groq' as const, apiKey: 'gsk_test' };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -33,115 +21,6 @@ function jsonResponse(body: unknown, status = 200): Response {
     headers: { 'content-type': 'application/json' },
   });
 }
-
-describe('listen tool', () => {
-  it('is offered to the model as a way to ask and hear back', () => {
-    const def = AGENT_TOOL_DEFS.listen;
-    expect(def.contentTool).toBe('listen');
-    expect(def.kind).toBe('perceive');
-    expect(def.description).toMatch(/spoken answer/);
-  });
-
-  it('accepts a prompt with an optional language', () => {
-    expect(ListenArgsSchema.safeParse({ prompt: 'What is your email?' }).success).toBe(true);
-    expect(ListenArgsSchema.safeParse({ prompt: 'ኢሜልዎ ማን ነው?', language: 'am-ET' }).success).toBe(
-      true
-    );
-    expect(ListenArgsSchema.safeParse({ prompt: '' }).success).toBe(false);
-  });
-
-  it('never needs confirmation: asking a question changes nothing', () => {
-    expect(evaluatePolicy({ name: 'listen', args: { prompt: 'Which one?' } } as never)).toMatchObject(
-      { requiresConfirmation: false, allowed: true }
-    );
-  });
-
-  it('is capped per turn so the user is not interrogated in a loop', () => {
-    const guards = new TurnGuards('fill the form');
-    for (let i = 0; i < LISTEN_BUDGET; i++) {
-      expect(guards.check('listen', { prompt: `q${i}` }, 'perceive').kind).toBe('run');
-    }
-    const blocked = guards.check('listen', { prompt: 'one more' }, 'perceive');
-    expect(blocked.kind).toBe('over_budget');
-    expect(blocked.kind === 'over_budget' && blocked.note).toMatch(/one written message/);
-  });
-
-  it('does not spend the perception budget on inspecting the page', () => {
-    const guards = new TurnGuards('fill the form');
-    guards.check('listen', { prompt: 'a' }, 'perceive');
-    guards.check('listen', { prompt: 'b' }, 'perceive');
-    // Perception is still available: the two listens did not consume it.
-    expect(guards.check('inspect_form', {}, 'perceive').kind).toBe('run');
-  });
-});
-
-describe('voice turn prompt', () => {
-  it('asks for spoken replies only when the user spoke', () => {
-    const spoken = buildSystemPrompt({ isVoiceTurn: true });
-    expect(spoken).toContain('VOICE');
-    expect(spoken).toMatch(/call listen/);
-    expect(buildSystemPrompt({ isVoiceTurn: false })).not.toContain('VOICE:');
-  });
-
-  it('tells the model to collect everything in one spoken question', () => {
-    expect(buildSystemPrompt({ isVoiceTurn: true })).toMatch(/Do not call listen once per field/);
-  });
-});
-
-describe('voice reply round-trip', () => {
-  it('resolves the waiting tool with locally recognised text', async () => {
-    const pending = awaitVoiceReply('v1');
-    expect(resolveVoiceReply('v1', { kind: 'text', text: 'Senior, and remote' })).toBe(true);
-    await expect(pending).resolves.toMatchObject({ kind: 'text', text: 'Senior, and remote' });
-  });
-
-  it('reports a cancellation when the user backs out', async () => {
-    const pending = awaitVoiceReply('v2');
-    resolveVoiceReply('v2', { kind: 'cancelled', reason: 'cancelled' });
-    await expect(pending).resolves.toMatchObject({ kind: 'cancelled' });
-  });
-
-  it('gives up after the timeout instead of hanging the turn', async () => {
-    vi.useFakeTimers();
-    const pending = awaitVoiceReply('v3', undefined, 1000);
-    vi.advanceTimersByTime(1001);
-    await expect(pending).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
-    vi.useRealTimers();
-  });
-
-  it('ends the wait when the turn is aborted', async () => {
-    const controller = new AbortController();
-    const pending = awaitVoiceReply('v4', controller.signal);
-    controller.abort();
-    await expect(pending).resolves.toMatchObject({ kind: 'cancelled', reason: 'stopped' });
-  });
-
-  it('ignores an answer for a listen that is no longer pending', () => {
-    expect(resolveVoiceReply('nope', { kind: 'text', text: 'hi' })).toBe(false);
-  });
-
-  it('decodes base64 audio from the panel (port messages are JSON, not clones)', () => {
-    const reply = parseVoiceReplyMessage({
-      kind: 'audio',
-      audioBase64: btoa('fake-audio'),
-      mimeType: 'audio/webm',
-      language: 'am-ET',
-    });
-    expect(reply.kind).toBe('audio');
-    if (reply.kind === 'audio') {
-      expect(new TextDecoder().decode(reply.audio)).toBe('fake-audio');
-      expect(reply.language).toBe('am-ET');
-    }
-  });
-
-  it('treats a malformed message as a cancellation rather than crashing', () => {
-    expect(parseVoiceReplyMessage(null).kind).toBe('cancelled');
-    expect(parseVoiceReplyMessage({ kind: 'text', text: '   ' }).kind).toBe('cancelled');
-    expect(parseVoiceReplyMessage({ kind: 'audio', audioBase64: '!!!not base64!!!' }).kind).toBe(
-      'cancelled'
-    );
-  });
-});
 
 describe('microphone permission', () => {
   function installChrome() {

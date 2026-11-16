@@ -65,12 +65,6 @@ export const SayArgsSchema = z.object({
 });
 export type SayArgs = z.infer<typeof SayArgsSchema>;
 
-export const ListenArgsSchema = z.object({
-  prompt: z.string().min(1).max(500),
-  language: z.string().max(20).optional(),
-});
-export type ListenArgs = z.infer<typeof ListenArgsSchema>;
-
 export const FinishArgsSchema = z.object({
   summary: z.string().min(1).max(2000),
   status: z.enum(['success', 'partial', 'failed']).default('success'),
@@ -197,6 +191,13 @@ export interface PageButton {
   disabled?: boolean;
 }
 
+/** A dialog, alert or modal panel currently open over the page. */
+export interface PageDialog {
+  title: string;
+  /** Its message text, trimmed and capped. */
+  text: string;
+}
+
 export interface PageState {
   url: string;
   title: string;
@@ -204,6 +205,8 @@ export interface PageState {
   headings: string[];
   fields: PageField[];
   buttons: PageButton[];
+  /** Present while a dialog is open, so the assistant can describe what it opened. */
+  dialog?: PageDialog;
 }
 
 export const ToolCallSchema = z.discriminatedUnion('name', [
@@ -224,7 +227,6 @@ export const ToolCallSchema = z.discriminatedUnion('name', [
   z.object({ name: z.literal('read_text'), args: ReadTextArgsSchema }),
   z.object({ name: z.literal('set_adaptation'), args: SetAdaptationArgsSchema }),
   z.object({ name: z.literal('say'), args: SayArgsSchema }),
-  z.object({ name: z.literal('listen'), args: ListenArgsSchema }),
   z.object({ name: z.literal('finish'), args: FinishArgsSchema }),
   z.object({ name: z.literal('tederash_detect'), args: TederashDetectArgsSchema }),
   z.object({ name: z.literal('tederash_get_tree'), args: TederashGetTreeArgsSchema }),

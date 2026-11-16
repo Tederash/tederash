@@ -27,7 +27,6 @@ export const DEFAULT_PAUSE_MS = 1400;
 
 export interface VoiceTurnMeta {
   /** True when this utterance answers a question the assistant asked aloud. */
-  isAnswer: boolean;
   /** True when this utterance interrupted the assistant mid-answer. */
   isBargeIn: boolean;
 }
@@ -45,7 +44,6 @@ export interface UseVoiceModeOptions {
   /** Live word-in-progress while the user speaks (local engine only). */
   onInterim?: (text: string) => void;
   /** Panel-maintained refs so callbacks can stay registered once. */
-  pendingListenRef: { current: boolean };
 }
 
 export interface UseVoiceModeResult {
@@ -55,13 +53,6 @@ export interface UseVoiceModeResult {
   toggle: (enabled?: boolean) => void;
   /** The panel calls this when an agent turn finishes, to hand the mic back. */
   notifyTurnEnded: () => void;
-  /** The panel calls this when a `listen_request` arrives or is resolved. */
-  notifyListenPending: (pending: boolean) => void;
-  /**
-   * Hand the microphone to someone else (guided form filling) without turning
-   * voice mode off: while suspended, speech is ignored and local recognition stops.
-   */
-  suspend: (on: boolean) => void;
 }
 
 export function useVoiceMode({
@@ -71,7 +62,6 @@ export function useVoiceMode({
   onTranscript,
   onNotice,
   onInterim,
-  pendingListenRef,
 }: UseVoiceModeOptions): UseVoiceModeResult {
   const [state, dispatch] = useReducer(transition, initialVoiceModeState);
 
@@ -80,8 +70,7 @@ export function useVoiceMode({
   const vadRef = useRef<MicVAD | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<ReturnType<typeof createSpeechRecognitionController> | null>(null);
-  const metaRef = useRef<VoiceTurnMeta>({ isAnswer: false, isBargeIn: false });
-  const suspendedRef = useRef(false);
+  const metaRef = useRef<VoiceTurnMeta>({ isBargeIn: false });
 
   // Kept current so callbacks registered once see fresh options.
   const optionsRef = useRef({ language, canUpload, pauseMs, onTranscript, onNotice, onInterim });
@@ -130,7 +119,7 @@ export function useVoiceMode({
   /** Dispatches a finished utterance: an answer into the turn, or a new turn. */
   const handleTranscript = useCallback((text: string) => {
     optionsRef.current.onTranscript?.(text, metaRef.current);
-    metaRef.current = { isAnswer: false, isBargeIn: false };
+    metaRef.current = { isBargeIn: false };
   }, []);
 
   const ensureMicrophone = useCallback(async (): Promise<boolean> => {
@@ -182,17 +171,15 @@ export function useVoiceMode({
         redemptionMs: optionsRef.current.pauseMs ?? DEFAULT_PAUSE_MS,
         preSpeechPadMs: 400,
         onSpeechStart: () => {
-          if (suspendedRef.current) return;
           if (stateRef.current.status === 'busy') {
             // Barge-in: stop whatever is being spoken right away.
             void stopAssistantSpeech();
             metaRef.current.isBargeIn = true;
           }
-          metaRef.current.isAnswer = pendingListenRef.current;
           dispatchRef.current({ type: 'speechStart' });
         },
         onSpeechEnd: (audio) => {
-          if (suspendedRef.current || busyCaptureRef.current) return;
+          if (busyCaptureRef.current) return;
           // Move capturing -> transcribing. Without this the transcript that comes
           // back is discarded (it is only accepted while transcribing) and the panel
           // sits on "Hearing you…" forever.
@@ -207,7 +194,7 @@ export function useVoiceMode({
           })();
         },
         onVADMisfire: () => {
-          if (!suspendedRef.current) dispatchRef.current({ type: 'misfire' });
+          dispatchRef.current({ type: 'misfire' });
         },
       });
       await vad.start();
@@ -219,14 +206,13 @@ export function useVoiceMode({
       micFailure(err);
       return false;
     }
-  }, [assetPath, ensureMicrophone, handleTranscript, micFailure, pendingListenRef, sendForTranscription]);
+  }, [assetPath, ensureMicrophone, handleTranscript, micFailure, sendForTranscription]);
 
   const startLocalEngine = useCallback(async (): Promise<boolean> => {
     if (!(await ensureMicrophone())) return false;
     try {
       const controller = createSpeechRecognitionController({
         onResult: (result) => {
-          if (suspendedRef.current) return;
           if (!result.isFinal) {
             optionsRef.current.onInterim?.(result.transcript);
             return;
@@ -244,7 +230,7 @@ export function useVoiceMode({
         onEnd: () => {
           // Continuous recognition ends on silence; restart it while we are
           // still listening so the mic never needs a second grant.
-          if (stateRef.current.status === 'listening' && !suspendedRef.current) {
+          if (stateRef.current.status === 'listening') {
             try {
               recognitionRef.current?.start({
                 lang: optionsRef.current.language,
@@ -332,28 +318,8 @@ export function useVoiceMode({
     }
   }, [state.status]);
 
-  const suspend = useCallback((on: boolean) => {
-    suspendedRef.current = on;
-    if (vadRef.current) return; // The VAD keeps running; its handlers ignore speech while suspended.
-    try {
-      if (on) recognitionRef.current?.abort();
-      else if (stateRef.current.status === 'listening') {
-        recognitionRef.current?.start({
-          lang: optionsRef.current.language,
-          continuous: true,
-          interimResults: true,
-        });
-      }
-    } catch {
-      // Already in that state.
-    }
-  }, []);
 
   const notifyTurnEnded = useCallback(() => dispatchRef.current({ type: 'turnEnded' }), []);
-  const notifyListenPending = useCallback(
-    (pending: boolean) => dispatchRef.current({ type: 'listenPending', pending }),
-    []
-  );
 
   return {
     enabled: state.status !== 'off',
@@ -361,8 +327,6 @@ export function useVoiceMode({
     error: state.error,
     toggle,
     notifyTurnEnded,
-    notifyListenPending,
-    suspend,
   };
 }
 

@@ -8,7 +8,6 @@ import {
   type VaultGetResponse,
 } from '../../shared/messages';
 import { resolveConfirmation } from './agent/confirm';
-import { parseVoiceReplyMessage, resolveVoiceReply } from './agent/voice-reply';
 import { createBatchedListener } from './agent/stream';
 import { ensureSessionsLoaded, getOrCreateSession } from './agent/session';
 import { executeContentTool } from './agent/executor';
@@ -474,10 +473,6 @@ if (typeof chrome.runtime?.onConnect?.addListener === 'function') {
       port.onMessage.addListener(async (msg: any) => {
         if (msg?.type === 'agent/confirm' && typeof msg.id === 'string') {
           resolveConfirmation(msg.id, msg.approved === true);
-          return;
-        }
-        if (msg?.type === 'agent/voiceReply' && typeof msg.id === 'string') {
-          resolveVoiceReply(msg.id, parseVoiceReplyMessage(msg));
           return;
         }
         if (msg?.type === 'agent/stream/start') {

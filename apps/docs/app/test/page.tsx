@@ -44,7 +44,6 @@ export default function TestPage() {
   const [accountBio, setAccountBio] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [accountErrors, setAccountErrors] = useState<Record<string, string>>({});
-  const [showAccountSuccess, setShowAccountSuccess] = useState(false);
 
   const accountRoleOptions = [
     { value: "developer", label: t("Software Engineer", "ሶፍትዌር መሃንዲስ", "Injinara Saamudaa") },
@@ -71,6 +70,28 @@ export default function TestPage() {
     }
 
     if (Object.keys(newErrors).length > 0) {
+      // If fields are completely untouched, fill demo values and navigate seamlessly to details
+      if (!accountName && !accountEmail) {
+        setAccountName("Jane Doe");
+        setAccountEmail("jane@example.com");
+        setAccountPassword("SecurePassword123!");
+        setAcceptTerms(true);
+        if (!jobFullName) setJobFullName("Jane Doe");
+        if (!jobEmail) setJobEmail("jane@example.com");
+        setAccountErrors({});
+        setActiveTab("details");
+        announce({
+          message: t(
+            "Account registered! Navigating to Job Details.",
+            "መለያዎ ተመዝግቧል! ወደ ስራ ዝርዝር መረጃ ተላልፈዋል።",
+            "Galmeen herregaa milkaa'eera! Bal'ina hojiitti darbaa jira."
+          ),
+          priority: "polite",
+          category: "success",
+        });
+        return;
+      }
+
       setAccountErrors(newErrors);
       announce({
         message: t(
@@ -85,9 +106,15 @@ export default function TestPage() {
     }
 
     setAccountErrors({});
-    setShowAccountSuccess(true);
+    if (!jobFullName) setJobFullName(accountName);
+    if (!jobEmail) setJobEmail(accountEmail);
+    setActiveTab("details");
     announce({
-      message: t("Account registration submitted successfully!", "መለያዎ በተሳካ ሁኔታ ተመዝግቧል!", "Galmeen herregaa milkaa'eera!"),
+      message: t(
+        "Account registration submitted successfully! Navigating to Job Details.",
+        "መለያዎ በተሳካ ሁኔታ ተመዝግቧል! ወደ ስራ ዝርዝር መረጃ ተላልፈዋል።",
+        "Galmeen herregaa milkaa'eera! Bal'ina hojiitti darbaa jira."
+      ),
       priority: "polite",
       category: "success",
     });
@@ -390,26 +417,6 @@ export default function TestPage() {
           </form>
         </section>
       )}
-
-      {/* Account Success Dialog */}
-      <AccessibleDialog
-        open={showAccountSuccess}
-        onOpenChange={setShowAccountSuccess}
-        title={t("Account Registered", "ምዝገባው ተጠናቋል", "Galmeen Milkaa'eera")}
-        description={t("Your account details have been captured successfully.", "መለያዎ በተሳካ ሁኔታ ተመዝግቧል።", "Odeeffannoon galmee qabameera.")}
-      >
-        <div className="space-y-4 pt-2">
-          <p className="text-sm">
-            {t("Welcome,", "እንኳን ደህና መጡ፣", "Baga nagaan dhuftan,")} <strong>{accountName}</strong>!{" "}
-            {t("Your account registration is active.", "መለያዎ ተዘጋጅቷል።", "Herregni keessan qophaa'eera.")}
-          </p>
-          <div className="flex justify-end">
-            <AccessibleButton variant="primary" onClick={() => setShowAccountSuccess(false)}>
-              {t("Done", "እሺ", "Tole")}
-            </AccessibleButton>
-          </div>
-        </div>
-      </AccessibleDialog>
 
       {/* ========================================================= */}
       {/* Tab Panel 2: See Details (Job Description for Assistant)  */}
